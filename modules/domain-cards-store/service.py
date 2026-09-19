@@ -1,95 +1,118 @@
-# domain-cards-store/service.py — Cards Store — freshness + weekly bucket — corrected naming GE Aero
-
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime, timedelta
-import re
+from typing import List, Optional, Dict
+from datetime import datetime
+import hashlib, re
 
-app = FastAPI(title="Cards Store", version="v0.6-corrected-naming")
+app = FastAPI(title="Cards Store", version="v0.7")
 
 STORE = {}
 
-def slugify(text: str) -> str:
-    import re as re2
-    text = text.upper()
-    text = re2.sub(r'[^A-Z0-9]+', '-', text)
-    text = re2.sub(r'-+', '-', text).strip('-')
-    return text
+def slugify(t: str) -> str:
+    t = t.upper()
+    t = re.sub(r'[^A-Z0-9]+', '-', t)
+    t = re.sub(r'-+', '-', t).strip('-')
+    return t
 
 class CardCreate(BaseModel):
-    client_name: str  # GE Aero — PRIMARY FILTER dropdown NOT editable
-    project_ref_name: str  # GE Aero DIP Discovery — second level editable
-    anchor_id: str  # GEAERO-DIP-DISCOVERY
-    card_type: str  # timeline, doc, budget, stakeholder
+    client_name: str
+    project_ref_name: str
+    anchor_id: str
+    card_type: str
     title: str
-    week: Optional[str] = None  # Week 33 — for weekly bucket
-    significance_score: float = 0.5  # 0.9-1.0 EXTENSION/APPROVAL, 0.25 CHASING — noise filter
-    source_rows: List[str] = []  # Row12+Row18 — multi-row intelligence hash
+    week: Optional[str] = None
+    significance_score: float = 0.5
+    source_rows: List[str] = []
     content: str
-    freshness_days: int = 0  # 0 = today, 2 = 2d ago green, 30+ = >1 month red Stale
+    freshness_days: int = 0
+    opportunity_numbers: List[str] = []
+    connected_record_ids: List[str] = []
+    gdp_id: Optional[str] = None
+    sharepoint_smp: Optional[str] = None
+
+def hash_clip(*parts):
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
 
 @app.get("/")
 def root():
     return {
         "service": "domain-cards-store",
         "status": "ok",
+        "version": "v0.7-cards-freshness-weekly",
+        "port": 8001,
         "levels": {
-            "first_level": "Client Master GE Aero PRIMARY FILTER dropdown NOT editable",
-            "second_level": "ProjectRef GE Aero DIP Discovery editable anchor_id GEAERO-DIP-DISCOVERY"
+            "first_level": "GE Aero PRIMARY FILTER dropdown NOT editable",
+            "second_level": "GEAERO-DIP-DISCOVERY editable",
+            "third_level": "timeline#Week33 SK"
         },
-        "freshness": "2d ago green >1 month red Stale",
-        "weekly_bucket": "significance 0.9-1.0 EXTENSION/APPROVAL vs 0.25 CHASING — noise filter"
+        "freshness": {"2d ago": "green", ">1 month": "red Stale", "check": "6h HEAD geadinspf + 8399"},
+        "weekly_bucket": {"0.9": "EXTENSION show", "0.25": "CHASING hide noise", "Row12+Row18": "multi-row hash"}
     }
 
 @app.put("/card/{client_name}/{anchor_id}/{card_id}")
 def create_card(client_name: str, anchor_id: str, card_id: str, payload: CardCreate):
-    key = f"{client_name}#{anchor_id}#{card_id}"
-    freshness_label = "today"
-    freshness_color = "green"
-    if payload.freshness_days == 1:
-        freshness_label = "1d ago"
-        freshness_color = "green"
-    elif payload.freshness_days == 2:
-        freshness_label = "2d ago"
-        freshness_color = "green"
-    elif payload.freshness_days >= 30:
-        freshness_label = f"{payload.freshness_days}d ago Stale"
-        freshness_color = "red"
+    key = f"{payload.client_name}#{payload.anchor_id}#{card_id}"
+    days = payload.freshness_days
+    if days == 0:
+        label, color, pastel = "today", "green", "#D6F5E8"
+    elif days <= 2:
+        label, color, pastel = f"{days}d ago", "green", "#D6F5E8"
+    elif days < 30:
+        label, color, pastel = f"{days}d ago", "yellow", "#FFF5D6"
     else:
-        freshness_label = f"{payload.freshness_days}d ago"
-        freshness_color = "green" if payload.freshness_days < 7 else "yellow"
-
+        label, color, pastel = f"{days}d ago Stale", "red", "#FFD6D6"
+    bucket = "HIGH EXTENSION show" if payload.significance_score >= 0.9 else "MEDIUM" if payload.significance_score >= 0.5 else "LOW CHASING 0.25 hide"
+    show = payload.significance_score >= 0.5
+    clip_id = hash_clip(payload.client_name, payload.anchor_id, card_id, "|".join(payload.source_rows))
     record = {
         "client_name": payload.client_name,
         "project_ref_name": payload.project_ref_name,
         "anchor_id": payload.anchor_id,
         "card_id": card_id,
+        "pk": payload.anchor_id,
+        "sk": card_id,
+        "gsi_client_name": payload.client_name,
         "card_type": payload.card_type,
         "title": payload.title,
         "week": payload.week,
         "significance_score": payload.significance_score,
         "source_rows": payload.source_rows,
         "content": payload.content,
-        "freshness": {"days": payload.freshness_days, "label": freshness_label, "color": freshness_color, "last_refreshed": datetime.utcnow().isoformat()},
-        "level_info": {
-            "first_level": f"Client Master {payload.client_name} PRIMARY FILTER",
-            "second_level": f"ProjectRef {payload.project_ref_name} editable anchor_id {payload.anchor_id}"
-        },
-        "pastel_tokens": {"--pastel-blue": "#D6E8FF", "--pastel-mint": "#D6F5E8", "--pastel-yellow": "#FFF5D6"}
+        "opportunity_numbers": payload.opportunity_numbers,
+        "connected_record_ids": payload.connected_record_ids,
+        "gdp_id": payload.gdp_id,
+        "sharepoint_smp": payload.sharepoint_smp,
+        "freshness": {"days": days, "label": label, "color": color, "pastel": pastel, "last_refreshed": datetime.utcnow().isoformat()},
+        "weekly_bucket": {"significance": payload.significance_score, "bucket": bucket, "show_in_timeline": show, "week": payload.week},
+        "pastel_tokens": {"--pastel-blue": "#D6E8FF", "--pastel-mint": "#D6F5E8"},
+        "clip_id": clip_id,
+        "created_at": datetime.utcnow().isoformat(),
+        "eventbridge_check": {"schedule": "6h HEAD", "sharepoint": payload.sharepoint_smp, "gdp": payload.gdp_id}
     }
     STORE[key] = record
     return record
 
+@app.get("/card/{client_name}/{anchor_id}/{card_id}")
+def get_card(client_name: str, anchor_id: str, card_id: str):
+    key = f"{client_name}#{anchor_id}#{card_id}"
+    if key not in STORE:
+        raise HTTPException(status_code=404, detail="Card not found")
+    return STORE[key]
+
 @app.get("/cards/{client_name}")
-def list_cards_by_client(client_name: str):
+def list_by_client(client_name: str):
     results = [v for k, v in STORE.items() if k.startswith(f"{client_name}#")]
-    return {"client_name": client_name, "count": len(results), "level": "First Level PRIMARY FILTER", "cards": results}
+    return {"client_name": client_name, "count": len(results), "cards": results}
 
 @app.get("/cards/{client_name}/{anchor_id}")
-def list_cards_by_anchor(client_name: str, anchor_id: str):
+def list_by_anchor(client_name: str, anchor_id: str):
     results = [v for k, v in STORE.items() if k.startswith(f"{client_name}#{anchor_id}#")]
-    return {"client_name": client_name, "anchor_id": anchor_id, "count": len(results), "level": "Second Level ProjectRef editable", "cards": results}
+    return {"client_name": client_name, "anchor_id": anchor_id, "count": len(results), "cards": results}
+
+@app.get("/cards/{client_name}/{anchor_id}/timeline")
+def list_timeline(client_name: str, anchor_id: str):
+    all_cards = [v for k, v in STORE.items() if k.startswith(f"{client_name}#{anchor_id}#") and v["card_type"]=="timeline" and v["weekly_bucket"]["show_in_timeline"]]
+    return {"client_name": client_name, "anchor_id": anchor_id, "count": len(all_cards), "timeline": sorted(all_cards, key=lambda x: x.get("week",""))}
 
 if __name__ == "__main__":
     import uvicorn

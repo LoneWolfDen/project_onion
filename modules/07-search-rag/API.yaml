@@ -1,0 +1,37 @@
+# API Contract — Search RAG — Ask My/Team/Both
+openapi: 3.0.0
+info:
+  title: Search RAG — Ask My/Team/Both
+  version: v1.0
+paths:
+  /07-search-rag/health:
+    get:
+      summary: Health check
+      responses:
+        '200': { description: ok }
+  /07-search-rag/process:
+    post:
+      summary: Process Search RAG — Ask My/Team/Both
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                anchor_id: { type: string }
+                client_name: { type: string }
+                project_id: { type: string }
+                source_link: { type: string }
+                lastModified: { type: string }
+      responses:
+        '200':
+          description: idempotent result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clip_id: { type: string, description: hash(url+lastModified+anchor) }
+                  card_id: { type: string }
+                  freshness: { type: string, example: 2d ago }
+                  significance_score: { type: number, example: 0.9 }

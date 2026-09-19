@@ -1,0 +1,34 @@
+{
+  "title": "Search RAG \u2014 Ask My/Team/Both",
+  "idempotency_key": "hash(url + lastModified + anchor_id + opportunity_regex)",
+  "independency": "Emits event, does not call other module directly",
+  "freshness": {
+    "display": "<7d 2d ago green, 7-30d 18 days old amber, >30d >1 month old red Stale",
+    "storage": "first_seen, last_refreshed, last_link_check"
+  },
+  "provenance": {
+    "fields": [
+      "type",
+      "subject_ticket",
+      "group_channel_name",
+      "date",
+      "author",
+      "link",
+      "snippet"
+    ]
+  },
+  "fusion_confidence": {
+    "shown": "only expanded + admin",
+    "not_shown": "quick view",
+    "levels": [
+      "High - 3+ sources validated via SFDC amount",
+      "Medium - 2 sources",
+      "Low - 1 source >1 month"
+    ]
+  },
+  "timeline": {
+    "filter": "DECISION/APPROVAL/BLOCKER/RESOLUTION -> timeline, CHASING/REMINDER/FYI -> provenance only",
+    "bucket": "weekly milestone, significance_score >0.5",
+    "old_cards": "on demand Last 3 months button to minimise bandwidth"
+  }
+}

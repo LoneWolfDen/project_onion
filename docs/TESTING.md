@@ -109,4 +109,79 @@ curl -s -X PUT http://localhost:8000/anchor/GE%20Aero/GE%20Aero%20DIP%20Discover
 - cards-store: freshness 2d ago green >1 month red Stale, EventBridge 6h HEAD check, weekly bucket significance 0.9 EXTENSION vs 0.25 CHASING, timeline Row12+Row18 multi-row hash
 - experience-pwa: ProjectHeader mint collapsible pastel tokens --pastel-blue #D6E8FF, shows GE Aero / GEAERO-DIP-DISCOVERY / O-5030460 / 006Uj... both IDs
 - gdp-adapter: Engagement Data Export - Active exact columns, full read on HEAD change
-- connected-bookmarklet: V6.3_ESC dedupe, captures both O-5030460 + 006Uj...
+- connected-bookmarklet: V6.3_ESC dedupe, captures both O-5030460 + 006Uj...# Add to docs/TESTING.md — Scenario 9 — Insert Additional Clients — First Level PRIMARY FILTER
+
+## SCENARIO 9: Insert Additional Client Master — First Level — PRIMARY FILTER dropdown — Data as Code
+
+### Why — Your Question
+- First Level = Client Master = GE Aero / Rolls-Royce = PRIMARY FILTER dropdown NOT editable — from seed data
+- How to add new client? Via API PUT or via seed_clients.py Data as Code — versioned — not DVC
+- DVC is for large binary datasets — overkill — Version-Controlled Data Dictionary JSON is enough for hackathon
+
+### Steps — Option 1: Via API — Quick Add
+
+```bash
+# Terminal 1: server running
+python modules/platform-anchor/service.py
+
+# Terminal 2: insert Rolls-Royce as new Client Master
+curl -s -X PUT http://localhost:8000/anchor/Rolls-Royce/RR%20Discovery   -H "Content-Type: application/json"   -d '{
+    "client_name": "Rolls-Royce",
+    "project_ref_name": "RR Discovery",
+    "opportunity_numbers": ["O-5030461"],
+    "connected_record_ids": ["006Uj00000QOBkvIAJ"],
+    "gdp_ids": ["8400"],
+    "sharepoint_smps": ["rrdiscovery"]
+  }' | python3 -m json.tool
+# Expect: anchor_id ROLLS-RR-DISCOVERY or ROLLS-DISCOVERY — client_name Rolls-Royce
+
+# Verify PRIMARY FILTER now has GE Aero + Rolls-Royce
+curl -s http://localhost:8000/anchors/GE%20Aero | python3 -m json.tool
+# count 1 for GE Aero
+curl -s http://localhost:8000/anchors/Rolls-Royce | python3 -m json.tool
+# count 1 for Rolls-Royce — dropdown shows both
+```
+
+### Steps — Option 2: Via Seed Script — Data as Code — Versioned — Recommended for Hackathon
+
+```bash
+cd /Users/wolf/Developer/project_onion
+cat data/seed/clients.json | python3 -m json.tool
+# Shows 3 clients: GE Aero, Rolls-Royce, ClientA — each with client_name PRIMARY FILTER
+
+# Dry run — see what would be inserted
+source .venv/bin/activate
+python modules/platform-anchor/seed_clients.py --file data/seed/clients.json --dry-run
+
+# Real insert — requires server running in Terminal 1
+python modules/platform-anchor/seed_clients.py --file data/seed/clients.json
+
+# Verify all clients
+curl -s http://localhost:8000/anchors/GE%20Aero | python3 -m json.tool
+curl -s http://localhost:8000/anchors/Rolls-Royce | python3 -m json.tool
+curl -s http://localhost:8000/anchors/ClientA | python3 -m json.tool
+```
+
+### Data Dictionary Approach vs DVC — Decision
+
+| Approach | When | For Project Onion |
+|----------|------|-------------------|
+| Version-Controlled Data Dictionary (markdown + JSON seed) | Small reference data — client list, project_refs — <1MB — git versioned — Data as Code | ✅ Use this for hackathon — data/seed/clients.json + docs/DATA_DICTIONARY.md — simple — tag v0.6 |
+| Data Version Control (DVC) | Large binary datasets — 100MB+ Excel, model weights, embeddings — needs S3, .dvc files | ❌ Overkill for client list — would complicate — avoid for hackathon |
+| DynamoDB Seed Script | Prod — bulk insert — same JSON — idempotent | ✅ Use seed_clients.py — same JSON — works for local STORE + DynamoDB local later |
+
+### Commit New Client — Version Control
+```bash
+# Edit data/seed/clients.json — add new client e.g., Airbus
+cat data/seed/clients.json | python3 -m json.tool
+# Add entry for Airbus
+
+# Update docs/DATA_DICTIONARY.md — add Airbus to table
+# Update docs/TESTING.md Scenario 9 — test Airbus
+
+git checkout -b feature/add-client-airbus
+git add data/seed/clients.json docs/DATA_DICTIONARY.md docs/TESTING.md
+git commit -m "data(clients): add Airbus as Client Master PRIMARY FILTER — Data as Code — versioned — seed via PUT /anchor/Airbus/Airbus Discovery"
+git push origin feature/add-client-airbus
+# PR → Squash → tag v0.7-clients-added
+```

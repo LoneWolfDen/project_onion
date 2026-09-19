@@ -1,0 +1,21 @@
+# PeopleSoft Excel Anonymization Example — Adapter Config
+
+# Real Excel columns -> Core schema
+column_map:
+  PO_NUMBER: po_id
+  EMPLID: stakeholder
+  PROJECT_ID: project_id
+  OPPORTUNITY_NUM: opportunity_id
+  AMOUNT: amount_new
+  OLD_AMOUNT: amount_old
+  RISK_DESC: risk_title
+
+# Anonymization rules (Presidio + Comprehend)
+anonymize:
+  EMPLID: User_{id}@client.com
+  EMAIL: User_{id}@client.com
+  AMOUNT: $XXXk  # keep bucket, not exact
+  PO_NUMBER: PO-XXXXX
+
+# After anonymization, synthetic twin can go to GitHub samples/
+# Core still works without PeopleSoft adapter — adapter not installed = no PeopleSoft cards

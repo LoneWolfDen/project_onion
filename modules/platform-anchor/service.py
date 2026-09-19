@@ -1,4 +1,4 @@
-# platform-anchor/service.py — Anchor Service CRUD — O-5030460 business # vs 006Uj... ConnectedRecord — Testable API
+# platform-anchor/service.py — FIXED regex for 006Uj... 18-char ID
 # pip install fastapi uvicorn pydantic
 
 from fastapi import FastAPI, HTTPException
@@ -8,23 +8,22 @@ import hashlib
 import re
 from datetime import datetime
 
-app = FastAPI(title="Project Onion Anchor Service", version="v0.5")
+app = FastAPI(title="Project Onion Anchor Service", version="v0.5.1-fixed")
 
-# In-memory store for local testing — replace with DynamoDB for prod
-# PK: client_name, SK: anchor_id#opportunity_number#connected_record_id#smp#gdp_id
 STORE = {}
 
 OPPORTUNITY_REGEX = re.compile(r'O-\d+')
-CONNECTED_REGEX = re.compile(r'006Uj[A-Za-z0-9]{15}')
+# FIXED: Salesforce ID is 18 chars total: 006 + 15 alphanumeric = 18, e.g., 006Uj00000QOBkvIAH = 006 + Uj00000QOBkvIAH (15)
+CONNECTED_REGEX = re.compile(r'^006[A-Za-z0-9]{15}$')
 
 class AnchorCreate(BaseModel):
-    client_name: str  # PRIMARY FILTER — e.g., Ge Aviation Uk — from Client Master
-    project_ref_name: str  # logical grouping e.g., GE Discovery
-    opportunity_numbers: List[str] = []  # O-5030460 business # — from file names PS-v2026.2a-...-(O-5030460)-V6.3_ESC
-    connected_record_ids: List[str] = []  # 006Uj00000QOBkvIAH Salesforce 18-char ID — from URL /Opportunity/006Uj.../view
+    client_name: str
+    project_ref_name: str
+    opportunity_numbers: List[str] = []
+    connected_record_ids: List[str] = []
     project_ids: List[str] = []
-    gdp_ids: List[str] = []  # 8399
-    sharepoint_smps: List[str] = []  # geadinspf
+    gdp_ids: List[str] = []
+    sharepoint_smps: List[str] = []
     teams_channels: List[str] = []
     onedrive_urls: List[str] = []
 
@@ -40,42 +39,40 @@ def hash_id(*parts):
     return hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
 
 def validate_opportunity_number(opp: str):
-    if not OPPORTUNITY_REGEX.match(opp):
-        # Allow O-5030460-Extension format
-        if not re.match(r'O-\d+.*', opp):
-            raise HTTPException(status_code=400, detail=f"Invalid OpportunityID format {opp} — expected O-5030460")
+    if not re.match(r'O-\d+', opp):
+        raise HTTPException(status_code=400, detail=f"Invalid OpportunityID format {opp} — expected O-5030460")
 
 def validate_connected_id(cid: str):
+    cid = cid.strip()
     if not CONNECTED_REGEX.match(cid):
-        raise HTTPException(status_code=400, detail=f"Invalid ConnectedRecord format {cid} — expected 006Uj00000QOBkvIAH")
+        # Allow 15-char ID too (006 + 12) for backward compat
+        if not re.match(r'^006[A-Za-z0-9]{12,15}$', cid):
+            raise HTTPException(status_code=400, detail=f"Invalid ConnectedRecord format {cid} — expected 006Uj00000QOBkvIAH (18 chars, 006 + 15 alphanumeric)")
+        # If 15-char, accept
+    return cid
 
 @app.get("/")
 def root():
-    return {"service": "platform-anchor", "status": "ok", "tags": ["v0.4.1-readme-hdd"], "org_mapping": {"OpportunityID": "O-5030460 business #", "ConnectedRecord": "006Uj... Salesforce ID"}}
+    return {"service": "platform-anchor", "status": "ok", "tags": ["v0.4.1-readme-hdd","v0.5.1-fixed-regex"], "org_mapping": {"OpportunityID": "O-5030460 business #", "ConnectedRecord": "006Uj... Salesforce ID 18 chars"}, "regex": "006 + 15 alphanumeric"}
 
 @app.put("/anchor/{client_name}/{project_ref_name}", response_model=AnchorResponse)
 def create_or_update_anchor(client_name: str, project_ref_name: str, payload: AnchorCreate):
-    # Validate
     for opp in payload.opportunity_numbers:
         validate_opportunity_number(opp)
+    # Validate and normalize Connected IDs
+    normalized_cids = []
     for cid in payload.connected_record_ids:
-        validate_connected_id(cid)
+        normalized_cids.append(validate_connected_id(cid))
+    payload.connected_record_ids = normalized_cids
 
-    anchor_id = hash_id(client_name, project_ref_name)[:12]  # e.g., GE-Discovery hash
-    # Actually use readable anchor_id: client-project_ref normalized
-    readable_anchor = f"{client_name[:2].upper()}-{project_ref_name.replace(' ', '-')}"  # GE-Discovery
-    
-    # Check for existing — multi-multi validation
+    readable_anchor = f"{client_name[:2].upper()}-{project_ref_name.replace(' ', '-')}"
     existing_key = f"{client_name}#{readable_anchor}"
     existing = STORE.get(existing_key)
     
     validation_prompt = None
     if existing:
-        # If new ConnectedRecord found linked to same SMP with same O-5030460 base — prompt Relevant? Yes/No/Edit
         new_cids = set(payload.connected_record_ids) - set(existing.get("connected_record_ids", []))
-        new_smps = set(payload.sharepoint_smps) - set(existing.get("sharepoint_smps", []))
         if new_cids and existing.get("sharepoint_smps"):
-            # Simulate finding OPP-8893 linked to same SharePoint geadinspf
             validation_prompt = f"We found new ConnectedRecord {list(new_cids)[0]} linked to same SharePoint {existing['sharepoint_smps'][0]} — Relevant? Yes/No/Edit — add to ProjectRef {readable_anchor}?"
 
     clip_id = hash_id(client_name, readable_anchor, "|".join(payload.opportunity_numbers), "|".join(payload.connected_record_ids))
@@ -117,26 +114,21 @@ def get_anchor(client_name: str, project_ref_name: str):
 
 @app.get("/anchors/{client_name}")
 def list_anchors_by_client(client_name: str):
-    # PRIMARY FILTER — Client Master dropdown — only returns anchors for this client
     results = [v for k, v in STORE.items() if k.startswith(f"{client_name}#")]
     return {"client_name": client_name, "count": len(results), "anchors": results}
 
 @app.get("/search/opportunity/{opportunity_number}")
 def search_by_opportunity_number(opportunity_number: str):
-    # Search by business O-5030460 — users search by this
     results = [v for v in STORE.values() if opportunity_number in v.get("opportunity_numbers", [])]
     return {"opportunity_number": opportunity_number, "count": len(results), "anchors": results}
 
 @app.get("/search/connected/{connected_record_id}")
 def search_by_connected_record(connected_record_id: str):
-    # Search by Salesforce 006Uj... — provenance by URL
     results = [v for v in STORE.values() if connected_record_id in v.get("connected_record_ids", [])]
     return {"connected_record_id": connected_record_id, "count": len(results), "anchors": results}
 
-# Test endpoint for PII screener middleware check
 @app.post("/test/pii-check")
 def test_pii_check(payload: dict):
-    # Simulate platform-pii-screener middleware — must call before any save — CI fails if module saves without calling it
     text = str(payload)
     pii_detected = any(x in text.lower() for x in ["@","£","8261003","alex","uk"])
     return {"pii_detected": pii_detected, "redacted_text": text[:100] + " REDACTED $XXXk EMP-XXXX User_A@client.com" if pii_detected else text[:100], "must_call_pii_screener_before_save": True}

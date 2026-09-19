@@ -1,0 +1,38 @@
+[
+  {
+    "client_id": "C-001",
+    "client_name": "GE Aero",
+    "client_code": "GEAERO",
+    "connected_names": ["Ge Aviation Uk", "GE Aviation", "GE", "GE Aerospace"],
+    "opportunity_example": "O-5030460",
+    "connected_example": "006Uj00000QOBkvIAH",
+    "gdp_example": "8399",
+    "sharepoint_example": "geadinspf",
+    "is_active": true,
+    "notes": "PRIMARY FILTER dropdown NOT editable — First Level — from Client Master"
+  },
+  {
+    "client_id": "C-002",
+    "client_name": "Rolls-Royce",
+    "client_code": "ROLLS",
+    "connected_names": ["Rolls-Royce Plc", "RR", "Rolls Royce"],
+    "opportunity_example": "O-5030461",
+    "connected_example": "006Uj00000QOBkvIAJ",
+    "gdp_example": "8400",
+    "sharepoint_example": "rrdiscovery",
+    "is_active": true,
+    "notes": "Example additional client — insert via PUT /anchor/Rolls-Royce/RR Discovery"
+  },
+  {
+    "client_id": "C-003",
+    "client_name": "ClientA",
+    "client_code": "CLIENTA",
+    "connected_names": ["Client A Ltd", "ClientA"],
+    "opportunity_example": "O-5030462",
+    "connected_example": "006Uj00000QOBkvIAK",
+    "gdp_example": "8401",
+    "sharepoint_example": "clienta",
+    "is_active": true,
+    "notes": "Template client for testing PRIMARY FILTER"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "gdp_id": "8399",
+    "client_name": "GE Aero",
+    "project_ref_name": "GE Aero DIP Discovery",
+    "anchor_id": "GEAERO-DIP-DISCOVERY",
+    "engagement_name": "GE Aero DIP Discovery",
+    "engagement_status": "Active",
+    "opportunity_numbers": ["O-5030460"],
+    "connected_record_ids": ["006Uj00000QOBkvIAH"],
+    "sharepoint_smps": ["geadinspf"],
+    "budget": 129768,
+    "significance_raw": 0.9,
+    "export_columns": {
+      "Engagement Name": "GE Aero DIP Discovery",
+      "Client": "GE Aero",
+      "Status": "Active",
+      "GDP ID": "8399",
+      "Opportunity Number": "O-5030460",
+      "Connected Record ID": "006Uj00000QOBkvIAH",
+      "SharePoint SMP": "geadinspf",
+      "Budget": "129768 - PII screener redacts to $XXXk",
+      "Significance": 0.9,
+      "Exact Columns": "Engagement Data Export - Active - full list preserved"
+    },
+    "freshness_days": 1,
+    "notes": "8399 maps to O-5030460 business # + 006Uj... Salesforce ID - significance 0.9 EXTENSION show in timeline vs 0.25 CHASING hide - EventBridge 6h HEAD"
+  },
+  {
+    "gdp_id": "8400",
+    "client_name": "Rolls-Royce",
+    "project_ref_name": "RR Discovery",
+    "anchor_id": "ROLLS-RR-DISCOVERY",
+    "engagement_name": "RR Discovery",
+    "engagement_status": "Active",
+    "opportunity_numbers": ["O-5030461"],
+    "connected_record_ids": ["006Uj00000QOBkvIAJ"],
+    "sharepoint_smps": ["rrdiscovery"],
+    "significance_raw": 0.8,
+    "export_columns": {
+      "Engagement Name": "RR Discovery",
+      "Client": "Rolls-Royce",
+      "Status": "Active",
+      "GDP ID": "8400",
+      "Opportunity Number": "O-5030461",
+      "Connected Record ID": "006Uj00000QOBkvIAJ"
+    },
+    "freshness_days": 2
+  }
+]

@@ -1,48 +1,148 @@
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>v0.10.1 PWA - GE Aero / GEAERO-DIP-DISCOVERY - CORS Fix + Bookmarklet - Two Projects Fix</title>
+<title>v0.12 PWA Registration + Anchor — Project_ReferenceID auto generated — GE Aero / AGENTIC-FULLMIGRATION — SharePoint URL config</title>
 <style>:root{--pastel-blue:#D6E8FF;--pastel-mint:#D6F5E8;--pastel-yellow:#FFF5D6;--pastel-lavender:#E8D6FF;--pastel-red:#FFD6D6;--border:#e0e8f0}
 *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,sans-serif}body{margin:0;background:#fafcfe;color:#1a2b3c}
 .header-mint{background:var(--pastel-mint);border-bottom:1px solid var(--border);padding:16px 24px;position:sticky;top:0;z-index:10}
 .badge{padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600;background:white;border:1px solid var(--border);display:inline-block;margin:2px}
 .badge-client{background:var(--pastel-blue)}.badge-anchor{background:var(--pastel-lavender)}.badge-opp{background:var(--pastel-yellow)}.badge-conn{background:white;font-family:monospace}
 .badge-fresh{background:var(--pastel-mint)}.fresh-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}.fresh-green{background:#2a9a5a}.fresh-red{background:#c00}
-.main{padding:24px;max-width:1100px;margin:0 auto}.card{background:white;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.main{padding:24px;max-width:1200px;margin:0 auto}.card{background:white;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
 .timeline-strip{display:flex;gap:12px;overflow-x:auto;padding:12px 0}.timeline-item{min-width:260px;background:white;border:1px solid var(--border);border-left:4px solid var(--pastel-blue);border-radius:10px;padding:12px}
 .timeline-item.high{border-left-color:#2a9a5a}.sig{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--pastel-yellow)}.sig-high{background:var(--pastel-mint)}.row-hash{font-family:monospace;font-size:11px;color:#666}
-.select{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:white;min-width:200px}.collapse-btn{margin-left:auto;cursor:pointer;border:1px solid var(--border);background:white;padding:6px 12px;border-radius:8px}
-.collapsible{overflow:hidden;max-height:500px;transition:max-height 0.3s ease;margin-top:12px}.collapsible.collapsed{max-height:0}
+.select{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:white;min-width:200px}.input{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:white;min-width:200px;width:100%}
+.collapse-btn{margin-left:auto;cursor:pointer;border:1px solid var(--border);background:white;padding:6px 12px;border-radius:8px}
+.collapsible{overflow:hidden;max-height:1200px;transition:max-height 0.3s ease;margin-top:12px}.collapsible.collapsed{max-height:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+label{font-size:12px;font-weight:600;display:block;margin-bottom:4px}.field{margin-bottom:12px}
 </style></head><body>
 <div class="header-mint"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-<span class="badge badge-client" id="clientBadge">GE Aero</span><span class="badge badge-anchor" id="anchorBadge">GEAERO-DIP-DISCOVERY</span>
+<span class="badge badge-client" id="clientBadge">GE Aero</span><span class="badge badge-anchor" id="anchorBadge">AGENTIC-FULLMIGRATION</span>
 <span class="badge badge-opp" id="oppBadge">O-5030460</span><span class="badge badge-conn" id="connBadge">006Uj00000QOBkvIAH</span>
 <span class="badge badge-fresh"><span class="fresh-dot fresh-green"></span><span id="freshBadge">2d ago</span> green</span>
-<span class="badge" style="background:#e8f5e9">v0.10.1 - Two Projects Fix - GE Aero DIP only - Bookmarklet per-record</span>
-<button class="collapse-btn" onclick="toggleCollapse()">▼</button></div>
-<div class="collapsible" id="collapsible"><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px">
-<label>First Level - Client Master - PRIMARY FILTER dropdown NOT editable<br><select class="select" id="clientSelect" onchange="loadAnchors()">
-<option value="GE Aero">GE Aero (PRIMARY FILTER)</option><option value="Rolls-Royce">Rolls-Royce</option><option value="ClientA">ClientA</option></select></label>
-<label>Second Level - ProjectRef editable - Two projects fix<br><select class="select" id="anchorSelect" onchange="loadCards()"><option value="GEAERO-DIP-DISCOVERY">GE Aero DIP Discovery - GEAERO-DIP-DISCOVERY</option></select></label>
+<span class="badge" style="background:#e8f5e9">v0.12 Registration Anchor — Project_ReferenceID auto — short anchor_id — SharePoint URL config — contacts collapsable card</span>
+<button class="collapse-btn" onclick="toggleCollapse()">▼ Registration Fields</button></div>
+<div class="collapsible" id="collapsible"><div style="margin-top:12px;font-size:11px;color:#556">
+v0.12: Registration and anchor steps — fields to add which gives clarity — Client Master Account Name dropdown NOT editable — Project Card project_name short anchor_id — Project_ReferenceID PRJ- + 12 hex auto generated UniqueID for multiple IDs — sharepoint_urls communications Collaboration Plan docx MBR folder Value Framework pptx planning_documents Risk Log xlsx ESC xlsm solution_documents site GDP URL https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189 — teams_channels dedicated Pre-sales Delivery Closeout — contacts from collaboration*.docx + scan user marks relevant/not + user adds — start_date/end_date mutable Extension new Opp O-908078 same GDP — keywords SoW PO Contract — client_domains — filter_conditions typed enum EXACT CONTAINS DOMAIN DATE_RANGE TOKEN_OVERLAP URL_CONTAINS no free text — reusable from relationship_model.json v0.11 Data as Code — anti-hallucination no significance formula
 </div>
-<div style="margin-top:12px;font-size:11px;color:#556">
-v0.10.1 Fix: Title updated v0.10.1 PWA - GE Aero / GEAERO-DIP-DISCOVERY - CORS Fix + Bookmarklet - Two Projects under GE Aero explained: seed_clients.py was creating GE Aero Discovery (GEAERO-DISCOVERY) + GE Aero DIP Discovery (GEAERO-DIP-DISCOVERY) - now --only-dip flag seeds only DIP to avoid duplicate - Bookmarklet per-record: individual for each Salesforce /Opportunity/006Uj.../view - captures current page O-5030460 + 006Uj...
-</div></div></div>
-<div class="main"><h2 style="margin:0 0 8px">Timeline Strip - Week 33: Laptop 50%->100% [Row12+Row18] - significance 0.9 EXTENSION vs 0.25 CHASING noise filter</h2>
+<div class="card" style="margin-top:12px"><h3 style="margin:0 0 12px">Registration — Anchor Steps — Collapsable Card at Top Which Shows All Details Like Project IDs Etc, Contacts Etc., All Details Gathered Across Fields — v0.12</h3>
+<div class="grid2">
+<div><label>First Level — Client Master — Account Name from Connected — PRIMARY FILTER dropdown NOT editable — unique — from data/seed/clients.json</label>
+<select class="select" id="clientSelect" onchange="loadAnchors()"><option value="GE Aero">GE Aero (PRIMARY FILTER)</option><option value="Client A">Client A</option><option value="Client B">Client B</option><option value="Rolls-Royce">Rolls-Royce</option></select></div>
+<div><label>Second Level — Project Name — short anchor_id only — not repeating client name — user provides after selecting client — Project_ReferenceID auto generated</label>
+<input class="input" id="projectNameInput" placeholder="Agentic FullMigration — short — e.g. Agentic FullMigration" value="Agentic FullMigration"></div>
+</div>
+<div class="grid3" style="margin-top:12px">
+<div class="field"><label>Project_ReferenceID — UniqueID auto generated when user adds new project under Account Name — helps uniquely identify project when multiple Project IDs Opp IDs connected_record_ids GDP IDs — PRJ- + 12 hex</label><input class="input" id="projectRefIdInput" placeholder="Auto generated PRJ-... — read only after save" readonly></div>
+<div class="field"><label>Project IDs — 99974052, 0000606071 — PRIMARY_UNIQUE multiple — EXACT</label><input class="input" id="projectIdsInput" placeholder="99974052, 0000606071"></div>
+<div class="field"><label>Opportunity IDs — O-5030460, O-5552629, O-908078 Extension same GDP — SECONDARY_REF EXACT</label><input class="input" id="oppIdsInput" placeholder="O-5030460, O-5552629"></div>
+</div>
+<div class="grid3">
+<div class="field"><label>Connected Record IDs — 006Uj00000QOBkvIAH — 18-char regex ^006[A-Za-z0-9]{15}$ — SECONDARY_REF URL_CONTAINS</label><input class="input" id="connIdsInput" placeholder="006Uj00000QOBkvIAH, 007Pk..."></div>
+<div class="field"><label>GDP ID — 8399 / 0000002121 — SECONDARY_REF parsed from GDP URL /project-details/{id} — URL_CONTAINS — unique for project but multiple Project IDs Opp IDs still apply</label><input class="input" id="gdpIdInput" placeholder="8399"></div>
+<div class="field"><label>GDP URL — https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189 — user gives GDP URL -> parse GDP ID</label><input class="input" id="gdpUrlInput" placeholder="https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189"></div>
+</div>
+<div class="field"><label>SharePoint URLs — user configures SP URLs in Project Card instead of keyword search — hackathon excel upload but try sharepoint url config where user will have option to add RAID Log Sharepoint url to .xlsx file — Communications Collaboration Plan docx, MBR folder, Value Framework pptx, Planning Documents Risk Log xlsx, ESC xlsm, Solution Documents site — URL_CONTAINS</label>
+<div class="grid2">
+<input class="input" id="spCommPlanInput" placeholder="Communications Collaboration Plan docx URL — https://allegiscloud.sharepoint.com/:w:/r/teams/TEK-UKDelivery/awsProjA/Communications/Collaboration_Plan.docx">
+<input class="input" id="spRiskLogInput" placeholder="Planning Documents Risk Log xlsx URL — https://.../Planning%20Documents/Risk_Log_ProServe__AgenticDevelopment.xlsx">
+</div>
+<div class="grid2" style="margin-top:8px">
+<input class="input" id="spEscInput" placeholder="Planning Documents ESC xlsm URL — https://.../Planning%20Documents/PS-v2026.4-AWProServe%20Agentic%20Development%20(O-5552629)_ESC.xlsm">
+<input class="input" id="spSiteInput" placeholder="Solution Documents Share point site URL — https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/awsProjA">
+</div>
+</div>
+<div class="grid3">
+<div class="field"><label>Teams Channels — dedicated channels Pre-sales Delivery Closeout — user provides — couple channels to cater to relevant groups — CONTAINS + TOKEN_OVERLAP — project_id + SoW number + project tokens</label><input class="input" id="teamsInput" placeholder="Pre-sales channel URL, Delivery channel URL"></div>
+<div class="field"><label>Contacts — from collaboration*.docx + scan — contacts identified from user inputs and initial scan users need to mark if relevant or not + user adds to keep it relevant — collapsable card at top shows all details — DOMAIN</label><input class="input" id="contactsInput" placeholder="jane@client.com, internal@allegisgroup.com — from docx + scan"></div>
+<div class="field"><label>Client Domains — allegisgroup.com, ge.com — from Client Master — DOMAIN condition — From/To domains + contacts on Project details window</label><input class="input" id="domainsInput" placeholder="allegisgroup.com, ge.com"></div>
+</div>
+<div class="grid3">
+<div class="field"><label>Start Date — 01/02/2024 — Anchor start and end dates + GDP mutable — DATE_RANGE — Extension & Expansion new Opp O-908078 same GDP — dates change over time</label><input class="input" id="startDateInput" type="date"></div>
+<div class="field"><label>End Date — 01/09/2027 — DATE_RANGE</label><input class="input" id="endDateInput" type="date"></div>
+<div class="field"><label>Keywords SoW PO Contract — SoW-2024-001, PO-88921, Contract numbers — Anchor free but typed — CONTAINS — filter_keywords_typed — no free text</label><input class="input" id="keywordsInput" placeholder="SoW-2024-001, PO-88921, Contract-123"></div>
+</div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<button onclick="saveAnchor()" style="padding:8px 16px;border-radius:8px;border:1px solid #2a9a5a;background:#D6F5E8;cursor:pointer;font-weight:600">Save Anchor — Project_ReferenceID auto generated — short anchor_id</button>
+<button onclick="loadAnchors()" style="padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:white;cursor:pointer">Reload Anchors — First Level PRIMARY FILTER</button>
+<button onclick="loadRegistrationFields()" style="padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:white;cursor:pointer">Show Registration Fields Typed Enum</button>
+</div>
+<div id="registrationFieldsInfo" style="font-size:11px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:200px;overflow:auto;margin-top:12px">Click Show Registration Fields</div>
+</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px">
+<label>Second Level — ProjectRef editable — anchor_id short — Project_ReferenceID auto — select after save<br><select class="select" id="anchorSelect" onchange="loadCards()"><option value="AGENTIC-FULLMIGRATION">Agentic FullMigration - AGENTIC-FULLMIGRATION - PRJ-...</option></select></label>
+</div>
+</div></div>
+<div class="main"><div class="card"><h3 style="margin:0 0 8px">Collapsable Card at Top Which Shows All Details Like Project IDs Etc, Contacts Etc., All Details Gathered Across Fields — Project_ReferenceID + Anchor Steps</h3>
+<div id="projectDetailsCard" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:400px;overflow:auto">Save anchor to see collapsable card with all details — Project_ReferenceID auto generated UniqueID when multiple Project IDs Opportunity IDs connected_record_ids GDP IDs — contacts from collaboration*.docx + scan user marks relevant/not + user adds — all details gathered across fields — sharepoint_urls communications MBR Value Framework planning Risk Log ESC solution site GDP URL — teams_channels dedicated Pre-sales Delivery Closeout — start_date end_date mutable Extension new Opp O-908078 same GDP — keywords SoW PO Contract — client_domains — filter_conditions typed enum EXACT CONTAINS DOMAIN DATE_RANGE TOKEN_OVERLAP URL_CONTAINS no free text — reusable from relationship_model.json v0.11 Data as Code</div>
+</div>
+<h2 style="margin:0 0 8px">Timeline Strip — RAID Aggregated Cards from 5 Sources — SP Risk Log + GDP + Emails + Teams + Connected — LLM assessed not static format — multiple cards if multiple line items — not complicated join — freshness aggregated card level</h2>
 <div class="timeline-strip" id="timelineStrip"></div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px"><div class="card"><h3 style="margin:0 0 8px">Anchor Service :8000 - GE Aero PRIMARY FILTER - Two Projects Fix</h3>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px"><div class="card"><h3 style="margin:0 0 8px">Anchor Service :8000 — Registration Fields — Project_ReferenceID auto — short anchor_id</h3>
 <div id="anchorInfo" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:300px;overflow:auto">Loading...</div>
-<button onclick="loadAnchors()" style="margin-top:8px;padding:6px 12px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer">Reload Anchor :8000</button>
-<div style="font-size:11px;margin-top:8px;background:#fffbe6;padding:6px;border-radius:6px">If you see Two projects under GE Aero: GEAERO-DISCOVERY + GEAERO-DIP-DISCOVERY - restart :8000 (clears STORE) then run python seed_clients.py --only-dip to seed only DIP - or keep both - GEAERO-DISCOVERY is generic Discovery, GEAERO-DIP-DISCOVERY is DIP Discovery Phase - your real project is DIP - choose DIP in dropdown</div>
-</div><div class="card"><h3 style="margin:0 0 8px">Cards Store :8001 - PK GEAERO-DIP-DISCOVERY - freshness + weekly bucket</h3>
+</div><div class="card"><h3 style="margin:0 0 8px">Cards Store :8001 — PK anchor_id short — freshness + weekly bucket — no significance formula</h3>
 <div id="cardsInfo" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:300px;overflow:auto">Loading...</div>
-<button onclick="loadCards()" style="margin-top:8px;padding:6px 12px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer">Reload Cards :8001</button></div></div>
-<div class="card"><h3 style="margin:0 0 8px">Doc Cards - V6.3_ESC - O-5030460 linked to 006Uj... - clarification + Bookmarklet per-record</h3>
-<div style="font-size:12px;background:#fffbe6;padding:8px;border-radius:6px;margin-bottom:8px;border:1px solid #ffe58f">
-<b>Bookmarklet per-record - individual for every early record:</b> Yes - each Salesforce page /Opportunity/006Uj.../view has its own 006Uj... 18-char - bookmarklet extracts current page O-5030460 + 006Uj... - individual for each record - multi-multi preserved per record<br>
-<b>V6.3_ESC:</b> doc card from file PS-v2026.2a-GE-Aero-(O-5030460)-V6.3_ESC - NOT laptop RAID - laptop is timeline Row12+Row18 Excel 0.9 EXTENSION Week33 - both linked via O-5030460 + 006Uj... + geadinspf + 8399<br>
-<b>Two Projects under GE Aero:</b> seed_clients.py created GE Aero Discovery (GEAERO-DISCOVERY) generic + GE Aero DIP Discovery (GEAERO-DIP-DISCOVERY) DIP - your real is DIP - use --only-dip flag or restart + seed only DIP to clean - or keep both as separate ProjectRefs under same Client Master
-</div><div id="docCards"></div></div></div>
+</div></div>
+</div>
 <script>
 function toggleCollapse(){document.getElementById('collapsible').classList.toggle('collapsed')}
+async function loadRegistrationFields(){
+  try{
+    const res=await fetch('http://localhost:8000/registration/fields');
+    const data=await res.json();
+    document.getElementById('registrationFieldsInfo').textContent=JSON.stringify(data,null,2);
+  }catch(e){document.getElementById('registrationFieldsInfo').textContent='Error - is :8000 running v0.12? '+e}
+}
+async function saveAnchor(){
+  const client=document.getElementById('clientSelect').value;
+  const projectName=document.getElementById('projectNameInput').value.trim();
+  if(!projectName){alert('Project Name required — Second Level — short anchor_id only');return}
+  const projectIds=document.getElementById('projectIdsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const oppIds=document.getElementById('oppIdsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const connIds=document.getElementById('connIdsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const gdpId=document.getElementById('gdpIdInput').value.trim();
+  const gdpUrl=document.getElementById('gdpUrlInput').value.trim();
+  const spCommPlan=document.getElementById('spCommPlanInput').value.trim();
+  const spRiskLog=document.getElementById('spRiskLogInput').value.trim();
+  const spEsc=document.getElementById('spEscInput').value.trim();
+  const spSite=document.getElementById('spSiteInput').value.trim();
+  const teams=document.getElementById('teamsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const contactsRaw=document.getElementById('contactsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const contacts=contactsRaw.map(c=>({email:c, source:'user input collaboration*.docx + scan', relevant:'user marks relevant/not + user adds'}));
+  const domains=document.getElementById('domainsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const startDate=document.getElementById('startDateInput').value;
+  const endDate=document.getElementById('endDateInput').value;
+  const keywordsRaw=document.getElementById('keywordsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const keywords={SoW:[],PO:[],Contract:[],project_name_tokens:projectName.split(' '), client_domains:domains};
+  keywordsRaw.forEach(k=>{if(k.toLowerCase().startsWith('sow'))keywords.SoW.push(k);else if(k.toLowerCase().startsWith('po'))keywords.PO.push(k);else keywords.Contract.push(k)});
+  const sharepoint_urls={communications:[spCommPlan].filter(Boolean), planning_documents:[spRiskLog,spEsc].filter(Boolean), solution_documents:[spSite,gdpUrl].filter(Boolean)};
+  const payload={
+    client_name:client,
+    project_name:projectName,
+    project_ids:projectIds,
+    opportunity_numbers:oppIds,
+    connected_record_ids:connIds,
+    gdp_id:gdpId,
+    gdp_url:gdpUrl,
+    sharepoint_urls:sharepoint_urls,
+    teams_channels:teams,
+    contacts:contacts,
+    start_date:startDate,
+    end_date:endDate,
+    keywords:keywords,
+    client_domains:domains
+  };
+  try{
+    const res=await fetch(`http://localhost:8000/anchor/${encodeURIComponent(client)}/${encodeURIComponent(projectName)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    document.getElementById('projectRefIdInput').value=data.project_reference_id||'';
+    document.getElementById('anchorBadge').textContent=data.anchor_id||'';
+    document.getElementById('projectDetailsCard').textContent=JSON.stringify(data,null,2);
+    document.getElementById('oppBadge').textContent=data.opportunity_numbers?.[0]||'O-...';
+    document.getElementById('connBadge').textContent=data.connected_record_ids?.[0]||'006Uj...';
+    alert(`Saved Anchor\nProject_ReferenceID: ${data.project_reference_id} auto generated UniqueID for multiple IDs\nanchor_id: ${data.anchor_id} short - just project name - not repeating client name\nclient_name: ${data.client_name} Account Name from Connected unique\nproject_name: ${data.project_name}\nproject_ids: ${data.project_ids.join(',')}\nOpportunity IDs: ${data.opportunity_numbers.join(',')}\nConnected: ${data.connected_record_ids.join(',')}\nGDP ID: ${data.gdp_id} parsed from ${data.gdp_url}\nSharePoint URLs: ${JSON.stringify(data.sharepoint_urls)}\nTeams Channels: ${data.teams_channels.join(',')}\nContacts: ${data.contacts.length} from collaboration*.docx + scan\nStart/End: ${data.start_date} - ${data.end_date} mutable Extension new Opp O-908078 same GDP\nKeywords SoW PO Contract: ${JSON.stringify(data.keywords)}\nClient Domains: ${data.client_domains.join(',')}\nFilter Conditions: ${Object.keys(data.filter_conditions).join(', ')} typed enum EXACT CONTAINS DOMAIN DATE_RANGE TOKEN_OVERLAP URL_CONTAINS no free text\n\nOpen PWA header collapsable card shows all details gathered across fields`);
+    loadAnchors();
+  }catch(e){alert('Failed to save - is :8000 running v0.12? '+e)}
+}
 async function loadAnchors(){
   const client=document.getElementById('clientSelect').value;
   try{
@@ -55,20 +155,39 @@ async function loadAnchors(){
     data.anchors.forEach(a=>{
       const opt=document.createElement('option');
       opt.value=a.anchor_id;
-      opt.textContent=`${a.project_ref_name} - ${a.anchor_id} - O:${a.opportunity_numbers.join(',')}`;
+      opt.textContent=`${a.project_name} - ${a.anchor_id} - ${a.project_reference_id} - O:${a.opportunity_numbers.join(',')} - ${a.project_ids.join(',')}`;
       sel.appendChild(opt);
     });
     if(data.anchors[0]){
       document.getElementById('anchorBadge').textContent=data.anchors[0].anchor_id;
-      document.getElementById('oppBadge').textContent=data.anchors[0].opportunity_numbers[0]||'O-5030460';
+      document.getElementById('oppBadge').textContent=data.anchors[0].opportunity_numbers[0]||'O-...';
       document.getElementById('connBadge').textContent=data.anchors[0].connected_record_ids[0]||'006Uj...';
+      document.getElementById('projectRefIdInput').value=data.anchors[0].project_reference_id||'';
+      document.getElementById('projectDetailsCard').textContent=JSON.stringify(data.anchors[0],null,2);
+      document.getElementById('projectNameInput').value=data.anchors[0].project_name;
+      document.getElementById('projectIdsInput').value=data.anchors[0].project_ids.join(', ');
+      document.getElementById('oppIdsInput').value=data.anchors[0].opportunity_numbers.join(', ');
+      document.getElementById('connIdsInput').value=data.anchors[0].connected_record_ids.join(', ');
+      document.getElementById('gdpIdInput').value=data.anchors[0].gdp_id||'';
+      document.getElementById('gdpUrlInput').value=data.anchors[0].gdp_url||'';
+      if(data.anchors[0].sharepoint_urls){
+        document.getElementById('spCommPlanInput').value=data.anchors[0].sharepoint_urls.communications?.[0]||'';
+        document.getElementById('spRiskLogInput').value=data.anchors[0].sharepoint_urls.planning_documents?.[0]||'';
+        document.getElementById('spEscInput').value=data.anchors[0].sharepoint_urls.planning_documents?.[1]||'';
+        document.getElementById('spSiteInput').value=data.anchors[0].sharepoint_urls.solution_documents?.[0]||'';
+      }
+      document.getElementById('teamsInput').value=data.anchors[0].teams_channels.join(', ');
+      document.getElementById('contactsInput').value=data.anchors[0].contacts.map(c=>c.email||c).join(', ');
+      document.getElementById('domainsInput').value=data.anchors[0].client_domains.join(', ');
+      document.getElementById('startDateInput').value=data.anchors[0].start_date||'';
+      document.getElementById('endDateInput').value=data.anchors[0].end_date||'';
     }
     loadCards();
-  }catch(e){document.getElementById('anchorInfo').textContent='Error - is :8000 running? ' + e}
+  }catch(e){document.getElementById('anchorInfo').textContent='Error - is :8000 running v0.12? '+e}
 }
 async function loadCards(){
   const client=document.getElementById('clientSelect').value;
-  const anchor=document.getElementById('anchorSelect').value||'GEAERO-DIP-DISCOVERY';
+  const anchor=document.getElementById('anchorSelect').value||'AGENTIC-FULLMIGRATION';
   try{
     const res=await fetch(`http://localhost:8001/cards/${encodeURIComponent(client)}/${encodeURIComponent(anchor)}`);
     const data=await res.json();
@@ -80,19 +199,11 @@ async function loadCards(){
     timelineData.timeline.forEach(card=>{
       const div=document.createElement('div');
       div.className='timeline-item ' + (card.significance_score>=0.9?'high':'');
-      div.innerHTML=`<div style="font-weight:600">${card.title}</div><div style="font-size:12px;margin:4px 0"><span class="sig ${card.significance_score>=0.9?'sig-high':''}">${card.significance_score} ${card.significance_score>=0.9?'EXTENSION':'CHASING'}</span> ${card.week||''}</div><div class="row-hash">${card.source_rows.join('+')}</div><div style="font-size:12px;margin-top:6px"><span class="fresh-dot ${card.freshness.color==='green'?'fresh-green':'fresh-red'}"></span>${card.freshness.label} ${card.freshness.color} - ${card.anchor_id}</div>`;
+      div.innerHTML=`<div style="font-weight:600">${card.title}</div><div style="font-size:12px;margin:4px 0"><span class="sig ${card.significance_score>=0.9?'sig-high':''}">${card.significance_score}</span> ${card.week||''}</div><div class="row-hash">${card.source_rows.join('+')}</div>`;
       strip.appendChild(div);
     });
-    const docDiv=document.getElementById('docCards');
-    docDiv.innerHTML='';
-    data.cards.filter(c=>c.card_type==='doc').forEach(card=>{
-      const d=document.createElement('div');
-      d.style.cssText='padding:8px;border:1px solid #e0e8f0;border-radius:8px;margin-bottom:8px;background:#fafcff;font-size:12px';
-      d.innerHTML=`<b>${card.title}</b> - doc from file PS-v2026.2a-GE-Aero-(${card.opportunity_numbers[0]})-V6.3_ESC - NOT laptop RAID - <span style="color:${card.freshness.color==='green'?'green':'red'}">${card.freshness.label} ${card.freshness.color}</span> - O:${card.opportunity_numbers[0]} - 006Uj:${card.connected_record_ids[0]?.slice(0,8)}...`;
-      docDiv.appendChild(d);
-    });
-    if(data.cards[0]) document.getElementById('freshBadge').textContent=data.cards[0].freshness.label;
-  }catch(e){document.getElementById('cardsInfo').textContent='Error - is :8001 running? ' + e}
+  }catch(e){document.getElementById('cardsInfo').textContent='Error - is :8001 running? '+e}
 }
 loadAnchors();
+loadRegistrationFields();
 </script></body></html>

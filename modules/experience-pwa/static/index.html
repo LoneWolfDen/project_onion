@@ -1,209 +1,301 @@
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>v0.12 PWA Registration + Anchor — Project_ReferenceID auto generated — GE Aero / AGENTIC-FULLMIGRATION — SharePoint URL config</title>
-<style>:root{--pastel-blue:#D6E8FF;--pastel-mint:#D6F5E8;--pastel-yellow:#FFF5D6;--pastel-lavender:#E8D6FF;--pastel-red:#FFD6D6;--border:#e0e8f0}
-*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,sans-serif}body{margin:0;background:#fafcfe;color:#1a2b3c}
-.header-mint{background:var(--pastel-mint);border-bottom:1px solid var(--border);padding:16px 24px;position:sticky;top:0;z-index:10}
+<title>v0.12.3 Thorough Fix — Persistence — Clean Labels — Existing as Actual Value</title>
+<style>:root{--pastel-blue:#D6E8FF;--pastel-mint:#D6F5E8;--pastel-yellow:#FFF5D6;--pastel-lavender:#E8D6FF;--border:#e0e8f0;--text:#1a2b3c;--muted:#6b7280}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,sans-serif}body{margin:0;background:#fafcfe;color:var(--text)}
+.header-mint{background:var(--pastel-mint);border-bottom:1px solid var(--border);padding:12px 20px;position:sticky;top:0;z-index:10}
 .badge{padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600;background:white;border:1px solid var(--border);display:inline-block;margin:2px}
 .badge-client{background:var(--pastel-blue)}.badge-anchor{background:var(--pastel-lavender)}.badge-opp{background:var(--pastel-yellow)}.badge-conn{background:white;font-family:monospace}
-.badge-fresh{background:var(--pastel-mint)}.fresh-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}.fresh-green{background:#2a9a5a}.fresh-red{background:#c00}
-.main{padding:24px;max-width:1200px;margin:0 auto}.card{background:white;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
-.timeline-strip{display:flex;gap:12px;overflow-x:auto;padding:12px 0}.timeline-item{min-width:260px;background:white;border:1px solid var(--border);border-left:4px solid var(--pastel-blue);border-radius:10px;padding:12px}
-.timeline-item.high{border-left-color:#2a9a5a}.sig{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--pastel-yellow)}.sig-high{background:var(--pastel-mint)}.row-hash{font-family:monospace;font-size:11px;color:#666}
-.select{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:white;min-width:200px}.input{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:white;min-width:200px;width:100%}
-.collapse-btn{margin-left:auto;cursor:pointer;border:1px solid var(--border);background:white;padding:6px 12px;border-radius:8px}
-.collapsible{overflow:hidden;max-height:1200px;transition:max-height 0.3s ease;margin-top:12px}.collapsible.collapsed{max-height:0}
+.main{padding:20px;max-width:1200px;margin:0 auto}.card{background:white;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.select,.input{padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:white;width:100%;font-size:13px}
+.input.filled{background:#f0f7ff;border-color:#a0c4ff;font-weight:500}
+.input::placeholder{color:#9ca3af}
+.collapse-btn{cursor:pointer;border:1px solid var(--border);background:white;padding:6px 12px;border-radius:8px;font-size:12px}
+.collapsible{overflow:hidden;max-height:3000px;transition:max-height 0.3s ease;margin-top:12px}.collapsible.collapsed{max-height:0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-label{font-size:12px;font-weight:600;display:block;margin-bottom:4px}.field{margin-bottom:12px}
+label{font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text)}
+.helper{font-size:11px;color:var(--muted);display:block;margin-bottom:6px;font-weight:400}
+.field{margin-bottom:14px}
+.existing{font-size:11px;color:#374151;background:#f9fafb;padding:6px 8px;border-radius:6px;margin-top:6px;display:block;min-height:22px;border:1px dashed #e5e7eb}
+.chip{display:inline-block;padding:3px 8px;border-radius:12px;background:var(--pastel-blue);font-size:11px;margin:2px;border:1px solid var(--border);font-weight:500}
+.btn-primary{padding:9px 16px;border-radius:8px;border:1px solid #2a9a5a;background:#D6F5E8;cursor:pointer;font-weight:600;font-size:13px}
+.btn-secondary{padding:8px 14px;border-radius:8px;border:1px solid #d1d5db;background:white;cursor:pointer;font-size:12px}
+.alert{padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:12px;border:1px solid}
+.alert-yellow{background:#fffbe6;border-color:#ffe58f;color:#854d0e}
+.alert-green{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.alert-red{background:#fef2f2;border-color:#fecaca;color:#991b1b}
 </style></head><body>
 <div class="header-mint"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
 <span class="badge badge-client" id="clientBadge">GE Aero</span><span class="badge badge-anchor" id="anchorBadge">AGENTIC-FULLMIGRATION</span>
 <span class="badge badge-opp" id="oppBadge">O-5030460</span><span class="badge badge-conn" id="connBadge">006Uj00000QOBkvIAH</span>
-<span class="badge badge-fresh"><span class="fresh-dot fresh-green"></span><span id="freshBadge">2d ago</span> green</span>
-<span class="badge" style="background:#e8f5e9">v0.12 Registration Anchor — Project_ReferenceID auto — short anchor_id — SharePoint URL config — contacts collapsable card</span>
+<span class="badge" style="background:#e8f5e9">v0.12.3 Thorough Fix — Persistence — Clean Labels — Existing as Actual Value</span>
 <button class="collapse-btn" onclick="toggleCollapse()">▼ Registration Fields</button></div>
-<div class="collapsible" id="collapsible"><div style="margin-top:12px;font-size:11px;color:#556">
-v0.12: Registration and anchor steps — fields to add which gives clarity — Client Master Account Name dropdown NOT editable — Project Card project_name short anchor_id — Project_ReferenceID PRJ- + 12 hex auto generated UniqueID for multiple IDs — sharepoint_urls communications Collaboration Plan docx MBR folder Value Framework pptx planning_documents Risk Log xlsx ESC xlsm solution_documents site GDP URL https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189 — teams_channels dedicated Pre-sales Delivery Closeout — contacts from collaboration*.docx + scan user marks relevant/not + user adds — start_date/end_date mutable Extension new Opp O-908078 same GDP — keywords SoW PO Contract — client_domains — filter_conditions typed enum EXACT CONTAINS DOMAIN DATE_RANGE TOKEN_OVERLAP URL_CONTAINS no free text — reusable from relationship_model.json v0.11 Data as Code — anti-hallucination no significance formula
+<div class="collapsible" id="collapsible">
+<div class="alert alert-yellow" style="margin-top:12px">
+<b>v0.12.3 Fix for screenshot Existing: loading... + anchor missing after restart + verbose labels:</b><br>
+• <b>Persistence:</b> Anchor service now saves to <code>data/seed/anchors_persist.json</code> — survives restart — if count 0 after restart, run <code>python modules/platform-anchor/seed_clients.py --file data/seed/clients.json --only-dip</code><br>
+• <b>Clean labels:</b> Field names now clean — <code>Project IDs</code> not <code>Project IDs — 99974052, 0000606071 — PRIMARY_UNIQUE multiple EXACT — existing as actual value — edit/add comma separated — fix grey placeholder</code> — example in placeholder + helper small grey below label<br>
+• <b>Existing as actual value:</b> Input shows <code>99974052, 0000606071</code> as value blue tint <code>filled</code> not grey placeholder — you can edit/add — chips below consistent — GDP ID <code>8399</code> not <code>0000</code> — no <code>undefined</code>
 </div>
-<div class="card" style="margin-top:12px"><h3 style="margin:0 0 12px">Registration — Anchor Steps — Collapsable Card at Top Which Shows All Details Like Project IDs Etc, Contacts Etc., All Details Gathered Across Fields — v0.12</h3>
+<div class="card" style="margin-top:12px"><h3 style="margin:0 0 4px">Registration — Anchor Steps</h3><p class="helper" style="margin:0 0 12px">Collapsable card at top which shows all details like project ids etc, contacts etc., all details gathered across fields — Project_ReferenceID auto generated — short anchor_id — SharePoint URL config</p>
 <div class="grid2">
-<div><label>First Level — Client Master — Account Name from Connected — PRIMARY FILTER dropdown NOT editable — unique — from data/seed/clients.json</label>
+<div class="field"><label>Client Master (Account Name)</label><span class="helper">First Level PRIMARY FILTER - dropdown from Connected - unique - NOT editable - from data/seed/clients.json</span>
 <select class="select" id="clientSelect" onchange="loadAnchors()"><option value="GE Aero">GE Aero (PRIMARY FILTER)</option><option value="Client A">Client A</option><option value="Client B">Client B</option><option value="Rolls-Royce">Rolls-Royce</option></select></div>
-<div><label>Second Level — Project Name — short anchor_id only — not repeating client name — user provides after selecting client — Project_ReferenceID auto generated</label>
-<input class="input" id="projectNameInput" placeholder="Agentic FullMigration — short — e.g. Agentic FullMigration" value="Agentic FullMigration"></div>
-</div>
-<div class="grid3" style="margin-top:12px">
-<div class="field"><label>Project_ReferenceID — UniqueID auto generated when user adds new project under Account Name — helps uniquely identify project when multiple Project IDs Opp IDs connected_record_ids GDP IDs — PRJ- + 12 hex</label><input class="input" id="projectRefIdInput" placeholder="Auto generated PRJ-... — read only after save" readonly></div>
-<div class="field"><label>Project IDs — 99974052, 0000606071 — PRIMARY_UNIQUE multiple — EXACT</label><input class="input" id="projectIdsInput" placeholder="99974052, 0000606071"></div>
-<div class="field"><label>Opportunity IDs — O-5030460, O-5552629, O-908078 Extension same GDP — SECONDARY_REF EXACT</label><input class="input" id="oppIdsInput" placeholder="O-5030460, O-5552629"></div>
+<div class="field"><label>Project Name (short anchor_id)</label><span class="helper">Second Level - short - not repeating client name - e.g. Agentic FullMigration - user provides after selecting client</span>
+<input class="input filled" id="projectNameInput" placeholder="e.g. Agentic FullMigration"></div>
 </div>
 <div class="grid3">
-<div class="field"><label>Connected Record IDs — 006Uj00000QOBkvIAH — 18-char regex ^006[A-Za-z0-9]{15}$ — SECONDARY_REF URL_CONTAINS</label><input class="input" id="connIdsInput" placeholder="006Uj00000QOBkvIAH, 007Pk..."></div>
-<div class="field"><label>GDP ID — 8399 / 0000002121 — SECONDARY_REF parsed from GDP URL /project-details/{id} — URL_CONTAINS — unique for project but multiple Project IDs Opp IDs still apply</label><input class="input" id="gdpIdInput" placeholder="8399"></div>
-<div class="field"><label>GDP URL — https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189 — user gives GDP URL -> parse GDP ID</label><input class="input" id="gdpUrlInput" placeholder="https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189"></div>
+<div class="field"><label>Project Reference ID</label><span class="helper">Auto generated PRJ- + 12 hex - UniqueID for multiple IDs - read only after save</span><input class="input" id="projectRefIdInput" readonly placeholder="Auto generated after save"><span class="existing" id="existingRefId">Existing: none</span></div>
+<div class="field"><label>Project IDs</label><span class="helper">e.g. 99974052, 0000606071 - multiple comma separated</span><input class="input filled" id="projectIdsInput" placeholder="e.g. 99974052, 0000606071"><span class="existing" id="existingProjectIds">Existing: none</span></div>
+<div class="field"><label>Opportunity IDs</label><span class="helper">e.g. O-5030460, O-5552629 - Extension same GDP - multiple</span><input class="input filled" id="oppIdsInput" placeholder="e.g. O-5030460, O-5552629"><span class="existing" id="existingOppIds">Existing: none</span></div>
 </div>
-<div class="field"><label>SharePoint URLs — user configures SP URLs in Project Card instead of keyword search — hackathon excel upload but try sharepoint url config where user will have option to add RAID Log Sharepoint url to .xlsx file — Communications Collaboration Plan docx, MBR folder, Value Framework pptx, Planning Documents Risk Log xlsx, ESC xlsm, Solution Documents site — URL_CONTAINS</label>
+<div class="grid3">
+<div class="field"><label>Connected Record IDs</label><span class="helper">e.g. 006Uj00000QOBkvIAH - 18-char ^006... - multiple</span><input class="input filled" id="connIdsInput" placeholder="e.g. 006Uj00000QOBkvIAH"><span class="existing" id="existingConnIds">Existing: none</span></div>
+<div class="field"><label>GDP ID</label><span class="helper">e.g. 8399 - parsed from GDP URL /project-details/{id} - unique but multiple Project IDs still apply - fix 0000 bug</span><input class="input filled" id="gdpIdInput" placeholder="e.g. 8399"><span class="existing" id="existingGdpId">Existing: none</span></div>
+<div class="field"><label>GDP URL</label><span class="helper">e.g. https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189</span><input class="input filled" id="gdpUrlInput" placeholder="e.g. https://gdp.../project-details/7189"><span class="existing" id="existingGdpUrl">Existing: none</span></div>
+</div>
+<div class="field"><label>SharePoint URLs</label><span class="helper">User configures SP URLs instead of keyword search - hackathon excel upload but try sharepoint url config - existing as actual value</span>
 <div class="grid2">
-<input class="input" id="spCommPlanInput" placeholder="Communications Collaboration Plan docx URL — https://allegiscloud.sharepoint.com/:w:/r/teams/TEK-UKDelivery/awsProjA/Communications/Collaboration_Plan.docx">
-<input class="input" id="spRiskLogInput" placeholder="Planning Documents Risk Log xlsx URL — https://.../Planning%20Documents/Risk_Log_ProServe__AgenticDevelopment.xlsx">
+<div><label style="font-size:11px;font-weight:500">Collaboration Plan URL</label><input class="input filled" id="spCommPlanInput" placeholder="e.g. Communications Collaboration Plan docx URL"><span class="existing" id="existingSpComm">Existing: none</span></div>
+<div><label style="font-size:11px;font-weight:500">Risk Log URL</label><input class="input filled" id="spRiskLogInput" placeholder="e.g. Planning Documents Risk Log xlsx URL"><span class="existing" id="existingSpRisk">Existing: none</span></div>
 </div>
 <div class="grid2" style="margin-top:8px">
-<input class="input" id="spEscInput" placeholder="Planning Documents ESC xlsm URL — https://.../Planning%20Documents/PS-v2026.4-AWProServe%20Agentic%20Development%20(O-5552629)_ESC.xlsm">
-<input class="input" id="spSiteInput" placeholder="Solution Documents Share point site URL — https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/awsProjA">
+<div><label style="font-size:11px;font-weight:500">ESC File URL</label><input class="input filled" id="spEscInput" placeholder="e.g. Planning Documents ESC xlsm URL"><span class="existing" id="existingSpEsc">Existing: none</span></div>
+<div><label style="font-size:11px;font-weight:500">SharePoint Site URL</label><input class="input filled" id="spSiteInput" placeholder="e.g. Solution Documents site URL"><span class="existing" id="existingSpSite">Existing: none</span></div>
 </div>
 </div>
 <div class="grid3">
-<div class="field"><label>Teams Channels — dedicated channels Pre-sales Delivery Closeout — user provides — couple channels to cater to relevant groups — CONTAINS + TOKEN_OVERLAP — project_id + SoW number + project tokens</label><input class="input" id="teamsInput" placeholder="Pre-sales channel URL, Delivery channel URL"></div>
-<div class="field"><label>Contacts — from collaboration*.docx + scan — contacts identified from user inputs and initial scan users need to mark if relevant or not + user adds to keep it relevant — collapsable card at top shows all details — DOMAIN</label><input class="input" id="contactsInput" placeholder="jane@client.com, internal@allegisgroup.com — from docx + scan"></div>
-<div class="field"><label>Client Domains — allegisgroup.com, ge.com — from Client Master — DOMAIN condition — From/To domains + contacts on Project details window</label><input class="input" id="domainsInput" placeholder="allegisgroup.com, ge.com"></div>
+<div class="field"><label>Teams Channels</label><span class="helper">Dedicated channels - Pre-sales, Delivery, Closeout - multiple</span><input class="input filled" id="teamsInput" placeholder="e.g. Pre-sales channel URL, Delivery channel URL"><span class="existing" id="existingTeams">Existing: none</span></div>
+<div class="field"><label>Contacts</label><span class="helper">From collaboration*.docx + scan - user marks relevant/not + adds - multiple</span><input class="input filled" id="contactsInput" placeholder="e.g. jane@client.com, internal@allegisgroup.com"><span class="existing" id="existingContacts">Existing: none</span></div>
+<div class="field"><label>Client Domains</label><span class="helper">e.g. allegisgroup.com, ge.com - From/To domains</span><input class="input filled" id="domainsInput" placeholder="e.g. allegisgroup.com, ge.com"><span class="existing" id="existingDomains">Existing: none</span></div>
 </div>
 <div class="grid3">
-<div class="field"><label>Start Date — 01/02/2024 — Anchor start and end dates + GDP mutable — DATE_RANGE — Extension & Expansion new Opp O-908078 same GDP — dates change over time</label><input class="input" id="startDateInput" type="date"></div>
-<div class="field"><label>End Date — 01/09/2027 — DATE_RANGE</label><input class="input" id="endDateInput" type="date"></div>
-<div class="field"><label>Keywords SoW PO Contract — SoW-2024-001, PO-88921, Contract numbers — Anchor free but typed — CONTAINS — filter_keywords_typed — no free text</label><input class="input" id="keywordsInput" placeholder="SoW-2024-001, PO-88921, Contract-123"></div>
+<div class="field"><label>Start Date</label><span class="helper">e.g. 01/02/2024 - Anchor start - mutable Extension new Opp same GDP</span><input class="input filled" id="startDateInput" type="date"><span class="existing" id="existingStart">Existing: none</span></div>
+<div class="field"><label>End Date</label><span class="helper">e.g. 01/09/2027 - Anchor end</span><input class="input filled" id="endDateInput" type="date"><span class="existing" id="existingEnd">Existing: none</span></div>
+<div class="field"><label>Keywords (SoW, PO, Contract)</label><span class="helper">e.g. SoW-2024-001, PO-88921 - typed - no free text</span><input class="input filled" id="keywordsInput" placeholder="e.g. SoW-2024-001, PO-88921"><span class="existing" id="existingKeywords">Existing: none</span></div>
 </div>
-<div style="display:flex;gap:8px;margin-top:12px">
-<button onclick="saveAnchor()" style="padding:8px 16px;border-radius:8px;border:1px solid #2a9a5a;background:#D6F5E8;cursor:pointer;font-weight:600">Save Anchor — Project_ReferenceID auto generated — short anchor_id</button>
-<button onclick="loadAnchors()" style="padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:white;cursor:pointer">Reload Anchors — First Level PRIMARY FILTER</button>
-<button onclick="loadRegistrationFields()" style="padding:8px 16px;border-radius:8px;border:1px solid #ddd;background:white;cursor:pointer">Show Registration Fields Typed Enum</button>
+<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+<button onclick="saveAnchor()" class="btn-primary">Save Anchor — Clean Labels — Persistence — Existing as Actual Value</button>
+<button onclick="loadAnchors()" class="btn-secondary">Reload Anchors</button>
+<button onclick="clearFormForNew()" class="btn-secondary">Clear For New Project</button>
+<button onclick="clearAllAnchors()" class="btn-secondary" style="color:#b91c1c;border-color:#fecaca">Clear All (if needed after restart bug)</button>
 </div>
-<div id="registrationFieldsInfo" style="font-size:11px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:200px;overflow:auto;margin-top:12px">Click Show Registration Fields</div>
+<div id="saveInfo" class="alert alert-green" style="margin-top:12px">v0.12.3 thorough fix — persistence to anchors_persist.json survives restart — clean field labels — existing as actual value blue tint not grey placeholder — chips consistent — GDP ID 8399 not 0000 — no undefined — if Existing: loading... after restart, anchor missing, run seed_clients.py --only-dip</div>
 </div>
 <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px">
-<label>Second Level — ProjectRef editable — anchor_id short — Project_ReferenceID auto — select after save<br><select class="select" id="anchorSelect" onchange="loadCards()"><option value="AGENTIC-FULLMIGRATION">Agentic FullMigration - AGENTIC-FULLMIGRATION - PRJ-...</option></select></label>
+<label style="font-size:12px">Project selector — short anchor_id — Project_ReferenceID auto — select after save<br><select class="select" id="anchorSelect" onchange="loadAnchorDetails()"><option value="">No anchors — run seed if count 0 after restart</option></select></label>
+<span id="persistInfo" style="font-size:11px;color:#6b7280;align-self:center">Persist: checking...</span>
 </div>
 </div></div>
-<div class="main"><div class="card"><h3 style="margin:0 0 8px">Collapsable Card at Top Which Shows All Details Like Project IDs Etc, Contacts Etc., All Details Gathered Across Fields — Project_ReferenceID + Anchor Steps</h3>
-<div id="projectDetailsCard" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:400px;overflow:auto">Save anchor to see collapsable card with all details — Project_ReferenceID auto generated UniqueID when multiple Project IDs Opportunity IDs connected_record_ids GDP IDs — contacts from collaboration*.docx + scan user marks relevant/not + user adds — all details gathered across fields — sharepoint_urls communications MBR Value Framework planning Risk Log ESC solution site GDP URL — teams_channels dedicated Pre-sales Delivery Closeout — start_date end_date mutable Extension new Opp O-908078 same GDP — keywords SoW PO Contract — client_domains — filter_conditions typed enum EXACT CONTAINS DOMAIN DATE_RANGE TOKEN_OVERLAP URL_CONTAINS no free text — reusable from relationship_model.json v0.11 Data as Code</div>
+<div class="main"><div class="card"><h3 style="margin:0 0 8px">Project Details — Collapsable Card at Top — All Fields Gathered</h3>
+<div id="projectDetailsCard" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f9fafb;padding:12px;border-radius:8px;max-height:400px;overflow:auto;border:1px solid #e5e7eb">v0.12.3 — waiting for anchor data — if Existing: loading... after restart, anchor missing because STORE was in-memory only in v0.12.1/v0.12.2 — now persists to data/seed/anchors_persist.json — if count 0, run python modules/platform-anchor/seed_clients.py --file data/seed/clients.json --only-dip — then Reload Anchors — Project Reference ID auto PRJ-... — short anchor_id AGENTIC-FULLMIGRATION — not repeating client name</div>
 </div>
-<h2 style="margin:0 0 8px">Timeline Strip — RAID Aggregated Cards from 5 Sources — SP Risk Log + GDP + Emails + Teams + Connected — LLM assessed not static format — multiple cards if multiple line items — not complicated join — freshness aggregated card level</h2>
-<div class="timeline-strip" id="timelineStrip"></div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px"><div class="card"><h3 style="margin:0 0 8px">Anchor Service :8000 — Registration Fields — Project_ReferenceID auto — short anchor_id</h3>
-<div id="anchorInfo" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:300px;overflow:auto">Loading...</div>
-</div><div class="card"><h3 style="margin:0 0 8px">Cards Store :8001 — PK anchor_id short — freshness + weekly bucket — no significance formula</h3>
-<div id="cardsInfo" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:300px;overflow:auto">Loading...</div>
-</div></div>
 </div>
 <script>
 function toggleCollapse(){document.getElementById('collapsible').classList.toggle('collapsed')}
-async function loadRegistrationFields(){
-  try{
-    const res=await fetch('http://localhost:8000/registration/fields');
-    const data=await res.json();
-    document.getElementById('registrationFieldsInfo').textContent=JSON.stringify(data,null,2);
-  }catch(e){document.getElementById('registrationFieldsInfo').textContent='Error - is :8000 running v0.12? '+e}
+function chipHtml(items){
+  if(!items||!items.length)return '<span style="color:#999">none</span>';
+  const filtered=items.filter(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).toLowerCase()!=='undefined');
+  if(!filtered.length)return '<span style="color:#999">none</span>';
+  return filtered.map(i=>`<span class="chip">${String(i).trim()}</span>`).join('');
 }
+function setExisting(id, items, label='Existing:'){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const filtered=(items||[]).filter(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).toLowerCase()!=='undefined');
+  if(!filtered.length){el.innerHTML=label+' <span style="color:#999">none</span>';return;}
+  el.innerHTML=label+' '+chipHtml(filtered);
+}
+function parseComma(s){return (s||'').split(',').map(x=>x.trim()).filter(x=>x&&x.toLowerCase()!=='undefined');}
+let currentAnchor=null;
 async function saveAnchor(){
   const client=document.getElementById('clientSelect').value;
   const projectName=document.getElementById('projectNameInput').value.trim();
-  if(!projectName){alert('Project Name required — Second Level — short anchor_id only');return}
-  const projectIds=document.getElementById('projectIdsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const oppIds=document.getElementById('oppIdsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const connIds=document.getElementById('connIdsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const gdpId=document.getElementById('gdpIdInput').value.trim();
-  const gdpUrl=document.getElementById('gdpUrlInput').value.trim();
-  const spCommPlan=document.getElementById('spCommPlanInput').value.trim();
-  const spRiskLog=document.getElementById('spRiskLogInput').value.trim();
-  const spEsc=document.getElementById('spEscInput').value.trim();
-  const spSite=document.getElementById('spSiteInput').value.trim();
-  const teams=document.getElementById('teamsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const contactsRaw=document.getElementById('contactsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const contacts=contactsRaw.map(c=>({email:c, source:'user input collaboration*.docx + scan', relevant:'user marks relevant/not + user adds'}));
-  const domains=document.getElementById('domainsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const startDate=document.getElementById('startDateInput').value;
-  const endDate=document.getElementById('endDateInput').value;
-  const keywordsRaw=document.getElementById('keywordsInput').value.split(',').map(s=>s.trim()).filter(Boolean);
-  const keywords={SoW:[],PO:[],Contract:[],project_name_tokens:projectName.split(' '), client_domains:domains};
-  keywordsRaw.forEach(k=>{if(k.toLowerCase().startsWith('sow'))keywords.SoW.push(k);else if(k.toLowerCase().startsWith('po'))keywords.PO.push(k);else keywords.Contract.push(k)});
-  const sharepoint_urls={communications:[spCommPlan].filter(Boolean), planning_documents:[spRiskLog,spEsc].filter(Boolean), solution_documents:[spSite,gdpUrl].filter(Boolean)};
+  if(!projectName){alert('Project Name required');return}
+  const getOrKeep = (inputId, existingArr) => {
+    const raw=document.getElementById(inputId).value.trim();
+    if(!raw) return existingArr||[];
+    return parseComma(raw);
+  };
+  const getSingleOrKeep = (inputId, existingVal) => {
+    const raw=document.getElementById(inputId).value.trim();
+    if(!raw) return existingVal||'';
+    return raw;
+  };
   const payload={
     client_name:client,
     project_name:projectName,
-    project_ids:projectIds,
-    opportunity_numbers:oppIds,
-    connected_record_ids:connIds,
-    gdp_id:gdpId,
-    gdp_url:gdpUrl,
-    sharepoint_urls:sharepoint_urls,
-    teams_channels:teams,
-    contacts:contacts,
-    start_date:startDate,
-    end_date:endDate,
-    keywords:keywords,
-    client_domains:domains
+    project_ids:getOrKeep('projectIdsInput', currentAnchor?.project_ids||[]),
+    opportunity_numbers:getOrKeep('oppIdsInput', currentAnchor?.opportunity_numbers||[]),
+    connected_record_ids:getOrKeep('connIdsInput', currentAnchor?.connected_record_ids||[]),
+    gdp_id:getSingleOrKeep('gdpIdInput', currentAnchor?.gdp_id||''),
+    gdp_url:getSingleOrKeep('gdpUrlInput', currentAnchor?.gdp_url||''),
+    sharepoint_urls:{
+      communications:getOrKeep('spCommPlanInput', currentAnchor?.sharepoint_urls?.communications||[]),
+      planning_documents:[...getOrKeep('spRiskLogInput', currentAnchor?.sharepoint_urls?.planning_documents?.[0]?[currentAnchor.sharepoint_urls.planning_documents[0]]:[]), ...getOrKeep('spEscInput', currentAnchor?.sharepoint_urls?.planning_documents?.[1]?[currentAnchor.sharepoint_urls.planning_documents[1]]:[])].filter(Boolean),
+      solution_documents:[...getOrKeep('spSiteInput', currentAnchor?.sharepoint_urls?.solution_documents?.[0]?[currentAnchor.sharepoint_urls.solution_documents[0]]:[]), getSingleOrKeep('gdpUrlInput', '')].filter(Boolean)
+    },
+    teams_channels:getOrKeep('teamsInput', currentAnchor?.teams_channels||[]),
+    contacts:getOrKeep('contactsInput', (currentAnchor?.contacts||[]).map(c=>c.email||c)).map(c=>({email:c, source:'user input', relevant:'user adds'})),
+    start_date:getSingleOrKeep('startDateInput', currentAnchor?.start_date||''),
+    end_date:getSingleOrKeep('endDateInput', currentAnchor?.end_date||''),
+    keywords:{all:getOrKeep('keywordsInput', currentAnchor?.keywords?.all||[]), SoW:[], PO:[], Contract:[], project_name_tokens:projectName.split(' ').filter(Boolean), client_domains:getOrKeep('domainsInput', currentAnchor?.client_domains||[])},
+    client_domains:getOrKeep('domainsInput', currentAnchor?.client_domains||[])
   };
   try{
     const res=await fetch(`http://localhost:8000/anchor/${encodeURIComponent(client)}/${encodeURIComponent(projectName)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data=await res.json();
+    currentAnchor=data;
     document.getElementById('projectRefIdInput').value=data.project_reference_id||'';
     document.getElementById('anchorBadge').textContent=data.anchor_id||'';
     document.getElementById('projectDetailsCard').textContent=JSON.stringify(data,null,2);
     document.getElementById('oppBadge').textContent=data.opportunity_numbers?.[0]||'O-...';
     document.getElementById('connBadge').textContent=data.connected_record_ids?.[0]||'006Uj...';
-    alert(`Saved Anchor\nProject_ReferenceID: ${data.project_reference_id} auto generated UniqueID for multiple IDs\nanchor_id: ${data.anchor_id} short - just project name - not repeating client name\nclient_name: ${data.client_name} Account Name from Connected unique\nproject_name: ${data.project_name}\nproject_ids: ${data.project_ids.join(',')}\nOpportunity IDs: ${data.opportunity_numbers.join(',')}\nConnected: ${data.connected_record_ids.join(',')}\nGDP ID: ${data.gdp_id} parsed from ${data.gdp_url}\nSharePoint URLs: ${JSON.stringify(data.sharepoint_urls)}\nTeams Channels: ${data.teams_channels.join(',')}\nContacts: ${data.contacts.length} from collaboration*.docx + scan\nStart/End: ${data.start_date} - ${data.end_date} mutable Extension new Opp O-908078 same GDP\nKeywords SoW PO Contract: ${JSON.stringify(data.keywords)}\nClient Domains: ${data.client_domains.join(',')}\nFilter Conditions: ${Object.keys(data.filter_conditions).join(', ')} typed enum EXACT CONTAINS DOMAIN DATE_RANGE TOKEN_OVERLAP URL_CONTAINS no free text\n\nOpen PWA header collapsable card shows all details gathered across fields`);
-    loadAnchors();
-  }catch(e){alert('Failed to save - is :8000 running v0.12? '+e)}
+    document.getElementById('saveInfo').textContent=`Saved OK v0.12.3 thorough fix\nProject_ReferenceID: ${data.project_reference_id}\nanchor_id: ${data.anchor_id} short\nproject_ids: ${data.project_ids.join(', ')}\nOpp: ${data.opportunity_numbers.join(', ')}\nConnected: ${data.connected_record_ids.join(', ')}\nGDP ID: ${data.gdp_id} (not 0000)\nPersisted to data/seed/anchors_persist.json survives restart`;
+    // Update inputs to saved values as actual value
+    document.getElementById('projectIdsInput').value=data.project_ids.join(', ');
+    document.getElementById('oppIdsInput').value=data.opportunity_numbers.join(', ');
+    document.getElementById('connIdsInput').value=data.connected_record_ids.join(', ');
+    document.getElementById('gdpIdInput').value=data.gdp_id||'';
+    document.getElementById('gdpUrlInput').value=data.gdp_url||'';
+    document.getElementById('spCommPlanInput').value=data.sharepoint_urls?.communications?.[0]||'';
+    document.getElementById('spRiskLogInput').value=data.sharepoint_urls?.planning_documents?.[0]||'';
+    document.getElementById('spEscInput').value=data.sharepoint_urls?.planning_documents?.[1]||'';
+    document.getElementById('spSiteInput').value=data.sharepoint_urls?.solution_documents?.[0]||'';
+    document.getElementById('teamsInput').value=data.teams_channels.join(', ');
+    document.getElementById('contactsInput').value=data.contacts?.map(c=>c.email).join(', ');
+    document.getElementById('domainsInput').value=data.client_domains.join(', ');
+    document.getElementById('startDateInput').value=data.start_date||'';
+    document.getElementById('endDateInput').value=data.end_date||'';
+    document.getElementById('keywordsInput').value=(data.keywords?.all||[]).join(', ');
+    setExisting('existingProjectIds', data.project_ids);
+    setExisting('existingOppIds', data.opportunity_numbers);
+    setExisting('existingConnIds', data.connected_record_ids);
+    setExisting('existingGdpId', [data.gdp_id]);
+    setExisting('existingGdpUrl', [data.gdp_url]);
+    setExisting('existingSpComm', data.sharepoint_urls?.communications);
+    setExisting('existingSpRisk', [data.sharepoint_urls?.planning_documents?.[0]]);
+    setExisting('existingSpEsc', [data.sharepoint_urls?.planning_documents?.[1]]);
+    setExisting('existingSpSite', [data.sharepoint_urls?.solution_documents?.[0]]);
+    setExisting('existingTeams', data.teams_channels);
+    setExisting('existingContacts', data.contacts?.map(c=>c.email));
+    setExisting('existingDomains', data.client_domains);
+    setExisting('existingStart', [data.start_date]);
+    setExisting('existingEnd', [data.end_date]);
+    setExisting('existingKeywords', data.keywords?.all||[]);
+    setExisting('existingRefId', [data.project_reference_id]);
+    loadAnchorsList();
+  }catch(e){document.getElementById('saveInfo').textContent='Failed - is :8000 running v0.12.3? '+e}
+}
+function clearFormForNew(){
+  currentAnchor=null;
+  document.getElementById('projectNameInput').value='';
+  document.getElementById('projectRefIdInput').value='';
+  ['projectIdsInput','oppIdsInput','connIdsInput','gdpIdInput','gdpUrlInput','spCommPlanInput','spRiskLogInput','spEscInput','spSiteInput','teamsInput','contactsInput','domainsInput','startDateInput','endDateInput','keywordsInput'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['existingProjectIds','existingOppIds','existingConnIds','existingGdpId','existingGdpUrl','existingSpComm','existingSpRisk','existingSpEsc','existingSpSite','existingTeams','existingContacts','existingDomains','existingStart','existingEnd','existingKeywords','existingRefId'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='Existing: none — new project';});
+  document.getElementById('projectDetailsCard').textContent='Clear for new project — fill fields — Save auto generates Project_ReferenceID PRJ-... + short anchor_id';
+}
+async function clearAllAnchors(){
+  if(!confirm('Clear all anchors? This deletes anchors_persist.json')) return;
+  try{await fetch('http://localhost:8000/anchors/clear',{method:'DELETE'}); alert('Cleared'); loadAnchors();}catch(e){alert(e)}
 }
 async function loadAnchors(){
   const client=document.getElementById('clientSelect').value;
   try{
     const res=await fetch(`http://localhost:8000/anchors/${encodeURIComponent(client)}`);
     const data=await res.json();
-    document.getElementById('anchorInfo').textContent=JSON.stringify(data,null,2);
     document.getElementById('clientBadge').textContent=client;
+    document.getElementById('persistInfo').textContent=`Persist: ${data.persist_path} count ${data.count}`;
     const sel=document.getElementById('anchorSelect');
     sel.innerHTML='';
+    if(data.count===0){
+      sel.innerHTML='<option value="">No anchors — run: python modules/platform-anchor/seed_clients.py --file data/seed/clients.json --only-dip</option>';
+      document.getElementById('projectDetailsCard').textContent=`No anchors for ${client} — count 0 after restart because STORE was in-memory only in v0.12.1/v0.12.2 — v0.12.3 now persists to ${data.persist_path} — run seed command:\npython modules/platform-anchor/seed_clients.py --file data/seed/clients.json --only-dip\nThen Reload Anchors — anchors_persist.json survives restart`;
+      ['existingProjectIds','existingOppIds','existingConnIds','existingGdpId','existingGdpUrl','existingSpComm','existingSpRisk','existingSpEsc','existingSpSite','existingTeams','existingContacts','existingDomains','existingStart','existingEnd','existingKeywords','existingRefId'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='Existing: none — no anchor — run seed --only-dip';});
+      return;
+    }
     data.anchors.forEach(a=>{
       const opt=document.createElement('option');
       opt.value=a.anchor_id;
       opt.textContent=`${a.project_name} - ${a.anchor_id} - ${a.project_reference_id} - O:${a.opportunity_numbers.join(',')} - ${a.project_ids.join(',')}`;
       sel.appendChild(opt);
     });
-    if(data.anchors[0]){
-      document.getElementById('anchorBadge').textContent=data.anchors[0].anchor_id;
-      document.getElementById('oppBadge').textContent=data.anchors[0].opportunity_numbers[0]||'O-...';
-      document.getElementById('connBadge').textContent=data.anchors[0].connected_record_ids[0]||'006Uj...';
-      document.getElementById('projectRefIdInput').value=data.anchors[0].project_reference_id||'';
-      document.getElementById('projectDetailsCard').textContent=JSON.stringify(data.anchors[0],null,2);
-      document.getElementById('projectNameInput').value=data.anchors[0].project_name;
-      document.getElementById('projectIdsInput').value=data.anchors[0].project_ids.join(', ');
-      document.getElementById('oppIdsInput').value=data.anchors[0].opportunity_numbers.join(', ');
-      document.getElementById('connIdsInput').value=data.anchors[0].connected_record_ids.join(', ');
-      document.getElementById('gdpIdInput').value=data.anchors[0].gdp_id||'';
-      document.getElementById('gdpUrlInput').value=data.anchors[0].gdp_url||'';
-      if(data.anchors[0].sharepoint_urls){
-        document.getElementById('spCommPlanInput').value=data.anchors[0].sharepoint_urls.communications?.[0]||'';
-        document.getElementById('spRiskLogInput').value=data.anchors[0].sharepoint_urls.planning_documents?.[0]||'';
-        document.getElementById('spEscInput').value=data.anchors[0].sharepoint_urls.planning_documents?.[1]||'';
-        document.getElementById('spSiteInput').value=data.anchors[0].sharepoint_urls.solution_documents?.[0]||'';
-      }
-      document.getElementById('teamsInput').value=data.anchors[0].teams_channels.join(', ');
-      document.getElementById('contactsInput').value=data.anchors[0].contacts.map(c=>c.email||c).join(', ');
-      document.getElementById('domainsInput').value=data.anchors[0].client_domains.join(', ');
-      document.getElementById('startDateInput').value=data.anchors[0].start_date||'';
-      document.getElementById('endDateInput').value=data.anchors[0].end_date||'';
-    }
-    loadCards();
-  }catch(e){document.getElementById('anchorInfo').textContent='Error - is :8000 running v0.12? '+e}
+    if(data.anchors[0]) loadAnchorDetailsFor(data.anchors[0]);
+  }catch(e){
+    document.getElementById('persistInfo').textContent='Error - is :8000 running v0.12.3? '+e;
+    console.error(e)
+  }
 }
-async function loadCards(){
+function loadAnchorDetailsFor(a){
+  currentAnchor=a;
+  document.getElementById('anchorBadge').textContent=a.anchor_id;
+  document.getElementById('oppBadge').textContent=a.opportunity_numbers[0]||'O-...';
+  document.getElementById('connBadge').textContent=a.connected_record_ids[0]||'006Uj...';
+  document.getElementById('projectRefIdInput').value=a.project_reference_id||'';
+  document.getElementById('projectDetailsCard').textContent=JSON.stringify(a,null,2);
+  document.getElementById('projectNameInput').value=a.project_name;
+  document.getElementById('projectIdsInput').value=(a.project_ids||[]).join(', ');
+  document.getElementById('oppIdsInput').value=(a.opportunity_numbers||[]).join(', ');
+  document.getElementById('connIdsInput').value=(a.connected_record_ids||[]).join(', ');
+  document.getElementById('gdpIdInput').value=a.gdp_id||'';
+  document.getElementById('gdpUrlInput').value=a.gdp_url||'';
+  document.getElementById('spCommPlanInput').value=a.sharepoint_urls?.communications?.[0]||'';
+  document.getElementById('spRiskLogInput').value=a.sharepoint_urls?.planning_documents?.[0]||'';
+  document.getElementById('spEscInput').value=a.sharepoint_urls?.planning_documents?.[1]||'';
+  document.getElementById('spSiteInput').value=a.sharepoint_urls?.solution_documents?.[0]||'';
+  document.getElementById('teamsInput').value=(a.teams_channels||[]).join(', ');
+  document.getElementById('contactsInput').value=(a.contacts||[]).map(c=>c.email||c).join(', ');
+  document.getElementById('domainsInput').value=(a.client_domains||[]).join(', ');
+  document.getElementById('startDateInput').value=a.start_date||'';
+  document.getElementById('endDateInput').value=a.end_date||'';
+  document.getElementById('keywordsInput').value=(a.keywords?.all||[]).join(', ');
+  setExisting('existingProjectIds', a.project_ids);
+  setExisting('existingOppIds', a.opportunity_numbers);
+  setExisting('existingConnIds', a.connected_record_ids);
+  setExisting('existingGdpId', [a.gdp_id]);
+  setExisting('existingGdpUrl', [a.gdp_url]);
+  setExisting('existingSpComm', a.sharepoint_urls?.communications);
+  setExisting('existingSpRisk', [a.sharepoint_urls?.planning_documents?.[0]]);
+  setExisting('existingSpEsc', [a.sharepoint_urls?.planning_documents?.[1]]);
+  setExisting('existingSpSite', [a.sharepoint_urls?.solution_documents?.[0]]);
+  setExisting('existingTeams', a.teams_channels);
+  setExisting('existingContacts', (a.contacts||[]).map(c=>c.email||c));
+  setExisting('existingDomains', a.client_domains);
+  setExisting('existingStart', [a.start_date]);
+  setExisting('existingEnd', [a.end_date]);
+  setExisting('existingKeywords', a.keywords?.all||[]);
+  setExisting('existingRefId', [a.project_reference_id]);
+}
+async function loadAnchorDetails(){
   const client=document.getElementById('clientSelect').value;
-  const anchor=document.getElementById('anchorSelect').value||'AGENTIC-FULLMIGRATION';
+  const anchorId=document.getElementById('anchorSelect').value;
+  if(!anchorId||anchorId.includes('No anchors')) return;
   try{
-    const res=await fetch(`http://localhost:8001/cards/${encodeURIComponent(client)}/${encodeURIComponent(anchor)}`);
+    const res=await fetch(`http://localhost:8000/anchors/${encodeURIComponent(client)}`);
     const data=await res.json();
-    document.getElementById('cardsInfo').textContent=JSON.stringify(data,null,2);
-    const timelineRes=await fetch(`http://localhost:8001/cards/${encodeURIComponent(client)}/${encodeURIComponent(anchor)}/timeline`);
-    const timelineData=await timelineRes.json();
-    const strip=document.getElementById('timelineStrip');
-    strip.innerHTML='';
-    timelineData.timeline.forEach(card=>{
-      const div=document.createElement('div');
-      div.className='timeline-item ' + (card.significance_score>=0.9?'high':'');
-      div.innerHTML=`<div style="font-weight:600">${card.title}</div><div style="font-size:12px;margin:4px 0"><span class="sig ${card.significance_score>=0.9?'sig-high':''}">${card.significance_score}</span> ${card.week||''}</div><div class="row-hash">${card.source_rows.join('+')}</div>`;
-      strip.appendChild(div);
+    const a=data.anchors.find(x=>x.anchor_id===anchorId);
+    if(a) loadAnchorDetailsFor(a);
+  }catch(e){console.error(e)}
+}
+async function loadAnchorsList(){
+  const client=document.getElementById('clientSelect').value;
+  try{
+    const res=await fetch(`http://localhost:8000/anchors/${encodeURIComponent(client)}`);
+    const data=await res.json();
+    const sel=document.getElementById('anchorSelect');
+    const prev=sel.value;
+    sel.innerHTML='';
+    if(data.count===0){
+      sel.innerHTML='<option value="">No anchors — run seed --only-dip</option>';
+      return;
+    }
+    data.anchors.forEach(a=>{
+      const opt=document.createElement('option');
+      opt.value=a.anchor_id;
+      opt.textContent=`${a.project_name} - ${a.anchor_id} - ${a.project_reference_id}`;
+      sel.appendChild(opt);
     });
-  }catch(e){document.getElementById('cardsInfo').textContent='Error - is :8001 running? '+e}
+    if(prev) sel.value=prev;
+  }catch(e){}
 }
 loadAnchors();
-loadRegistrationFields();
 </script></body></html>

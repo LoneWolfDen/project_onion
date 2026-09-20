@@ -3,7 +3,6 @@
     "GE Aero#GE-AERO-DIP-DISCOVERY": {
       "client_name": "GE Aero",
       "project_name": "GE Aero DIP Discovery",
-      "project_ref_name": "GE Aero DIP Discovery",
       "anchor_id": "GE-AERO-DIP-DISCOVERY",
       "project_reference_id": "PRJ-30C0807A8BA8",
       "project_ids": [
@@ -15,14 +14,85 @@
       "connected_record_ids": [
         "006Uj00000QOBkvIAH"
       ],
+      "connected_record_urls": [
+        "https://allegisgroup.my.salesforce.com/lightning/r/Opportunity/006Uj00000QOBkvIAH/view"
+      ],
+      "connected_provenance": [
+        {
+          "source_url": "https://allegisgroup.my.salesforce.com/lightning/r/Opportunity/006Uj00000QOBkvIAH/view",
+          "extracted_id": "006Uj00000QOBkvIAH",
+          "origin": "Salesforce Opportunity",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.166811",
+          "link": "https://allegisgroup.my.salesforce.com/lightning/r/Opportunity/006Uj00000QOBkvIAH/view"
+        }
+      ],
       "gdp_id": "8399",
-      "gdp_url": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399",
-      "gdp_ids": [
-        "8399"
+      "gdp_url": "https://gdp.allegisgroup.com/gdp/",
+      "gdp_urls": [
+        "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399",
+        "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399"
+      ],
+      "gdp_provenance": [
+        {
+          "source_url": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399",
+          "extracted_id": "8399",
+          "origin": "GDP Dashboard",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.166817",
+          "link": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399"
+        }
       ],
       "sharepoint_urls": {
+        "communications": [
+          "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Communications/Collaboration_Plan.docx"
+        ],
         "planning_documents": [
-          "geadinspf"
+          "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/Risk_Log.xlsx",
+          "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/ESC.xlsm"
+        ],
+        "solution_documents": [
+          "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/awsProjA"
+        ]
+      },
+      "sharepoint_provenance": {
+        "communications": [
+          {
+            "source_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Communications/Collaboration_Plan.docx",
+            "cleaned_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Communications/Collaboration_Plan.docx",
+            "origin": "SharePoint communications",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.166829",
+            "link": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Communications/Collaboration_Plan.docx"
+          }
+        ],
+        "planning_documents": [
+          {
+            "source_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/Risk_Log.xlsx?e=abc123",
+            "cleaned_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/Risk_Log.xlsx",
+            "origin": "SharePoint planning_documents",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.166835",
+            "link": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/Risk_Log.xlsx"
+          },
+          {
+            "source_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/ESC.xlsm",
+            "cleaned_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/ESC.xlsm",
+            "origin": "SharePoint planning_documents",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.166839",
+            "link": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/ESC.xlsm"
+          }
+        ],
+        "solution_documents": [
+          {
+            "source_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/awsProjA",
+            "cleaned_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/awsProjA",
+            "origin": "SharePoint solution_documents",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.166843",
+            "link": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/awsProjA"
+          }
         ]
       },
       "teams_channels": [
@@ -31,26 +101,108 @@
       ],
       "contacts": [
         {
-          "email": "jane@client.com",
-          "source": "data/seed/clients.json",
-          "relevant": "seed"
+          "email": "jane@ge.com",
+          "role": "Delivery",
+          "name": "",
+          "source": "user",
+          "status": "active",
+          "project_names": [
+            "GE Aero DIP Discovery"
+          ],
+          "provenance": {
+            "source_url": "Contact jane@ge.com",
+            "origin": "Collaboration Plan / Graph",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.166851",
+            "link": "mailto:jane@ge.com"
+          }
         }
       ],
-      "start_date": "2024-01-02",
-      "end_date": "2027-01-09",
-      "keywords": {
-        "SoW": [],
-        "PO": [],
-        "Contract": [],
-        "all": []
-      },
+      "contacts_provenance": [
+        {
+          "source_url": "Contact jane@ge.com",
+          "origin": "Collaboration Plan / Graph",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.166851",
+          "link": "mailto:jane@ge.com"
+        }
+      ],
       "client_domains": [
         "allegisgroup.com",
         "ge.com"
       ],
+      "start_date": "2024-01-02",
+      "end_date": "2027-01-09",
+      "keywords": {
+        "auto": [
+          "O-5030460",
+          "99974052",
+          "Discovery",
+          "DIP",
+          "8399",
+          "Aero"
+        ],
+        "all": [
+          "99974052",
+          "Discovery",
+          "DIP",
+          "O-5030460",
+          "8399",
+          "Aero",
+          "PO-88921",
+          "SoW-2024-001"
+        ],
+        "SoW": [
+          "SoW-2024-001"
+        ],
+        "PO": [
+          "PO-88921"
+        ],
+        "Contract": [
+          "PO-88921",
+          "SoW-2024-001"
+        ]
+      },
+      "notes": [
+        {
+          "id": "7c3cc9b2",
+          "text": "Client wants MS3 extended by 2 days - finance approval pending",
+          "rephrased": "MS3 extension requested by client for 2 days, pending finance approval",
+          "author": "current_user",
+          "timestamp": "2026-09-20T23:03:33.166871",
+          "updates": [],
+          "source": "manual",
+          "privacy": "Team Shared",
+          "provenance": {
+            "source_url": "https://acme.sharepoint.com/notes/ms3",
+            "origin": "Manual Note",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.166874",
+            "link": "https://acme.sharepoint.com/notes/ms3"
+          },
+          "references": [
+            {
+              "origin": "Email",
+              "link": "mailto:J.Smith@acme.com"
+            }
+          ]
+        }
+      ],
+      "archived_items": [],
       "freshness": {
         "first_seen": "2026-09-20T15:38:24.492712",
-        "last_refreshed": "2026-09-20T15:40:05.241453"
+        "last_refreshed": "2026-09-20T23:03:33.166879"
+      },
+      "provenance_summary": {
+        "total_sources": 8,
+        "origins": [
+          "Salesforce",
+          "Email",
+          "Teams",
+          "SharePoint",
+          "Manual"
+        ],
+        "note": "All provenance references are actual links: user, source url, timestamp, origin - not uploading sources, read learn, maintain source links"
       }
     },
     "Rolls-Royce#ROLLS-ROYCE-DISCOVERY": {
@@ -158,8 +310,298 @@
         "first_seen": "2026-09-20T15:38:24.495873",
         "last_refreshed": "2026-09-20T15:40:05.245367"
       }
+    },
+    "Acme Corp#APOLLO-123": {
+      "client_name": "Acme Corp",
+      "project_name": "Apollo-123",
+      "anchor_id": "APOLLO-123",
+      "project_reference_id": "PRJ-98847C0C2AFF",
+      "project_ids": [
+        "PO-12345"
+      ],
+      "opportunity_numbers": [
+        "OPP-8891"
+      ],
+      "connected_record_ids": [
+        "006Uj00000QOBkvIAH"
+      ],
+      "connected_record_urls": [
+        "https://allegisgroup.my.salesforce.com/lightning/r/Opportunity/006Uj00000QOBkvIAH/view"
+      ],
+      "connected_provenance": [
+        {
+          "source_url": "https://allegisgroup.my.salesforce.com/lightning/r/Opportunity/006Uj00000QOBkvIAH/view",
+          "extracted_id": "006Uj00000QOBkvIAH",
+          "origin": "Salesforce Opportunity",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.164478",
+          "link": "https://allegisgroup.my.salesforce.com/lightning/r/Opportunity/006Uj00000QOBkvIAH/view"
+        }
+      ],
+      "gdp_id": "8399",
+      "gdp_url": "https://gdp.allegisgroup.com/gdp/",
+      "gdp_urls": [
+        "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399",
+        "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399"
+      ],
+      "gdp_provenance": [
+        {
+          "source_url": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399",
+          "extracted_id": "8399",
+          "origin": "GDP Dashboard",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.164499",
+          "link": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399"
+        }
+      ],
+      "sharepoint_urls": {
+        "service_review": [
+          "https://acme.sharepoint.com/sites/Acme-Projects/Apollo/ServiceReview"
+        ],
+        "communications": [
+          "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Communications/Collaboration_Plan.docx"
+        ],
+        "planning_documents": [
+          "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/Risk_Log_Apollo.xlsx",
+          "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/ESC_Apollo.xlsm"
+        ],
+        "solution_documents": [
+          "https://acme.sharepoint.com/teams/Acme-Projects/Apollo"
+        ]
+      },
+      "sharepoint_provenance": {
+        "service_review": [
+          {
+            "source_url": "https://acme.sharepoint.com/sites/Acme-Projects/Apollo/ServiceReview",
+            "cleaned_url": "https://acme.sharepoint.com/sites/Acme-Projects/Apollo/ServiceReview",
+            "origin": "SharePoint service_review",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164525",
+            "link": "https://acme.sharepoint.com/sites/Acme-Projects/Apollo/ServiceReview"
+          }
+        ],
+        "communications": [
+          {
+            "source_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Communications/Collaboration_Plan.docx",
+            "cleaned_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Communications/Collaboration_Plan.docx",
+            "origin": "SharePoint communications",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164538",
+            "link": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Communications/Collaboration_Plan.docx"
+          }
+        ],
+        "planning_documents": [
+          {
+            "source_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/Risk_Log_Apollo.xlsx?e=abc123&csf=1&web=1",
+            "cleaned_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/Risk_Log_Apollo.xlsx",
+            "origin": "SharePoint planning_documents",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164548",
+            "link": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/Risk_Log_Apollo.xlsx"
+          },
+          {
+            "source_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/ESC_Apollo.xlsm",
+            "cleaned_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/ESC_Apollo.xlsm",
+            "origin": "SharePoint planning_documents",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164553",
+            "link": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/ESC_Apollo.xlsm"
+          }
+        ],
+        "solution_documents": [
+          {
+            "source_url": "https://acme.sharepoint.com/teams/Acme-Projects/Apollo",
+            "cleaned_url": "https://acme.sharepoint.com/teams/Acme-Projects/Apollo",
+            "origin": "SharePoint solution_documents",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164557",
+            "link": "https://acme.sharepoint.com/teams/Acme-Projects/Apollo"
+          }
+        ]
+      },
+      "teams_channels": [
+        "Apollo-123 Budget",
+        "Apollo Budget Group"
+      ],
+      "contacts": [
+        {
+          "email": "J.Smith@acme.com",
+          "role": "Delivery",
+          "name": "",
+          "source": "user",
+          "status": "active",
+          "project_names": [
+            "Apollo-123"
+          ],
+          "provenance": {
+            "source_url": "Contact J.Smith@acme.com",
+            "origin": "Collaboration Plan / Graph",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164640",
+            "link": "mailto:J.Smith@acme.com"
+          }
+        },
+        {
+          "email": "Sarah@acme.com",
+          "role": "Delivery",
+          "name": "",
+          "source": "user",
+          "status": "active",
+          "project_names": [
+            "Apollo-123"
+          ],
+          "provenance": {
+            "source_url": "Contact Sarah@acme.com",
+            "origin": "Collaboration Plan / Graph",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164646",
+            "link": "mailto:Sarah@acme.com"
+          }
+        },
+        {
+          "email": "A.Kumar@acme.com",
+          "role": "Delivery",
+          "name": "",
+          "source": "user",
+          "status": "active",
+          "project_names": [
+            "Apollo-123"
+          ],
+          "provenance": {
+            "source_url": "Contact A.Kumar@acme.com",
+            "origin": "Collaboration Plan / Graph",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164649",
+            "link": "mailto:A.Kumar@acme.com"
+          }
+        },
+        {
+          "email": "R.Patel@acme.com",
+          "role": "Delivery",
+          "name": "",
+          "source": "user",
+          "status": "active",
+          "project_names": [
+            "Apollo-123"
+          ],
+          "provenance": {
+            "source_url": "Contact R.Patel@acme.com",
+            "origin": "Collaboration Plan / Graph",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164651",
+            "link": "mailto:R.Patel@acme.com"
+          }
+        }
+      ],
+      "contacts_provenance": [
+        {
+          "source_url": "Contact J.Smith@acme.com",
+          "origin": "Collaboration Plan / Graph",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.164640",
+          "link": "mailto:J.Smith@acme.com"
+        },
+        {
+          "source_url": "Contact Sarah@acme.com",
+          "origin": "Collaboration Plan / Graph",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.164646",
+          "link": "mailto:Sarah@acme.com"
+        },
+        {
+          "source_url": "Contact A.Kumar@acme.com",
+          "origin": "Collaboration Plan / Graph",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.164649",
+          "link": "mailto:A.Kumar@acme.com"
+        },
+        {
+          "source_url": "Contact R.Patel@acme.com",
+          "origin": "Collaboration Plan / Graph",
+          "user": "current_user",
+          "timestamp": "2026-09-20T23:03:33.164651",
+          "link": "mailto:R.Patel@acme.com"
+        }
+      ],
+      "client_domains": [
+        "acme.com"
+      ],
+      "start_date": "2024-01-02",
+      "end_date": "2027-11-30",
+      "keywords": {
+        "auto": [
+          "Corp",
+          "Acme",
+          "PO-12345",
+          "Apollo-123",
+          "8399",
+          "OPP-8891"
+        ],
+        "all": [
+          "Corp",
+          "SOW_Acme_Apollo.pdf",
+          "PO-6789",
+          "Acme",
+          "PO-12345",
+          "Apollo-123",
+          "8399",
+          "OPP-8891"
+        ],
+        "SoW": [
+          "SOW_Acme_Apollo.pdf"
+        ],
+        "PO": [
+          "PO-6789",
+          "PO-12345"
+        ],
+        "Contract": [
+          "SOW_Acme_Apollo.pdf",
+          "PO-6789"
+        ]
+      },
+      "notes": [
+        {
+          "id": "9e9223d7",
+          "text": "Client wants MS3 extended by 2 days - finance approval pending",
+          "rephrased": "MS3 extension requested by client for 2 days, pending finance approval",
+          "author": "current_user",
+          "timestamp": "2026-09-20T23:03:33.164674",
+          "updates": [],
+          "source": "manual",
+          "privacy": "Team Shared",
+          "provenance": {
+            "source_url": "https://acme.sharepoint.com/notes/ms3",
+            "origin": "Manual Note",
+            "user": "current_user",
+            "timestamp": "2026-09-20T23:03:33.164683",
+            "link": "https://acme.sharepoint.com/notes/ms3"
+          },
+          "references": [
+            {
+              "origin": "Email",
+              "link": "mailto:J.Smith@acme.com"
+            }
+          ]
+        }
+      ],
+      "archived_items": [],
+      "freshness": {
+        "first_seen": "2026-09-20T23:03:33.164630",
+        "last_refreshed": "2026-09-20T23:03:33.164694"
+      },
+      "provenance_summary": {
+        "total_sources": 12,
+        "origins": [
+          "Salesforce",
+          "Email",
+          "Teams",
+          "SharePoint",
+          "Manual"
+        ],
+        "note": "All provenance references are actual links: user, source url, timestamp, origin - not uploading sources, read learn, maintain source links"
+      }
     }
   },
-  "saved_at": "2026-09-20T15:40:05.245416",
-  "version": "v0.12.3"
+  "saved_at": "2026-09-20T23:03:33.166930",
+  "version": "v0.16-archive-justification-provenance-links"
 }

@@ -1,213 +1,157 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Project Onion - v0.8 PWA - GE Aero / GEAERO-DIP-DISCOVERY</title>
+<title>v0.8.1 PWA - GE Aero / GEAERO-DIP-DISCOVERY - CORS Fix</title>
 <style>
-:root {
-  --pastel-blue: #D6E8FF;
-  --pastel-mint: #D6F5E8;
-  --pastel-yellow: #FFF5D6;
-  --pastel-lavender: #E8D6FF;
-  --pastel-red: #FFD6D6;
-  --mint-header: #D6F5E8;
-  --text-dark: #1a2b3c;
-  --border-light: #e0e8f0;
-}
-* { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; }
-body { margin:0; background:#fafcfe; color:var(--text-dark); }
-.header-mint {
-  background: var(--mint-header);
-  border-bottom: 1px solid var(--border-light);
-  padding: 16px 24px;
-  position: sticky;
-  top:0;
-  z-index:10;
-}
-.header-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-.badge { padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; background:white; border:1px solid var(--border-light); }
-.badge-client { background: var(--pastel-blue); }
-.badge-anchor { background: var(--pastel-lavender); }
-.badge-opp { background: var(--pastel-yellow); }
-.badge-conn { background: white; font-family: monospace; }
-.badge-fresh { background: var(--pastel-mint); }
-.badge-green { color: #0a7a42; }
-.badge-red { color: #a00; background: var(--pastel-red); }
-.collapse-btn { margin-left:auto; cursor:pointer; border:1px solid var(--border-light); background:white; padding:6px 12px; border-radius:8px; }
-.collapsible { overflow:hidden; max-height:500px; transition:max-height 0.3s ease; margin-top:12px; }
-.collapsible.collapsed { max-height:0; }
-.dropdown { display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; }
-.select { padding:8px 12px; border-radius:8px; border:1px solid var(--border-light); background:white; min-width:180px; }
-.main { padding:24px; max-width:1100px; margin:0 auto; }
-.card { background:white; border:1px solid var(--border-light); border-radius:12px; padding:16px; margin-bottom:16px; }
-.timeline-strip { display:flex; gap:12px; overflow-x:auto; padding:12px 0; }
-.timeline-item { min-width:220px; background:white; border:1px solid var(--border-light); border-left:4px solid var(--pastel-blue); border-radius:10px; padding:12px; }
-.timeline-item.high { border-left-color: #2a9a5a; }
-.timeline-item.low { border-left-color: #ccc; opacity:0.6; }
-.sig { font-size:11px; padding:2px 6px; border-radius:6px; background:var(--pastel-yellow); }
-.sig-high { background:var(--pastel-mint); }
-.row-hash { font-family: monospace; font-size:11px; color:#666; }
-.fresh-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
-.fresh-green { background:#2a9a5a; }
-.fresh-red { background:#c00; }
+:root{--pastel-blue:#D6E8FF;--pastel-mint:#D6F5E8;--pastel-yellow:#FFF5D6;--pastel-lavender:#E8D6FF;--pastel-red:#FFD6D6;--border:#e0e8f0}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+body{margin:0;background:#fafcfe;color:#1a2b3c}
+.header-mint{background:var(--pastel-mint);border-bottom:1px solid var(--border);padding:16px 24px;position:sticky;top:0;z-index:10}
+.badge{padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600;background:white;border:1px solid var(--border);display:inline-block;margin:2px}
+.badge-client{background:var(--pastel-blue)} .badge-anchor{background:var(--pastel-lavender)} .badge-opp{background:var(--pastel-yellow)} .badge-conn{background:white;font-family:monospace}
+.badge-fresh{background:var(--pastel-mint)} .fresh-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px} .fresh-green{background:#2a9a5a} .fresh-red{background:#c00}
+.main{padding:24px;max-width:1100px;margin:0 auto}
+.card{background:white;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.timeline-strip{display:flex;gap:12px;overflow-x:auto;padding:12px 0}
+.timeline-item{min-width:260px;background:white;border:1px solid var(--border);border-left:4px solid var(--pastel-blue);border-radius:10px;padding:12px}
+.timeline-item.high{border-left-color:#2a9a5a} .sig{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--pastel-yellow)} .sig-high{background:var(--pastel-mint)} .row-hash{font-family:monospace;font-size:11px;color:#666}
+.select{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:white;min-width:200px}
+.collapse-btn{margin-left:auto;cursor:pointer;border:1px solid var(--border);background:white;padding:6px 12px;border-radius:8px}
+.collapsible{overflow:hidden;max-height:500px;transition:max-height 0.3s ease;margin-top:12px} .collapsible.collapsed{max-height:0}
 </style>
 </head>
 <body>
-<div class="header-mint" id="headerMint">
-  <div class="header-row">
+<div class="header-mint">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <span class="badge badge-client" id="clientBadge">GE Aero</span>
     <span class="badge badge-anchor" id="anchorBadge">GEAERO-DIP-DISCOVERY</span>
     <span class="badge badge-opp" id="oppBadge">O-5030460</span>
     <span class="badge badge-conn" id="connBadge">006Uj00000QOBkvIAH</span>
-    <span class="badge badge-fresh"><span class="fresh-dot fresh-green"></span><span id="freshBadge">2d ago</span> <span class="badge-green">green</span></span>
-    <button class="collapse-btn" onclick="toggleCollapse()">▼ Collapsible</button>
+    <span class="badge badge-fresh"><span class="fresh-dot fresh-green"></span><span id="freshBadge">2d ago</span> green</span>
+    <span class="badge" style="background:#e8f5e9">v0.8.1 CORS Fix - allow_origins *</span>
+    <button class="collapse-btn" onclick="toggleCollapse()">▼</button>
   </div>
   <div class="collapsible" id="collapsible">
-    <div class="dropdown">
-      <label>First Level - Client Master - PRIMARY FILTER dropdown NOT editable
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px">
+      <label>First Level - Client Master - PRIMARY FILTER dropdown NOT editable<br>
         <select class="select" id="clientSelect" onchange="loadAnchors()">
           <option value="GE Aero">GE Aero (PRIMARY FILTER)</option>
           <option value="Rolls-Royce">Rolls-Royce</option>
           <option value="ClientA">ClientA</option>
         </select>
       </label>
-      <label>Second Level - ProjectRef editable
-        <select class="select" id="anchorSelect" onchange="loadCards()">
-          <option value="GEAERO-DIP-DISCOVERY">GE Aero DIP Discovery - GEAERO-DIP-DISCOVERY</option>
-        </select>
-      </label>
-      <label>Levels
-        <span class="badge">First: dropdown NOT editable from data/seed/clients.json</span>
-        <span class="badge">Second: editable - user can rename Phase 2</span>
+      <label>Second Level - ProjectRef editable<br>
+        <select class="select" id="anchorSelect" onchange="loadCards()"><option value="GEAERO-DIP-DISCOVERY">GE Aero DIP Discovery - GEAERO-DIP-DISCOVERY</option></select>
       </label>
     </div>
-    <div style="margin-top:12px; font-size:12px; color:#556;">
-      HDD Memory: GLOBAL_BRAIN.md + STATE.md + TESTING.md + DATA_DICTIONARY.md — multi-multi O-5030460 <-> 006Uj... preserved — EventBridge 6h HEAD geadinspf + 8399 — pastel tokens --pastel-blue #D6E8FF --pastel-mint #D6F5E8
+    <div style="margin-top:12px;font-size:11px;color:#556">
+      Fixed: CORS allow_origins * in :8000 and :8001 for PWA :8002 fetch - HDD: GLOBAL_BRAIN.md + STATE.md + DATA_DICTIONARY.md - multi-multi O-5030460 <-> 006Uj... preserved - pastel --pastel-blue #D6E8FF --pastel-mint #D6F5E8
     </div>
   </div>
 </div>
 
 <div class="main">
-  <h2 style="margin:0 0 8px;">Timeline Strip - Week 33: Laptop 50%->100% [Row12+Row18] - significance 0.9 EXTENSION vs 0.25 CHASING noise filter</h2>
-  <div class="timeline-strip" id="timelineStrip">
-    <div class="timeline-item high">
-      <div style="font-weight:600;">Laptop 50%->100%</div>
-      <div style="font-size:12px; margin:4px 0;"><span class="sig sig-high">0.9 EXTENSION</span> Week 33</div>
-      <div class="row-hash">Row12+Row18 - multi-row hash</div>
-      <div style="font-size:12px; margin-top:6px;"><span class="fresh-dot fresh-green"></span>2d ago green - GEAERO-DIP-DISCOVERY</div>
-    </div>
-  </div>
+  <h2 style="margin:0 0 8px">Timeline Strip - Week 33: Laptop 50%->100% [Row12+Row18] - significance 0.9 EXTENSION vs 0.25 CHASING noise filter</h2>
+  <div class="timeline-strip" id="timelineStrip"></div>
 
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px">
     <div class="card">
-      <h3 style="margin:0 0 8px;">Anchor Service :8000 - GE Aero PRIMARY FILTER</h3>
-      <div id="anchorInfo" style="font-size:13px; font-family:monospace; white-space:pre-wrap; background:#f6f8fa; padding:12px; border-radius:8px;">Loading anchor...</div>
-      <button onclick="loadAnchors()" style="margin-top:8px; padding:6px 12px; border-radius:6px; border:1px solid #ddd; background:white; cursor:pointer;">Reload Anchor :8000</button>
+      <h3 style="margin:0 0 8px">Anchor Service :8000 - GE Aero PRIMARY FILTER</h3>
+      <div id="anchorInfo" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:300px;overflow:auto">Loading...</div>
+      <button onclick="loadAnchors()" style="margin-top:8px;padding:6px 12px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer">Reload Anchor :8000</button>
     </div>
     <div class="card">
-      <h3 style="margin:0 0 8px;">Cards Store :8001 - PK GEAERO-DIP-DISCOVERY - freshness + weekly bucket</h3>
-      <div id="cardsInfo" style="font-size:13px; font-family:monospace; white-space:pre-wrap; background:#f6f8fa; padding:12px; border-radius:8px;">Loading cards...</div>
-      <button onclick="loadCards()" style="margin-top:8px; padding:6px 12px; border-radius:6px; border:1px solid #ddd; background:white; cursor:pointer;">Reload Cards :8001</button>
+      <h3 style="margin:0 0 8px">Cards Store :8001 - PK GEAERO-DIP-DISCOVERY - freshness + weekly bucket</h3>
+      <div id="cardsInfo" style="font-size:12px;font-family:monospace;white-space:pre-wrap;background:#f6f8fa;padding:12px;border-radius:8px;max-height:300px;overflow:auto">Loading...</div>
+      <button onclick="loadCards()" style="margin-top:8px;padding:6px 12px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer">Reload Cards :8001</button>
     </div>
-  </div>
-
-  <div class="card" style="margin-top:16px;">
-    <h3 style="margin:0 0 8px;">Doc Cards - V6.3_ESC - O-5030460 linked to 006Uj...</h3>
-    <div id="docCards" style="font-size:13px;"></div>
   </div>
 
   <div class="card">
-    <h3 style="margin:0 0 8px;">Test - Data as Code - Version-Controlled Data Dictionary not DVC</h3>
-    <div style="font-size:12px; line-height:1.6;">
-      <div>• clients.json - 3 clients - GE Aero, Rolls-Royce, ClientA - PRIMARY FILTER dropdown NOT editable - from Client Master</div>
-      <div>• cards.json - 3 cards - Week33 0.9 2d ago green show, Week32 0.25 40d Stale red hide noise filter, V6.3_ESC today green</div>
-      <div>• seed_clients.py --file data/seed/clients.json - inserts via PUT /anchor/{client}/{project_ref} - idempotent</div>
-      <div>• seed_cards.py --file data/seed/cards.json - inserts via PUT /card/{client}/{anchor_id}/{card_id}</div>
-      <div>• Multi-multi O-5030460 <-> 006Uj... preserved - validation_prompt Relevant? Yes/No/Edit - same SharePoint geadinspf</div>
+    <h3 style="margin:0 0 8px">Doc Cards - V6.3_ESC - O-5030460 linked to 006Uj... - clarification</h3>
+    <div style="font-size:12px;background:#fffbe6;padding:8px;border-radius:6px;margin-bottom:8px;border:1px solid #ffe58f">
+      <b>You're right - V6.3_ESC is NOT laptop RAID log - it's doc card from file name PS-v2026.2a-GE-Aero-(O-5030460)-V6.3_ESC</b><br>
+      • Laptop 50%->100% [Row12+Row18] = timeline card from Excel - significance 0.9 EXTENSION - Week 33 - Row12+Row18 multi-row hash - 2d ago green<br>
+      • V6.3_ESC = doc card from SharePoint / file name - contains O-5030460 business # - linked to same anchor GEAERO-DIP-DISCOVERY - separate from timeline - shows provenance<br>
+      • Both linked to same anchor via opportunity_numbers [O-5030460] + connected_record_ids [006Uj00000QOBkvIAH] + sharepoint_smps [geadinspf] + gdp_ids [8399]
+    </div>
+    <div id="docCards"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px">Test - Data as Code - v0.8.1 CORS fix</h3>
+    <div style="font-size:11px;line-height:1.6">
+      <div>• Fixed: CORSMiddleware allow_origins * in anchor :8000 and cards :8001 - PWA :8002 can now fetch - browser was blocking before - terminals curl 200 ok but browser fetch TypeError Load failed</div>
+      <div>• clients.json - 3 clients - GE Aero PRIMARY FILTER dropdown NOT editable</div>
+      <div>• cards.json - 3 cards - Week33 0.9 2d ago green show, Week32 0.25 40d Stale red hide, V6.3_ESC doc today green - Doc vs Timeline separated</div>
+      <div>• Open DevTools Console (F12) to see fetch logs - should show 200 ok now after restart with CORS fix</div>
     </div>
   </div>
 </div>
 
 <script>
-function toggleCollapse() {
-  const el = document.getElementById('collapsible');
-  el.classList.toggle('collapsed');
-}
+function toggleCollapse(){document.getElementById('collapsible').classList.toggle('collapsed')}
 
-async function loadAnchors() {
-  const client = document.getElementById('clientSelect').value;
-  try {
-    const res = await fetch(`http://localhost:8000/anchors/${encodeURIComponent(client)}`);
-    const data = await res.json();
-    document.getElementById('anchorInfo').textContent = JSON.stringify(data, null, 2);
-    document.getElementById('clientBadge').textContent = client;
-    // Update anchor select
-    const sel = document.getElementById('anchorSelect');
-    sel.innerHTML = '';
-    data.anchors.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.anchor_id;
-      opt.textContent = `${a.project_ref_name} - ${a.anchor_id} - O:${a.opportunity_numbers.join(',')} / 006Uj:${a.connected_record_ids[0]?.slice(0,8)}...`;
+async function loadAnchors(){
+  const client=document.getElementById('clientSelect').value;
+  try{
+    const res=await fetch(`http://localhost:8000/anchors/${encodeURIComponent(client)}`);
+    const data=await res.json();
+    document.getElementById('anchorInfo').textContent=JSON.stringify(data,null,2);
+    document.getElementById('clientBadge').textContent=client;
+    const sel=document.getElementById('anchorSelect');
+    sel.innerHTML='';
+    data.anchors.forEach(a=>{
+      const opt=document.createElement('option');
+      opt.value=a.anchor_id;
+      opt.textContent=`${a.project_ref_name} - ${a.anchor_id} - O:${a.opportunity_numbers.join(',')}`;
       sel.appendChild(opt);
     });
-    if (data.anchors[0]) {
-      document.getElementById('anchorBadge').textContent = data.anchors[0].anchor_id;
-      document.getElementById('oppBadge').textContent = data.anchors[0].opportunity_numbers[0] || 'O-5030460';
-      document.getElementById('connBadge').textContent = data.anchors[0].connected_record_ids[0] || '006Uj...';
+    if(data.anchors[0]){
+      document.getElementById('anchorBadge').textContent=data.anchors[0].anchor_id;
+      document.getElementById('oppBadge').textContent=data.anchors[0].opportunity_numbers[0]||'O-5030460';
+      document.getElementById('connBadge').textContent=data.anchors[0].connected_record_ids[0]||'006Uj...';
     }
     loadCards();
-  } catch (e) {
-    document.getElementById('anchorInfo').textContent = 'Error - is :8000 running? ' + e + '\nStart: python modules/platform-anchor/service.py';
+  }catch(e){
+    document.getElementById('anchorInfo').textContent='Error - is :8000 running with CORS fix? ' + e + '\nRestart: python modules/platform-anchor/service.py - should show CORSMiddleware allow_origins *';
+    console.error('Anchor fetch error', e);
   }
 }
 
-async function loadCards() {
-  const client = document.getElementById('clientSelect').value;
-  const anchor = document.getElementById('anchorSelect').value || 'GEAERO-DIP-DISCOVERY';
-  try {
-    const res = await fetch(`http://localhost:8001/cards/${encodeURIComponent(client)}/${encodeURIComponent(anchor)}`);
-    const data = await res.json();
-    document.getElementById('cardsInfo').textContent = JSON.stringify(data, null, 2);
-    
-    const timelineRes = await fetch(`http://localhost:8001/cards/${encodeURIComponent(client)}/${encodeURIComponent(anchor)}/timeline`);
-    const timelineData = await timelineRes.json();
-    
-    const strip = document.getElementById('timelineStrip');
-    strip.innerHTML = '';
-    timelineData.timeline.forEach(card => {
-      const div = document.createElement('div');
-      div.className = 'timeline-item ' + (card.significance_score >= 0.9 ? 'high' : '');
-      div.innerHTML = `
-        <div style="font-weight:600;">${card.title}</div>
-        <div style="font-size:12px; margin:4px 0;"><span class="sig ${card.significance_score>=0.9?'sig-high':''}">${card.significance_score} ${card.significance_score>=0.9?'EXTENSION':'CHASING'}</span> ${card.week||''}</div>
-        <div class="row-hash">${card.source_rows.join('+')} - multi-row hash</div>
-        <div style="font-size:12px; margin-top:6px;"><span class="fresh-dot ${card.freshness.color==='green'?'fresh-green':'fresh-red'}"></span>${card.freshness.label} ${card.freshness.color} - ${card.anchor_id}</div>
-        <div style="font-size:11px; margin-top:4px; font-family:monospace;">O:${card.opportunity_numbers[0]} / ${card.connected_record_ids[0]?.slice(0,12)}...</div>
-      `;
+async function loadCards(){
+  const client=document.getElementById('clientSelect').value;
+  const anchor=document.getElementById('anchorSelect').value||'GEAERO-DIP-DISCOVERY';
+  try{
+    const res=await fetch(`http://localhost:8001/cards/${encodeURIComponent(client)}/${encodeURIComponent(anchor)}`);
+    const data=await res.json();
+    document.getElementById('cardsInfo').textContent=JSON.stringify(data,null,2);
+    const timelineRes=await fetch(`http://localhost:8001/cards/${encodeURIComponent(client)}/${encodeURIComponent(anchor)}/timeline`);
+    const timelineData=await timelineRes.json();
+    const strip=document.getElementById('timelineStrip');
+    strip.innerHTML='';
+    timelineData.timeline.forEach(card=>{
+      const div=document.createElement('div');
+      div.className='timeline-item ' + (card.significance_score>=0.9?'high':'');
+      div.innerHTML=`<div style="font-weight:600">${card.title}</div><div style="font-size:12px;margin:4px 0"><span class="sig ${card.significance_score>=0.9?'sig-high':''}">${card.significance_score} ${card.significance_score>=0.9?'EXTENSION':'CHASING'}</span> ${card.week||''}</div><div class="row-hash">${card.source_rows.join('+')} - multi-row hash</div><div style="font-size:12px;margin-top:6px"><span class="fresh-dot ${card.freshness.color==='green'?'fresh-green':'fresh-red'}"></span>${card.freshness.label} ${card.freshness.color} - ${card.anchor_id}</div><div style="font-size:11px;margin-top:4px;font-family:monospace">O:${card.opportunity_numbers[0]} / ${card.connected_record_ids[0]?.slice(0,12)}...</div>`;
       strip.appendChild(div);
     });
-    
-    // Doc cards
-    const docDiv = document.getElementById('docCards');
-    docDiv.innerHTML = '';
-    data.cards.filter(c => c.card_type === 'doc').forEach(card => {
-      const d = document.createElement('div');
-      d.style.cssText = 'padding:8px; border:1px solid #e0e8f0; border-radius:8px; margin-bottom:8px; background:#fafcff;';
-      d.innerHTML = `<b>${card.title}</b> - ${card.freshness.label} <span style="color:${card.freshness.color==='green'?'green':'red'}">${card.freshness.color}</span> - O:${card.opportunity_numbers[0]} - 006Uj:${card.connected_record_ids[0]?.slice(0,8)}...`;
+    const docDiv=document.getElementById('docCards');
+    docDiv.innerHTML='';
+    data.cards.filter(c=>c.card_type==='doc').forEach(card=>{
+      const d=document.createElement('div');
+      d.style.cssText='padding:8px;border:1px solid #e0e8f0;border-radius:8px;margin-bottom:8px;background:#fafcff;font-size:12px';
+      d.innerHTML=`<b>${card.title}</b> - doc card from file PS-v2026.2a-GE-Aero-(${card.opportunity_numbers[0]})-V6.3_ESC - NOT laptop RAID - separate provenance - <span style="color:${card.freshness.color==='green'?'green':'red'}">${card.freshness.label} ${card.freshness.color}</span> - O:${card.opportunity_numbers[0]} - 006Uj:${card.connected_record_ids[0]?.slice(0,8)}... - sharepoint ${card.sharepoint_smp} gdp ${card.gdp_id}`;
       docDiv.appendChild(d);
     });
-    
-    if (data.cards[0]) {
-      document.getElementById('freshBadge').textContent = data.cards[0].freshness.label;
-    }
-    
-  } catch (e) {
-    document.getElementById('cardsInfo').textContent = 'Error - is :8001 running? ' + e + '\nStart: python modules/domain-cards-store/service.py';
+    if(data.cards[0]) document.getElementById('freshBadge').textContent=data.cards[0].freshness.label;
+  }catch(e){
+    document.getElementById('cardsInfo').textContent='Error - is :8001 running with CORS fix? ' + e + '\nRestart: python modules/domain-cards-store/service.py';
+    console.error('Cards fetch error', e);
   }
 }
-
-// Initial load
 loadAnchors();
 </script>
 </body>

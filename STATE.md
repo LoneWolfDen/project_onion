@@ -1,9 +1,11 @@
-# STATE.md v0.8 PWA mint collapsible
+# STATE.md v0.9 GDP Adapter
 
-Last: v0.7.1 fix-requests-dep - tags up to v0.7.1 - anchor :8000 + cards :8001 tested - seed_clients.py + seed_cards.py OK - PRIMARY FILTER GE Aero + Rolls-Royce + ClientA + timeline Week33 0.9 green
+Last: v0.8.1 cors-fix-doc-clarify - 13 tags - PWA :8002 mint collapsible header GE Aero / GEAERO-DIP-DISCOVERY / O-5030460 / 006Uj... / 2d ago green + timeline Week33 Laptop 50%->100% [Row12+Row18] + doc V6.3_ESC clarified - CORS allow_origins * fixed - 3 terminals working 200 ok - PWA shows anchor + cards JSON
 
-Current v0.8: Experience PWA :8002 - ProjectHeader mint collapsible - pastel tokens --pastel-blue #D6E8FF --pastel-mint #D6F5E8 - header GE Aero / GEAERO-DIP-DISCOVERY / O-5030460 / 006Uj00000QOBkvIAH / 2d ago green - dropdown First Level GE Aero NOT editable from clients.json vs Second Level GE Aero DIP Discovery editable - timeline strip Week33 Laptop 50%->100% [Row12+Row18] significance 0.9 EXTENSION vs 0.25 CHASING noise filter - doc V6.3_ESC - calls :8000 + :8001
+Current v0.9: GDP Adapter :8003 - Engagement Data Export - Active exact columns - gdp_id 8399 maps to O-5030460 + 006Uj... + geadinspf + budget £129,768 PII redacted - significance_raw 0.9 EXTENSION -> cards significance_score 0.9 show vs 0.25 CHASING hide - EventBridge 6h HEAD check - full read on change - Data as Code gdp_export.json
 
-Next: v0.9 gdp-adapter + v0.10 connected-bookmarklet + v0.11 DEMO_SCRIPT
+Next: v0.10 connected-bookmarklet - captures both O-5030460 + 006Uj... from /Opportunity/006Uj.../view - dedupes V6.3_ESC - bookmarklet JS - then v0.11 DEMO_SCRIPT 3-min hackathon
 
-HDD: cat GLOBAL_BRAIN.md STATE.md README.md docs/TESTING.md docs/DATA_DICTIONARY.md
+Test 4 terminals: :8000 anchor GE Aero PRIMARY FILTER, :8001 cards GEAERO-DIP-DISCOVERY PK freshness weekly bucket, :8002 PWA mint collapsible, :8003 GDP adapter 8399 - all CORS allow_origins *
+
+HDD: cat GLOBAL_BRAIN.md STATE.md docs/TESTING.md docs/DATA_DICTIONARY.md

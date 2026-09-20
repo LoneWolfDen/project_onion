@@ -1,0 +1,796 @@
+{
+  "version": "v0.11",
+  "generated_at": "2026-09-20T11:37:51.594Z",
+  "data_dictionary_source_of_truth": "Do NOT invent fields not in user columns. See docs/RELATIONSHIP_MODEL.md",
+  "client_master": {
+    "source": "data/seed/clients.json",
+    "unique_field": "Account Name",
+    "editable": false
+  },
+  "nodes": [
+    {
+      "id": "client_master",
+      "label": "Client Master",
+      "group": "master",
+      "primary_identifiers": [
+        "Account Name"
+      ],
+      "fields": [
+        {
+          "name": "Account Name",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "Client A / GE Aero",
+          "editable": false
+        },
+        {
+          "name": "Client Domains",
+          "kind": "SECONDARY_REF",
+          "example": "allegisgroup.com, ge.com"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Account Name",
+          "condition": "EXACT",
+          "source": "Connected: Account Name"
+        }
+      ],
+      "notes": "First Level PRIMARY FILTER - dropdown from data/seed/clients.json - NOT editable - unique."
+    },
+    {
+      "id": "project_card",
+      "label": "Project Card / Anchor",
+      "group": "anchor",
+      "primary_identifiers": [
+        "project_name (short",
+        "anchor_id)",
+        "Oppurtunit_id",
+        "project_id"
+      ],
+      "fields": [
+        {
+          "name": "client_name",
+          "kind": "FOREIGN",
+          "example": "Client A"
+        },
+        {
+          "name": "project_name",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "Agentic FullMigration"
+        },
+        {
+          "name": "project_ids",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "99974052, 0000606071"
+        },
+        {
+          "name": "opportunity_ids",
+          "kind": "SECONDARY_REF",
+          "example": "O-5030460, O-5552629, O-908078"
+        },
+        {
+          "name": "connected_record_ids",
+          "kind": "SECONDARY_REF",
+          "example": "006Uj00000QOBkvIAH, 007Pk00000QOA787DBC"
+        },
+        {
+          "name": "gdp_id",
+          "kind": "SECONDARY_REF",
+          "example": "8399 / 0000002121"
+        },
+        {
+          "name": "sharepoint_urls[]",
+          "kind": "SECONDARY_REF",
+          "example": "Risk_Log.xlsx URL,Collaboration Plan, Service Reports, ESC, Value Framework"
+        },
+        {
+          "name": "teams_channels[]",
+          "kind": "SECONDARY_REF",
+          "example": "Pre-sales, Delivery - Channel URLs"
+        },
+        {
+          "name": "contacts[]",
+          "kind": "SECONDARY_REF",
+          "example": "from collaboration*.docx + scan"
+        },
+        {
+          "name": "start_date / end_date",
+          "kind": "SECONDARY_REF",
+          "example": "01/02/2024 - 01/09/2027"
+        },
+        {
+          "name": "keywords: SoW, PO, Contract",
+          "kind": "SECONDARY_REF",
+          "example": "SoW-2024-001, PO-88921"
+        },
+        {
+          "name": "Project_ReferenceID",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "UniqueID to refer each project Card/Anchor - systems Auto generated when user adds a new project under an Account Name. This helps to uniquely identify a project in the scenarios where a Project Card/Anchor will have multiple - Project IDs, Opportunity IDs, connected_record_ids, GDP IDs"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "project_id",
+          "condition": "EXACT",
+          "source": "Anchor"
+        },
+        {
+          "key": "opportunity_id",
+          "condition": "EXACT",
+          "source": "Anchor O-xxxxx"
+        },
+        {
+          "key": "project_name_tokens",
+          "condition": "TOKEN_OVERLAP",
+          "source": "Project name split"
+        },
+        {
+          "key": "client_email_domains",
+          "condition": "DOMAIN",
+          "source": "Client Master"
+        },
+        {
+          "key": "gdp_id",
+          "condition": "EXACT",
+          "source": "GDP URL"
+        },
+        {
+          "key": "SoW / PO / Contract",
+          "condition": "CONTAINS",
+          "source": "Anchor free but typed"
+        },
+        {
+          "key": "connected_url",
+          "condition": "URL_CONTAINS",
+          "source": "006... ID in URL"
+        }
+      ],
+      "notes": "Second level. Anchor_id = short project name only. Already filtered by client dropdown visible. Holds all refs."
+    },
+    {
+      "id": "sp_comm_plan",
+      "label": "SP: Collaboration Plan",
+      "group": "sharepoint",
+      "primary_identifiers": [
+        "SharePoint URL (docx)"
+      ],
+      "fields": [
+        {
+          "name": "Library = Communications",
+          "kind": "SECONDARY_REF",
+          "example": "Communications"
+        },
+        {
+          "name": "Usage = Collaboration Plan",
+          "kind": "SECONDARY_REF",
+          "example": "Collaboration_Plan.docx"
+        },
+        {
+          "name": "contacts[] (parsed)",
+          "kind": "SECONDARY_REF",
+          "example": "Client + Internal from docx"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "SharePoint URL",
+          "condition": "URL_CONTAINS",
+          "source": "User provides URL"
+        }
+      ],
+      "notes": "Path pattern: .../Communications/Collaboration_Plan.docx",
+      "sharepointUrl": "https://allegiscloud.sharepoint.com/:w:/r/teams/TEK-UKDelivery/awsProjA/Communications/Collaboration_Plan.docx"
+    },
+    {
+      "id": "sp_risk_log",
+      "label": "SP: Risk Log (.xlsx)",
+      "group": "sharepoint",
+      "primary_identifiers": [
+        "SharePoint URL to .xlsx",
+        "Sheet names: RAID, RAID Log, Log, RISK Log"
+      ],
+      "fields": [
+        {
+          "name": "Date Raised",
+          "kind": "SECONDARY_REF",
+          "example": "2026-03-14"
+        },
+        {
+          "name": "RAID Type",
+          "kind": "SECONDARY_REF",
+          "example": "Risk, Issue, Dependency, Action..."
+        },
+        {
+          "name": "Description",
+          "kind": "SECONDARY_REF",
+          "example": "Actual issue summarised"
+        },
+        {
+          "name": "State/Comments/Mitigation",
+          "kind": "SECONDARY_REF",
+          "example": "multi-line updates until closed"
+        },
+        {
+          "name": "Assigned To",
+          "kind": "SECONDARY_REF",
+          "example": "free text client/vendor"
+        },
+        {
+          "name": "Status",
+          "kind": "SECONDARY_REF",
+          "example": "Open/In Progress/Closed"
+        },
+        {
+          "name": "Priority/Impact (T3)",
+          "kind": "SECONDARY_REF",
+          "example": "High/Low/Medium/Critical"
+        },
+        {
+          "name": "Due Date / Closed Date",
+          "kind": "SECONDARY_REF",
+          "example": "Target date"
+        },
+        {
+          "name": "Type (T3)",
+          "kind": "SECONDARY_REF",
+          "example": "External/Internal"
+        },
+        {
+          "name": "Knowledge Area / Category / Source (T3)",
+          "kind": "SECONDARY_REF",
+          "example": "Project management..."
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Sharepoint URL (instead of name)",
+          "condition": "CONTAINS",
+          "source": "RAID, RAID Log, Log, RISK Log"
+        },
+        {
+          "key": "RAID Type detection",
+          "condition": "CONTAINS",
+          "source": "Column header mapping, not free text"
+        }
+      ],
+      "notes": "3 templates varying. Hackathon: accept excel upload OR SharePoint URL config. Show detected columns demo. Row = one item, multi-line mitigation.",
+      "sharepointUrl": "https://allegiscloud.sharepoint.com/:x:/r/teams/TEK-UKDelivery/awsProjA/Planning%20Documents/Risk_Log_ProServe__AgenticDevelopment.xlsx"
+    },
+    {
+      "id": "sp_esc",
+      "label": "SP: ESC (.xlsm)",
+      "group": "sharepoint",
+      "primary_identifiers": [
+        "SharePoint URL to .xlsm"
+      ],
+      "fields": [
+        {
+          "name": "Opportunity ID in filename",
+          "kind": "SECONDARY_REF",
+          "example": "O-5552629 from PS-v2026.4..._ESC.xlsm"
+        },
+        {
+          "name": "Project ID / Engagement",
+          "kind": "SECONDARY_REF",
+          "example": "Mapped via Anchor"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Opportunity ID from filename",
+          "condition": "CONTAINS",
+          "source": "Filename parsing"
+        }
+      ],
+      "notes": "Planning Documents / ESC. Provides Opp ID + SoW ref.",
+      "sharepointUrl": "https://allegiscloud.sharepoint.com/:x:/r/teams/TEK-UKDelivery/awsProjA/Planning%20Documents/PS-v2026.4-AWProServe%20Agentic%20Development%20(O-5552629)_ESC.xlsm"
+    },
+    {
+      "id": "gdp_dash",
+      "label": "GDP Dashboard URL",
+      "group": "gdp",
+      "primary_identifiers": [
+        "GDP ID parsed from URL"
+      ],
+      "fields": [
+        {
+          "name": "GDP URL",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189"
+        },
+        {
+          "name": "GDP ID",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "8399 / 00009764"
+        },
+        {
+          "name": "Project ID",
+          "kind": "SECONDARY_REF",
+          "example": "668912"
+        },
+        {
+          "name": "Current Phase / Status Indicator",
+          "kind": "SECONDARY_REF",
+          "example": "Startup/Execution/Closeout, Green/Yellow/Red"
+        },
+        {
+          "name": "Start/End Date (mutable)",
+          "kind": "SECONDARY_REF",
+          "example": "GDP dates can shift on Extension"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "GDP ID from URL path",
+          "condition": "URL_CONTAINS",
+          "source": "/project-details/{id}"
+        }
+      ],
+      "notes": "Users give GDP URL -> we parse GDP ID. Supports multiple Project IDs & Opp IDs per same GDP on Extension.",
+      "sharepointUrl": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189"
+    },
+    {
+      "id": "gdp_excel",
+      "label": "GDP Weekly Excel (Delta)",
+      "group": "gdp",
+      "primary_identifiers": [
+        "Status Date + GDP ID"
+      ],
+      "fields": [
+        {
+          "name": "Engagement Name, Account Name, GDP ID, Project ID",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "Migrate to Migrate, Client A, 0000002121, 99974052"
+        },
+        {
+          "name": "GDD, GDM, PrgM, EM/DL, Status Date, Phase",
+          "kind": "SECONDARY_REF",
+          "example": "Bill Byron, Jane Austin..."
+        },
+        {
+          "name": "Status Indicator, Start Date, End Date, Location",
+          "kind": "SECONDARY_REF",
+          "example": "Green, 01/02/2024..."
+        },
+        {
+          "name": "Summary, Practice, BU/BSV",
+          "kind": "SECONDARY_REF",
+          "example": "Project is BAU..."
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Weekly Delta by Status Date",
+          "condition": "DATE_RANGE",
+          "source": "Status Date column"
+        }
+      ],
+      "notes": "No formula/significance. Delta downloadable per week. Use for timeline + freshness."
+    },
+    {
+      "id": "emails",
+      "label": "Emails (Outlook)",
+      "group": "comm",
+      "primary_identifiers": [
+        "MessageId + Thread normalized (Re/Fw stripped)"
+      ],
+      "fields": [
+        {
+          "name": "Project ID / Opp ID / GDP ID in subject/body",
+          "kind": "SECONDARY_REF",
+          "example": "Tokens"
+        },
+        {
+          "name": "client email domain",
+          "kind": "SECONDARY_REF",
+          "example": "Domain match and also contacts on Project details window(collabsable card at the top which shows all details like project ids etc, contacts etc., all details gathered across fields"
+        },
+        {
+          "name": "contacts mapped",
+          "kind": "SECONDARY_REF",
+          "example": "From Anchor + collaboration docx"
+        },
+        {
+          "name": "SoW / PO / Contract",
+          "kind": "SECONDARY_REF",
+          "example": "Contract numbers"
+        },
+        {
+          "name": "Date range = Anchor start-end + GDP mutable",
+          "kind": "SECONDARY_REF",
+          "example": "Filter"
+        },
+        {
+          "name": "PII screened flag",
+          "kind": "SECONDARY_REF",
+          "example": "Jane likes coffee -> filtered, keep names/emails"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Project ID tokens",
+          "condition": "CONTAINS",
+          "source": "Subject/body"
+        },
+        {
+          "key": "Opportunity ID O-xxxx",
+          "condition": "CONTAINS",
+          "source": "Subject/body"
+        },
+        {
+          "key": "Client domain",
+          "condition": "DOMAIN",
+          "source": "From/To domains"
+        },
+        {
+          "key": "Project name tokens",
+          "condition": "TOKEN_OVERLAP",
+          "source": "Name split"
+        },
+        {
+          "key": "Re/Fw stripped for thread",
+          "condition": "EXACT",
+          "source": "Thread grouping"
+        },
+        {
+          "key": "Delta scan: last_scanned_date",
+          "condition": "DATE_RANGE",
+          "source": "Scan checkpoint"
+        }
+      ],
+      "notes": "Outlook Graph preferred. Noise high -> filter aggressively. PII: AWS Comprehend, exclude project data."
+    },
+    {
+      "id": "teams_chats",
+      "label": "Teams Chats / Channels",
+      "group": "comm",
+      "primary_identifiers": [
+        "Channel ID + Message ID"
+      ],
+      "fields": [
+        {
+          "name": "Dedicated channels (user provided)",
+          "kind": "SECONDARY_REF",
+          "example": "Pre-sales, Delivery, Closeout"
+        },
+        {
+          "name": "Project keywords: ID, name tokens, Opp ID",
+          "kind": "SECONDARY_REF",
+          "example": "Same as emails"
+        },
+        {
+          "name": "Client email domains",
+          "kind": "SECONDARY_REF",
+          "example": "Participant filter"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Channel allowlist",
+          "condition": "EXACT",
+          "source": "User config"
+        },
+        {
+          "key": "Project tokens in message",
+          "condition": "TOKEN_OVERLAP",
+          "source": "Content"
+        }
+      ],
+      "notes": "Allow users to provide dedicated channels. Multiple projects same client -> need keywords."
+    },
+    {
+      "id": "teams_vtt",
+      "label": "Teams VTTs (Transcripts)",
+      "group": "comm",
+      "primary_identifiers": [
+        "Meeting ID + VTT timestamp"
+      ],
+      "fields": [
+        {
+          "name": "VTT text",
+          "kind": "SECONDARY_REF",
+          "example": "Transcript chunks"
+        },
+        {
+          "name": "Attendees -> contacts overlap",
+          "kind": "SECONDARY_REF",
+          "example": "Email domains + contacts"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Attendee email domain match",
+          "condition": "DOMAIN",
+          "source": "Meeting participants"
+        },
+        {
+          "key": "Project ID / Opp ID spoken",
+          "condition": "CONTAINS",
+          "source": "Transcript search"
+        }
+      ],
+      "notes": "Video Text Transcripts. Few channels. Use keywords + contacts + dates."
+    },
+    {
+      "id": "connected",
+      "label": "Connected Chatter (Opp)",
+      "group": "connected",
+      "primary_identifiers": [
+        "Opportunity ID O-986754 + Chatter ID"
+      ],
+      "fields": [
+        {
+          "name": "Opportunity ID = all related",
+          "kind": "PRIMARY_UNIQUE",
+          "example": "O-986754"
+        },
+        {
+          "name": "Free text chatter",
+          "kind": "SECONDARY_REF",
+          "example": "Anything posted on linked Opp record(s)"
+        },
+        {
+          "name": "Related IDs in Anchor updates",
+          "kind": "SECONDARY_REF",
+          "example": "Project IDs, GDP IDs"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Opportunity ID",
+          "condition": "EXACT",
+          "source": "Record context - no extra filter needed"
+        },
+        {
+          "key": "Related IDs extraction",
+          "condition": "CONTAINS",
+          "source": "Anchor section free text parsing"
+        }
+      ],
+      "notes": "Free text, no format. All posts on Opp record are relevant to that Opp ID."
+    },
+    {
+      "id": "raid_agg",
+      "label": "RAID Aggregated Cards",
+      "group": "anchor",
+      "primary_identifiers": [
+        "Card ID = hash(sources + description_norm)"
+      ],
+      "fields": [
+        {
+          "name": "Aggregated from 5 sources",
+          "kind": "SECONDARY_REF",
+          "example": "SP Risk Log + GDP + Emails + Teams + Connected"
+        },
+        {
+          "name": "LLM assessed, not static format",
+          "kind": "SECONDARY_REF",
+          "example": "Multiple cards if multiple line items"
+        },
+        {
+          "name": "Sources linked (multi-row hash)",
+          "kind": "SECONDARY_REF",
+          "example": "Which rows contributed"
+        },
+        {
+          "name": "Noise filter flag",
+          "kind": "SECONDARY_REF",
+          "example": "Low for GDP/SP, High for Email/Teams/Chatter"
+        },
+        {
+          "name": "Freshness = card refreshed at",
+          "kind": "SECONDARY_REF",
+          "example": "Aggregated level timestamp"
+        }
+      ],
+      "filter_keywords": [
+        {
+          "key": "Source lineage",
+          "condition": "EXACT",
+          "source": "Traceability"
+        },
+        {
+          "key": "Dedup hash",
+          "condition": "EXACT",
+          "source": "Description normalized"
+        }
+      ],
+      "notes": "Laptop example: dont aggregate complex items. Show cards, not complicated join. Freshness indicator per card."
+    }
+  ],
+  "edges": [
+    {
+      "from": "client_master",
+      "to": "project_card",
+      "field": "Account Name -> client_name",
+      "condition": "EXACT",
+      "label": "filters",
+      "description": "Client Master is primary dropdown. Filters project cards. No edit."
+    },
+    {
+      "from": "project_card",
+      "to": "sp_comm_plan",
+      "field": "sharepoint_urls[] contains docx URL",
+      "condition": "URL_CONTAINS",
+      "label": "provides URL",
+      "description": "User configures SP URLs in Project Card. Collaboration_Plan.docx -> contacts."
+    },
+    {
+      "from": "project_card",
+      "to": "sp_risk_log",
+      "field": "sharepoint_urls[] contains .xlsx URL",
+      "condition": "URL_CONTAINS",
+      "label": "provides URL",
+      "description": "RAID Log SharePoint URL to .xlsx. 3 templates, sheets RAID/Log/RISK Log."
+    },
+    {
+      "from": "project_card",
+      "to": "sp_esc",
+      "field": "sharepoint_urls[] + filename O-xxxxx",
+      "condition": "CONTAINS",
+      "label": "provides URL + parses Opp",
+      "description": "ESC .xlsm filename contains Opportunity ID O-5552629."
+    },
+    {
+      "from": "project_card",
+      "to": "gdp_dash",
+      "field": "gdp_id parsed from GDP URL",
+      "condition": "URL_CONTAINS",
+      "label": "GDP ID from URL",
+      "description": "User gives GDP URL https://gdp.../project-details/7189 -> parse 7189/8399."
+    },
+    {
+      "from": "project_card",
+      "to": "gdp_excel",
+      "field": "project_id + start/end dates",
+      "condition": "EXACT",
+      "label": "Project ID + dates",
+      "description": "GDP Excel: Engagement Name, GDP ID, Project ID mapping. Dates mutable."
+    },
+    {
+      "from": "project_card",
+      "to": "emails",
+      "field": "project_id, Opp IDs, client domains, SoW/PO/Contract, keywords, start-end",
+      "condition": "CONTAINS",
+      "label": "filter: IDs + domain + tokens + dates",
+      "description": "Limit sources: Project IDs, client domains, contacts, keywords, SoW/PO/Contract, start/end. Delta scan."
+    },
+    {
+      "from": "project_card",
+      "to": "teams_chats",
+      "field": "teams_channels[] + project tokens",
+      "condition": "TOKEN_OVERLAP",
+      "label": "channels + keywords",
+      "description": "Dedicated channels + project ID, name tokens, Opp ID."
+    },
+    {
+      "from": "project_card",
+      "to": "teams_vtt",
+      "field": "contacts + project tokens + dates",
+      "condition": "DOMAIN",
+      "label": "attendees + keywords",
+      "description": "VTTs: combination of keywords, project ID, linked client email ids."
+    },
+    {
+      "from": "project_card",
+      "to": "connected",
+      "field": "opportunity_ids[] + connected_record_ids",
+      "condition": "EXACT",
+      "label": "Opp IDs linkage",
+      "description": "Chatter free text, all posts on Opp record related to O-986754. Also parse related IDs from Anchor updates."
+    },
+    {
+      "from": "sp_risk_log",
+      "to": "raid_agg",
+      "field": "Date Raised, RAID Type, Description, Mitigation",
+      "condition": "CONTAINS",
+      "label": "RAID source",
+      "description": "Primary structured RAID. One row = one item, multi-line updates."
+    },
+    {
+      "from": "gdp_excel",
+      "to": "raid_agg",
+      "field": "Summary + Status Indicator + Phase",
+      "condition": "TOKEN_OVERLAP",
+      "label": "summary risks",
+      "description": "GDP Summary may contain risks/issues. Low noise, event driven."
+    },
+    {
+      "from": "emails",
+      "to": "raid_agg",
+      "field": "Subject/body contains Risk/Issue tokens",
+      "condition": "CONTAINS",
+      "label": "noisy signals",
+      "description": "High noise. Filter + PII screen (personal likes/hotel). Exclude Re/Fw for threads."
+    },
+    {
+      "from": "teams_chats",
+      "to": "raid_agg",
+      "field": "Project keywords + channel",
+      "condition": "TOKEN_OVERLAP",
+      "label": "chat signals",
+      "description": "Noise primary on Teams. Use channel allowlist + keywords."
+    },
+    {
+      "from": "connected",
+      "to": "raid_agg",
+      "field": "Opportunity ID context",
+      "condition": "EXACT",
+      "label": "chatter signals",
+      "description": "Free text chatter, all related to Opp ID. Noise filter."
+    },
+    {
+      "from": "sp_comm_plan",
+      "to": "project_card",
+      "field": "contacts[] from docx",
+      "condition": "EXACT",
+      "label": "feeds contacts",
+      "description": "Collaboration Plan docx parsed for contacts, user marks relevant/not."
+    },
+    {
+      "from": "gdp_dash",
+      "to": "project_card",
+      "field": "Start/End dates + same GDP multi Opp IDs",
+      "condition": "DATE_RANGE",
+      "label": "dates mutable",
+      "description": "Extension & Expansion: new O-908078 but same GDP. Dates change over time."
+    }
+  ],
+  "reusable_config_pattern": {
+    "primary_identifiers": [
+      "Account Name",
+      "project_name",
+      "project_id",
+      "GDP ID from URL path",
+      "Opportunity ID O-xxxxx"
+    ],
+    "secondary_identifiers": [
+      "connected_record_ids",
+      "sharepoint_urls",
+      "teams_channels",
+      "contacts[]"
+    ],
+    "filter_keywords_typed": {
+      "EXACT": [
+        "Account Name",
+        "Project ID",
+        "Opportunity ID",
+        "GDP ID",
+        "Thread normalized"
+      ],
+      "CONTAINS": [
+        "Project name tokens in subject/body",
+        "SoW/PO/Contract numbers",
+        "RAID Type detection"
+      ],
+      "DOMAIN": [
+        "client email domains from Client Master",
+        "attendee domains in VTT"
+      ],
+      "DATE_RANGE": [
+        "Anchor start/end",
+        "GDP mutable dates",
+        "last_scanned_date delta"
+      ],
+      "TOKEN_OVERLAP": [
+        "Project name split tokens vs email/Teams/chatter"
+      ],
+      "URL_CONTAINS": [
+        "GDP /project-details/{id}",
+        "SharePoint file URLs",
+        "Connected record ID in URL"
+      ]
+    },
+    "conditions_no_free_text": "Use typed enum, not free text. Each edge has condition + field + description."
+  },
+  "anti_hallucination": {
+    "rules": [
+      "DATA_DICTIONARY is source of truth - only fields provided by user in columns.",
+      "Do NOT invent GDP significance formula - user said no formula.",
+      "Keep decision log in docs/DECISION_LOG.md",
+      "Keep GLOBAL_BRAIN.md for context, not field invention.",
+      "Template1/2/3 columns are authoritative for SP Risk Log."
+    ]
+  }
+}

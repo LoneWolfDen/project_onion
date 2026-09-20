@@ -1,7 +1,7 @@
 {
   "version": "v0.11",
-  "generated_at": "2026-09-20T11:37:51.594Z",
-  "data_dictionary_source_of_truth": "Do NOT invent fields not in user columns. See docs/RELATIONSHIP_MODEL.md",
+  "generated_at": "2026-09-20T12:15:00.000Z",
+  "data_dictionary_source_of_truth": "Do NOT invent fields not in user columns. See docs/RELATIONSHIP_MODEL.md - fixed project_card fields restore + SoW Number via admin :8005",
   "client_master": {
     "source": "data/seed/clients.json",
     "unique_field": "Account Name",
@@ -107,6 +107,11 @@
           "name": "Project_ReferenceID",
           "kind": "PRIMARY_UNIQUE",
           "example": "UniqueID to refer each project Card/Anchor - systems Auto generated when user adds a new project under an Account Name. This helps to uniquely identify a project in the scenarios where a Project Card/Anchor will have multiple - Project IDs, Opportunity IDs, connected_record_ids, GDP IDs"
+        },
+        {
+          "name": "SoW Number",
+          "kind": "SECONDARY_REF",
+          "example": "SoW-2024-001 - added via admin :8005 PUT /node/project_card"
         }
       ],
       "filter_keywords": [
@@ -658,14 +663,6 @@
     },
     {
       "from": "project_card",
-      "to": "teams_chats",
-      "field": "teams_channels[] + project tokens",
-      "condition": "TOKEN_OVERLAP",
-      "label": "channels + keywords",
-      "description": "Dedicated channels + project ID, name tokens, Opp ID."
-    },
-    {
-      "from": "project_card",
       "to": "teams_vtt",
       "field": "contacts + project tokens + dates",
       "condition": "DOMAIN",
@@ -735,6 +732,14 @@
       "condition": "DATE_RANGE",
       "label": "dates mutable",
       "description": "Extension & Expansion: new O-908078 but same GDP. Dates change over time."
+    },
+    {
+      "from": "project_card",
+      "to": "teams_chats",
+      "field": "teams_channels[] + SoW number + project_id + client domains + project tokens",
+      "condition": "CONTAINS",
+      "label": "SoW + channel + IDs + domain + tokens + dates",
+      "description": "Filter Teams by SoW number + channel allowlist + Project IDs + client domains + keywords + start-end dates - admin upsert via PUT /edge - typed CONTAINS - no free text - limit sources"
     }
   ],
   "reusable_config_pattern": {

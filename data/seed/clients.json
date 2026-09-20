@@ -1,38 +1,75 @@
 [
   {
-    "client_id": "C-001",
-    "client_name": "GE Aero",
-    "client_code": "GEAERO",
-    "connected_names": ["Ge Aviation Uk", "GE Aviation", "GE", "GE Aerospace"],
-    "opportunity_example": "O-5030460",
+    "client_name": "Acme Corp",
     "connected_example": "006Uj00000QOBkvIAH",
+    "opportunity_example": "OPP-8891",
+    "project_id_example": "PO-12345",
     "gdp_example": "8399",
-    "sharepoint_example": "geadinspf",
-    "is_active": true,
-    "notes": "PRIMARY FILTER dropdown NOT editable — First Level — from Client Master"
+    "gdp_url": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399",
+    "project_refs": [
+      "Apollo-123",
+      "Apollo-124"
+    ],
+    "service_review_url": "https://acme.sharepoint.com/sites/Acme-Projects/Apollo/ServiceReview",
+    "collab_plan_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Communications/Collaboration_Plan.docx",
+    "risk_log_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/Risk_Log_Apollo.xlsx?e=abc123&csf=1&web=1",
+    "esc_url": "https://acme.sharepoint.com/teams/Acme-Projects/Shared Documents/Planning Documents/ESC_Apollo.xlsm",
+    "site_url": "https://acme.sharepoint.com/teams/Acme-Projects/Apollo",
+    "teams_channels": [
+      "Apollo-123 Budget",
+      "Apollo Budget Group"
+    ],
+    "contacts": [
+      "J.Smith@acme.com",
+      "Sarah@acme.com",
+      "A.Kumar@acme.com",
+      "R.Patel@acme.com"
+    ],
+    "client_domains": [
+      "acme.com"
+    ],
+    "sow_numbers": [
+      "SOW_Acme_Apollo.pdf"
+    ],
+    "po_numbers": [
+      "PO-12345",
+      "PO-6789"
+    ],
+    "start_date": "2024-01-02",
+    "end_date": "2027-11-30"
   },
   {
-    "client_id": "C-002",
-    "client_name": "Rolls-Royce",
-    "client_code": "ROLLS",
-    "connected_names": ["Rolls-Royce Plc", "RR", "Rolls Royce"],
-    "opportunity_example": "O-5030461",
-    "connected_example": "006Uj00000QOBkvIAJ",
-    "gdp_example": "8400",
-    "sharepoint_example": "rrdiscovery",
-    "is_active": true,
-    "notes": "Example additional client — insert via PUT /anchor/Rolls-Royce/RR Discovery"
-  },
-  {
-    "client_id": "C-003",
-    "client_name": "ClientA",
-    "client_code": "CLIENTA",
-    "connected_names": ["Client A Ltd", "ClientA"],
-    "opportunity_example": "O-5030462",
-    "connected_example": "006Uj00000QOBkvIAK",
-    "gdp_example": "8401",
-    "sharepoint_example": "clienta",
-    "is_active": true,
-    "notes": "Template client for testing PRIMARY FILTER"
+    "client_name": "GE Aero",
+    "connected_example": "006Uj00000QOBkvIAH",
+    "opportunity_example": "O-5030460",
+    "project_id_example": "99974052",
+    "gdp_example": "8399",
+    "gdp_url": "https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/8399",
+    "project_refs": [
+      "GE Aero DIP Discovery"
+    ],
+    "collab_plan_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Communications/Collaboration_Plan.docx",
+    "risk_log_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/Risk_Log.xlsx?e=abc123",
+    "esc_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/Shared Documents/Planning Documents/ESC.xlsm",
+    "site_url": "https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/awsProjA",
+    "teams_channels": [
+      "Pre-sales",
+      "Delivery"
+    ],
+    "contacts": [
+      "jane@ge.com"
+    ],
+    "client_domains": [
+      "ge.com",
+      "allegisgroup.com"
+    ],
+    "sow_numbers": [
+      "SoW-2024-001"
+    ],
+    "po_numbers": [
+      "PO-88921"
+    ],
+    "start_date": "2024-01-02",
+    "end_date": "2027-01-09"
   }
 ]

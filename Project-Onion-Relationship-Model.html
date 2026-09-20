@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Onion Relationship Model v0.16</title>
+<style>
+:root{--blue:#D6E8FF;--mint:#D6F5E8;--yellow:#FFF5D6;--lav:#E8D6FF;--border:#e0e8f0;--text:#1a2b3c;--muted:#6b7280}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif}
+body{margin:0;background:#f8fafc;color:var(--text);padding:24px;line-height:1.5}
+.header{background:linear-gradient(135deg,var(--mint) 0%,var(--blue) 100%);padding:20px;border-radius:16px;border:1px solid var(--border);margin-bottom:24px}
+.card{background:white;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+.badge{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;background:white;border:1px solid var(--border);display:inline-block;margin:2px}
+.badge-client{background:var(--blue)}.badge-project{background:var(--lav)}.badge-opp{background:var(--yellow)}.badge-ref{background:#f3f4f6;color:var(--muted);font-style:italic;border-style:dashed}
+.arrow{color:var(--muted);font-weight:700}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.helper{font-size:11px;color:var(--muted);font-style:italic}
+.chip{display:inline-block;padding:4px 10px;border-radius:20px;background:var(--blue);font-size:11px;margin:2px;border:1px solid var(--border)}
+.link{color:#2563eb;text-decoration:underline;font-size:11px}
+</style></head><body>
+<div class="header">
+<h2 style="margin:0">Project Onion Relationship Model v0.16 — Provenance Actual Links</h2>
+<p style="font-size:12px;color:var(--muted);margin:4px 0 0 0">Client → Projects (sorted by creation first_seen) → Opportunities (mandatory) + Connected URL actual link → POs + Budget → Stakeholders grouped by project_names → Teams + SharePoint per artefact (actual links) → Notes + Smart Assistant My Notes/Team Shared/Both Union by client → Handover + Key Moments 1-column</p>
+<div style="margin-top:12px"><span class="badge badge-client">Acme Corp CLIENT</span><span class="arrow"> → </span><span class="badge badge-project">Apollo-123 PROJECT</span><span class="arrow"> → </span><span class="badge badge-opp">OPP-8891 OPPORTUNITY mandatory</span><span class="arrow"> → </span><span class="badge">PO-12345 PROJECT ID</span><span class="arrow"> → </span><span class="badge badge-ref">PRJ-EBACEB21126A auto corner</span></div>
+</div>
+
+<div class="grid2">
+<div class="card">
+<h3 style="margin:0 0 8px 0;font-size:14px">CLIENT Master (Primary Filter)</h3>
+<p class="helper">Account Name from Connected — NOT editable unique — dropdown from data/seed/clients.json — e.g. Acme Corp</p>
+<span class="chip">Acme Corp</span><span class="chip">GE Aero</span>
+<div style="margin-top:8px"><span class="link">Provenance: Salesforce Account — user, source url, timestamp, origin — actual link</span></div>
+</div>
+<div class="card">
+<h3 style="margin:0 0 8px 0;font-size:14px">PROJECT Name (short anchor_id) — single textbox</h3>
+<p class="helper">e.g. Apollo-123 — short id, not repeating client — PRJ auto after save next to Collapse</p>
+<span class="chip">Apollo-123</span><span class="chip">Apollo-124</span>
+<p class="helper">Sorted by creation date first_seen newest first — date added to Project Onion</p>
+</div>
+</div>
+
+<div class="grid3">
+<div class="card">
+<h4 style="margin:0;font-size:12px">Opportunity IDs [mandatory]</h4>
+<p class="helper">e.g. OPP-8891, OPP-8892 — add more — mandatory validation</p>
+<span class="chip">OPP-8891</span><span class="chip">OPP-8892</span>
+<div><span class="link">Provenance: Salesforce Opportunity — actual link https://.../Opportunity/006Uj.../view — user, timestamp</span></div>
+</div>
+<div class="card">
+<h4 style="margin:0;font-size:12px">Connected Record URLs [mandatory]</h4>
+<p class="helper">Salesforce > Opportunity > Copy link — e.g. .../Opportunity/006Uj.../view — repeatable one-line box + empty + Archive with mandatory justification</p>
+<span class="chip">006Uj00000QOBkvIAH</span><span class="chip">006Uj00000QOBxx000</span>
+<p class="helper">Backend extracts ID regex ^006[A-Za-z0-9]{15}$ — stores connected_provenance actual link</p>
+</div>
+<div class="card">
+<h4 style="margin:0;font-size:12px">Project IDs</h4>
+<p class="helper">e.g. PO-12345, 99974052 — repeatable + Archive — moves to bottom grey still stored</p>
+<span class="chip">PO-12345</span>
+</div>
+</div>
+
+<div class="grid3">
+<div class="card">
+<h4 style="margin:0;font-size:12px">Project Start/End Dates</h4>
+<p class="helper">01/02/2024 — 01/09/2027 — Anchor start/end + GDP mutable</p>
+</div>
+<div class="card">
+<h4 style="margin:0;font-size:12px">GDP URL only (no ID textbox)</h4>
+<p class="helper">GDP dashboard > project-details > Copy link — e.g. .../project-details/7189 — backend extracts ID regex /project-details/(\d+)</p>
+<span class="chip">7189 from URL</span>
+<div><span class="link">Provenance: GDP Dashboard — actual link — user, timestamp</span></div>
+</div>
+<div class="card">
+<h4 style="margin:0;font-size:12px">Contacts — Email validation — grouped by project_names</h4>
+<p class="helper">Email | Role | Name — add more — few details collapsed, expand shows all + Archive with justification mandatory — admin enable backlog</p>
+<span class="chip">J.Smith@acme.com — Approver — Apollo-123, Apollo-124 (2) — Primary</span>
+<span class="chip">Sarah@acme.com — Finance Approver — Apollo-123</span>
+<p class="helper">Grouped by project_names — shows with whom we connect more — count desc — provenance mailto link</p>
+</div>
+</div>
+
+<div class="grid2">
+<div class="card">
+<h4 style="margin:0;font-size:12px">Teams Channels — repeatable + Archive</h4>
+<p class="helper">Dedicated Pre-sales, Delivery, Closeout — add more than one — one-line box + empty + Archive</p>
+<span class="chip">Apollo-123 Budget</span><span class="chip">Apollo Budget Group</span>
+<div><span class="link">Provenance: Teams Channel — actual link — user, timestamp</span></div>
+</div>
+<div class="card">
+<h4 style="margin:0;font-size:12px">SharePoint URLs per artefact — actual links</h4>
+<p class="helper">SharePoint file url (select file in SharePoint > right-click > Copy link) — e.g. .../Collaboration_Plan.docx — cleaning ?e= ?csf=1&web=1</p>
+<div class="grid2" style="margin-top:8px">
+<div><span class="chip">Service Review Folder</span></div>
+<div><span class="chip">Collaboration Plan docx</span></div>
+<div><span class="chip">Risk Log xlsx</span></div>
+<div><span class="chip">ESC xlsm</span></div>
+<div><span class="chip">SharePoint Site</span></div>
+</div>
+<div style="margin-top:8px"><span class="link">Provenance: SharePoint — actual cleaned link — user, timestamp — link clickable</span></div>
+</div>
+</div>
+
+<div class="grid2">
+<div class="card">
+<h4 style="margin:0;font-size:12px">Filter Aid Keywords (renamed from Keywords)</h4>
+<p class="helper">Auto from Project IDs, Opp IDs, GDP ID, client, project + add more — e.g. SoW-2024-001, PO-88921</p>
+<span class="chip">SOW_Acme_Apollo.pdf</span><span class="chip">PO-12345</span>
+</div>
+<div class="card">
+<h4 style="margin:0;font-size:12px">Client Domains — auto from contacts + editable</h4>
+<span class="chip">acme.com</span><span class="chip">allegisgroup.com</span>
+</div>
+</div>
+
+<div class="card">
+<h3 style="margin:0 0 8px 0;font-size:14px">Your Notes — Portal Learning — scrap notebook</h3>
+<p class="helper">Add your notes here instead of OneNote... — collapsed small, on click expands latest at top rephrased by Copilot, cursor at top — Add update appends to same note threading — privacy Private/Team Shared — references from where info originated</p>
+<div style="background:#f9fafb;padding:10px;border-radius:10px;border:1px dashed var(--border);margin-top:8px">
+<p style="font-size:12px;margin:0"><strong>Original:</strong> Client wants MS3 extended by 2 days - finance approval pending</p>
+<p style="font-size:11px;color:var(--muted);margin:4px 0 0 0"><strong>Rephrased:</strong> MS3 extension requested by client for 2 days, pending finance approval — 2 days old</p>
+<p style="font-size:11px;margin:4px 0 0 0"><strong>Update:</strong> J.Smith asked to send MS3 draft to lazyNumbers@acmecorp.com — <span class="link">Provenance: Email — link mailto — user, timestamp</span></p>
+</div>
+</div>
+
+<div class="card">
+<h3 style="margin:0 0 8px 0;font-size:14px">Smart Assistant — Priority — My Notes / Team Shared / Both Union by client</h3>
+<div class="grid2">
+<div>
+<h4 style="font-size:12px;margin:0">My Notes</h4>
+<p class="helper">All sources including Private + Team Shared of current user — e.g. IT contact UK</p>
+</div>
+<div>
+<h4 style="font-size:12px;margin:0">Team Shared (by client, not project)</h4>
+<p class="helper">Team share by all users for the client — carries references from where info originated — excludes Private — e.g. IT contact India — when typing IT finds both UK+India — mock Claude/Copilot synthesis — future vector DB</p>
+</div>
+</div>
+<p class="helper">Both = Union — typeahead MS3 shows relevant notes formatted/rephrased — View Card #c1 jumps to central — actual links maintained</p>
+</div>
+
+<div class="card">
+<h3 style="margin:0 0 8px 0;font-size:14px">Client 360 — Acme Corp — Aggregated View</h3>
+<p class="helper">Aggregated Contacts grouped by project_names — shows with whom we connect more — count desc — Support Teams Playbooks located here — Top central breadcrumb stays but highlight client level — Back to Apollo-123</p>
+<div class="grid2" style="margin-top:8px">
+<div style="background:#f9fafb;padding:10px;border-radius:10px;border:1px solid var(--border)">
+<strong style="font-size:12px">Aggregated Contacts</strong>
+<p style="font-size:11px;margin:4px 0 0 0">J.Smith@acme.com — Approver — Apollo-123, Apollo-124 (2) — Primary</p>
+<p style="font-size:11px;margin:2px 0 0 0">Sarah@acme.com — Finance Approver — Apollo-123</p>
+<p style="font-size:11px;margin:2px 0 0 0">A.Kumar — Internal Owner — Apollo-123, Apollo-124</p>
+</div>
+<div style="background:#f9fafb;padding:10px;border-radius:10px;border:1px solid var(--border)">
+<strong style="font-size:12px">Support Teams / Playbooks</strong>
+<p style="font-size:11px;margin:4px 0 0 0">IT Helpdesk — <span class="link">How to raise laptop ticket</span></p>
+<p style="font-size:11px;margin:2px 0 0 0">Vendor Mgmt — <span class="link">How to create vendor case</span></p>
+<p style="font-size:11px;margin:2px 0 0 0">Playbooks — <span class="link">How to create ticket/case in client systems</span></p>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h3 style="margin:0 0 8px 0;font-size:14px">Key Moments — Last 5 — 1 column view + Status cards</h3>
+<p class="helper">Top 5 by impact — noise filtered — Extension/Expansion/Approval/Resource change/Stakeholder change/Risk escalation — chasing emails excluded — each card expanded will have all details and logic — FULL PROVENANCE EXPLORABLE + STRUCTURED + MODEL CONFIDENCE inside same card — provenance actual links user source url</p>
+<div style="background:#f9fafb;padding:10px;border-radius:10px;border:1px solid var(--border);margin-top:8px">
+<p style="font-size:11px;margin:0">2d ago — Extension approved: MS3 15 Nov → 30 Nov, $120k→$145k → View Card</p>
+<p style="font-size:11px;margin:4px 0 0 0">5d ago — New stakeholder: Sarah Patel joined as Approver → View Card</p>
+</div>
+</div>
+
+<div class="card" style="background:#fffbe6;border-color:#fde68a">
+<h3 style="margin:0 0 8px 0;font-size:14px">Archive — replaces Obsolete — mandatory justification — moves to bottom</h3>
+<p class="helper">Archive button next to each piece of information if user wants to make it irrelevant or stale — backend still stores value and continues to display maybe move stale items to bottom — Archive asks mandatory justification before marking — justification required — stores archived_justification, archived_at, archived_by — status archived — grey strikethrough chip with tooltip — admin can enable again if needed — backlog</p>
+</div>
+
+<div class="card">
+<h3 style="margin:0 0 8px 0;font-size:14px">Project Details Show All — Raw JSON — collapsed by default</h3>
+<p class="helper">Raw JSON used by services.py — fine keep same — collapsed by default — clean table + toggle Show raw JSON for API use — not monospaced — provenance_summary total_sources origins</p>
+</div>
+
+</body></html>

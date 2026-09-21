@@ -13,3 +13,23 @@ All provenance references are actual links: user, source url, timestamp, origin 
 All screens say Archive not Obsolete — Archive button next to each piece — mandatory justification before marking — moves to bottom archived grey still stored — admin enable backlog.
 
 ## Commands — see docs/BACKLOG_v0.16.md for full git flow
+
+
+## v0.17.1 — Edit overlay fix + restored old collar + ALL Clients + breadcrumb fix
+
+- **Edit card fix per screenshot Apollo-124:** Before Done Editing button floating in middle next to Collapse + Save Edit at bottom confusing — edit fields somewhere in middle — After fix edit card overlay right after project name — header Apollo-124 | OPP-8892 | 1 POs | 3 stakeholders | Last updated — [Edit] small red right after project name — click Edit → overlay appears right after project name header absolute top 60px full width central card rounded 16px shadow-xl border white z-10 max-h 80vh overflow-y-auto — overlay header Edit Project — Apollo-124 — X close top right — body field title italic instruction SharePoint file url (select file in SharePoint > right-click > Copy link) e.g. .../Collaboration_Plan.docx Current value chips Textbox showing existing value repeatable one-line boxes + empty box for new + [+ Add] each row Archive with mandatory justification modal moves to bottom grey Archived still stored — footer Save Edit primary blue + Cancel grey at bottom clear — Done Editing removed — no confusion — collapsed line PRJ ID PRJ-f6e5d4c3b2a1 • Created • GDP • Extracted ID • Domains auto from contacts stays below header when not editing as in screenshot
+
+- **Old collar restored:** Mint header gradient #D6F5E8 -> #D6E8FF badges rounded 20px pastel blue #D6E8FF mint yellow #FFF5D6 lavender #E8D6FF helper grey italic #6b7280 input filled #f0f7ff border #bfdbfe — v0.17 artifact changed too much UI — restored to v0.16.1 pastel
+
+- **ALL Clients kept:** Dropdown ALL Clients / Acme Corp / GE Aero — amazing addition — when ALL selected shows all projects across clients sorted by creation newest first aggregated Key Moments
+
+- **Breadcrumb fix:** Changing client in dropdown Acme / GE / ALL now changes top breadcrumb — was lost code — fixed with useEffect on selectedClient → Acme Corp / Apollo-123, GE Aero / GE Aero DIP Discovery, ALL Clients / All Projects — clickable Acme Corp → Client 360, project → project view — highlight active
+
+- **Add new text fields brought back:** Repeatable one-line boxes + empty box always visible + [+ Add URL/Channel] for Opportunity IDs, Project IDs, Teams Channels, all SharePoint artefacts Service Review Collab Plan Risk Log ESC Site with Archive + ? tooltip + mandatory justification modal moves to bottom grey archived still stored — both Edit and Add New — Add New has no Archive only empty + Add as requested — no pre-filled 99974052 O-5030460 — empty placeholders e.g. PO-12345
+
+- **Test data per project included:** data/seed/key_moments_test_data.json 3-4K — Apollo-123 5 moments 4 status 2 notes, Apollo-124 5 moments 3 status 2 notes, GE Aero 3 moments 2 status 2 notes — selecting left rail project updates central Key Moments Last 5 Status cards Your Notes and breadcrumb — fixes observation Key moments Status cards Your Notes not getting updated based on selected project was lack of test data — file sizes 205K vs 224K difference explained — 205K smaller because removed pre-filled values and Archive in New mode correct — v0.17.1 restored ~230K+ larger due to Vector DB + Merge + test data per project
+
+- **v0.17 features kept:** Vector DB mock TF-IDF Smart Assistant typing IT finds UK+India IT contacts with provenance actual links typing MS3 finds notes, Merge duplicate purple banner Similar to #c4 [Merge] modal side-by-side editable → merged card old two archived auto justification Merged into #c8, Admin enable archived Enable button in bottom grey Archived section modal admin justification mandatory moves back to active top, Excel Weekly yellow card Grouped by Project ID filtered where Client=Acme Auto-links to Status & Health cards Upload new weekly file via Add Reference, Full provenance clickable SSO every line actual clickable link mailto Teams Salesforce SharePoint cleaned new tab icon, Your Notes real Copilot rephrase merging, Handover Pack Export PDF, PII redacted share banner
+
+- **Service.py fixed /app 404:** PWAHandler maps / and /app and /app/ to index.html — fixes Error 404 File not found on http://localhost:8002/app — logs index.html exists True size ~230K+ — old FastAPI version had route for /app 200 OK http.server needs explicit mapping
+

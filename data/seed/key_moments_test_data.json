@@ -1,0 +1,39 @@
+{
+  "Apollo-123": {
+    "key_moments": [
+      {"age": "2d ago", "text": "Extension approved: MS3 15 Nov → 30 Nov, $120k→$145k", "card": "#c1"},
+      {"age": "5d ago", "text": "New stakeholder: Sarah Patel joined as Approver", "card": "#c2"},
+      {"age": "8d ago", "text": "Resource: R.Patel replacing A.Kumar for MS3", "card": "#c3"},
+      {"age": "12d ago", "text": "Expansion: New PO PO-12346 detected — Validate?", "card": "#c4"},
+      {"age": "18d ago", "text": "Risk escalated: UAT env delayed", "card": "#c5"}
+    ],
+    "notes": [
+      {"text": "Client wants MS3 extended by 2 days - finance approval pending", "rephrased": "MS3 extension requested by client for 2 days, pending finance approval"},
+      {"text": "Finance approved $25k extra for MS3", "rephrased": "Finance approved additional $25k for MS3 extension"}
+    ]
+  },
+  "Apollo-124": {
+    "key_moments": [
+      {"age": "1d ago", "text": "New PO PO-6789 detected for Apollo-124 — Validate?", "card": "#c6"},
+      {"age": "3d ago", "text": "Stakeholder: A.Kumar added as Internal Owner", "card": "#c7"},
+      {"age": "7d ago", "text": "Budget approved $80k for Apollo-124", "card": "#c8"},
+      {"age": "10d ago", "text": "Risk: Vendor onboarding delayed for Apollo-124", "card": "#c9"},
+      {"age": "15d ago", "text": "Decision: Apollo-124 scope approved", "card": "#c10"}
+    ],
+    "notes": [
+      {"text": "Apollo-124 kickoff completed — client happy", "rephrased": "Kickoff completed successfully"},
+      {"text": "Need to setup vendor account for Apollo-124", "rephrased": "Vendor account setup required"}
+    ]
+  },
+  "GE Aero DIP Discovery": {
+    "key_moments": [
+      {"age": "2d ago", "text": "Extension approved: DIP Discovery Phase 1 → Phase 2, $50k→$75k", "card": "#c11"},
+      {"age": "6d ago", "text": "New stakeholder: Jane from GE Aero joined", "card": "#c12"},
+      {"age": "9d ago", "text": "Resource: Internal team assigned", "card": "#c13"}
+    ],
+    "notes": [
+      {"text": "GE Aero DIP Discovery — client wants agentic development", "rephrased": "Client requests agentic development"},
+      {"text": "Risk log needs update for GE Aero", "rephrased": "Risk log update required"}
+    ]
+  }
+}

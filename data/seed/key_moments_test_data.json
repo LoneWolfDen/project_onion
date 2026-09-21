@@ -1,79 +1,129 @@
 {
   "Apollo-123": {
+    "client": "Acme Corp",
     "key_moments": [
       {
         "age": "2d ago",
-        "text": "Extension approved: MS3 15 Nov \u2192 30 Nov, $120k\u2192$145k",
-        "card": "#c1"
+        "text": "PO Extension Approved Q2 to Q3"
       },
       {
         "age": "5d ago",
-        "text": "New stakeholder: Sarah Patel joined as Approver",
-        "card": "#c2"
+        "text": "Stakeholder Added L.Chen as Approver"
       },
       {
         "age": "8d ago",
-        "text": "Resource: R.Patel replacing A.Kumar for MS3",
-        "card": "#c3"
+        "text": "Resource R.Patel replacing A.Kumar"
       },
       {
         "age": "12d ago",
-        "text": "Expansion: New PO PO-12346 detected \u2014 Validate?",
-        "card": "#c4"
+        "text": "Collaboration Plan v2 signed"
       },
       {
         "age": "18d ago",
-        "text": "Risk escalated: UAT env delayed",
-        "card": "#c5"
+        "text": "ESC Site Filter Aid requested"
       }
     ]
   },
   "Apollo-124": {
+    "client": "Acme Corp",
     "key_moments": [
       {
         "age": "1d ago",
-        "text": "New PO PO-6789 detected for Apollo-124 \u2014 Validate?",
-        "card": "#c6"
+        "text": "New PO PO-6789 detected"
       },
       {
         "age": "3d ago",
-        "text": "Stakeholder: A.Kumar added as Internal Owner",
-        "card": "#c7"
+        "text": "Stakeholder A.Kumar Internal Owner"
       },
       {
         "age": "7d ago",
-        "text": "Budget approved $80k for Apollo-124",
-        "card": "#c8"
+        "text": "Budget approved $80k"
       },
       {
         "age": "10d ago",
-        "text": "Risk: Vendor onboarding delayed",
-        "card": "#c9"
+        "text": "Risk Log Resource crunch"
       },
       {
         "age": "15d ago",
-        "text": "Decision: Apollo-124 scope approved",
-        "card": "#c10"
+        "text": "Decision scope approved"
       }
     ]
   },
-  "GE Aero DIP Discovery": {
+  "Helios-09": {
+    "client": "Acme Corp",
     "key_moments": [
       {
-        "age": "2d ago",
-        "text": "Extension approved: DIP Discovery Phase 1 \u2192 Phase 2, $50k\u2192$75k",
-        "card": "#c11"
-      },
-      {
-        "age": "6d ago",
-        "text": "New stakeholder: Jane from GE Aero joined",
-        "card": "#c12"
+        "age": "4d ago",
+        "text": "Helios-09 Kickoff"
       },
       {
         "age": "9d ago",
-        "text": "Resource: Internal team assigned",
-        "card": "#c13"
+        "text": "Service review folder"
+      },
+      {
+        "age": "14d ago",
+        "text": "Risk Low"
+      },
+      {
+        "age": "20d ago",
+        "text": "Collaboration Plan draft"
       }
+    ]
+  },
+  "NovaTech-42": {
+    "client": "NovaTech Industries",
+    "key_moments": [
+      {
+        "age": "2d ago",
+        "text": "NovaTech-42 Phase1 to Phase2 Extension $50k to $75k"
+      },
+      {
+        "age": "6d ago",
+        "text": "Stakeholder Jane NovaTech Primary"
+      },
+      {
+        "age": "9d ago",
+        "text": "Resource Internal team assigned Budget $75k"
+      },
+      {
+        "age": "13d ago",
+        "text": "ESC Filter Aid tuning requested"
+      },
+      {
+        "age": "19d ago",
+        "text": "Collaboration Plan v1 draft shared"
+      }
+    ]
+  },
+  "Stellar-09": {
+    "client": "Stellar Dynamics",
+    "key_moments": [
+      {
+        "age": "3d ago",
+        "text": "Stellar-09 Budget $120k approved Fixed Price"
+      },
+      {
+        "age": "7d ago",
+        "text": "Stakeholder Support IT UK India onboarded"
+      },
+      {
+        "age": "11d ago",
+        "text": "Risk flagged Mumbai supply delay mitigation dual vendor"
+      },
+      {
+        "age": "16d ago",
+        "text": "Collaboration Plan shared v2 signed ESC Site Filter Aid requested"
+      }
+    ]
+  },
+  "ALL": {
+    "client": "ALL Clients",
+    "aggregated": [
+      "Apollo-123",
+      "Apollo-124",
+      "Helios-09",
+      "NovaTech-42",
+      "Stellar-09"
     ]
   }
 }

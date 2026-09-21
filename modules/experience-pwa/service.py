@@ -19,7 +19,7 @@ if __name__ == "__main__":
     idx_path = os.path.join(STATIC_DIR, "index.html")
     exists = os.path.exists(idx_path)
     size = os.path.getsize(idx_path) if exists else 0
-    print(f"Serving PWA v0.18.0 clean at http://localhost:8002/ and http://localhost:8002/app")
-    print(f"Fixes: separate collapses Project overview + Key Moments + Status cards, Status expand restored, Client 360 stable, Edit back overlay, pastel simple #D6F5E8->#D6E8FF, ALL Clients, breadcrumb fix")
-    print(f"Static dir: {STATIC_DIR} - index.html exists: {exists} - size: {size} bytes")
+    print(f"Serving PWA v20 clean at http://localhost:8002/ and http://localhost:8002/app")
+    print(f"HDD good harness v0.18 clean + fixes: no GE Aero, no self-ref notes, ALL Clients breadcrumb fix, Relationship link, Archive enabled, Ask filtering, Edit Save localStorage, PII Approve to save changes Private/Team Shared, single toggle, Edit stacked, PRJ ID single line, pastel simple")
+    print(f"Static dir: {STATIC_DIR} - exists: {exists} - size: {size} bytes")
     HTTPServer(("0.0.0.0", 8002), PWAHandler).serve_forever()

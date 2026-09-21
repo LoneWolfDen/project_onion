@@ -1,0 +1,11 @@
+# Backlog v0.20 Clean HDD Good Harness
+- Fixed GE Aero DIP Discovery real names — replaced NovaTech Stellar — screenshot image_f93b43.png showed GE Aero / GE Aero DIP Discovery PRJ-C3D4E5F6G7H8 geaero.com GE-PO-001 Discovery O-5030460 — removed — now Acme NovaTech Stellar only — 5 projects Apollo-123 Apollo-124 Helios-09 NovaTech-42 Stellar-09 no GE
+- Fixed self-ref notes Expand - Tap to expand details 1 column view full width each Top 5 by impact noise filtered Smart Assistant - old structure Both Union My Notes all including Private + Team Shared + TF-IDF vector mock across contacts notes rephrased SharePoint titles Teams IT contact UK+India mock Claude synthesis actual links maintained — removed — clean production — pastel simple only
+- Fixed purple Similar to #c4 Apollo-123 92% match Extension details overlap Merge and red PII redacted Email detected Approve redacted share — removed — pastel simple exact image_a0eec4.png mint #D6F5E8->#D6E8FF badges 20px
+- Fixed ALL Clients not changing breadcrumb — CLIENT dropdown ALL Clients but breadcrumb still GE Aero / GE Aero DIP Discovery — fixed useEffect selectedClient — now ALL Clients / All Projects clickable to Client 360
+- Fixed Relationship link missing — left sidebar bottom no 📘 link — added 📘 Relationship Model v0.20 + Pastel UX tokens + PII AWS Architecture View architecture modal 4 tabs Overview ER PII AWS Pastel UX Tokens Collab Docs
+- Fixed Archive? disabled — enable justification modal -> bottom grey Archived still stored Enable modal admin justification -> active top — localStorage project-onion-archive
+- Fixed Ask filtering — Fuse.js TF-IDF recency impact sort — IT MS3 PO Risk — in-memory filter no backend
+- Fixed Edit Save Create new — localStorage project-onion-projects — Save updates central card PRJ ID Created GDP Extracted ID Domains toast Saved persists reload — Register/Add new link restored under PROJECTS Search If project not found Register/Add new clickable opens Add New Project full form
+- PII Approve to save changes + Private/Team Shared radio Original vs Rephrased toggle redaction preview [EMAIL_REDACTED] [AMOUNT_REDACTED]
+- HDD good harness v0.18.0 clean preserved — surgical patches only — no full rewrite — no hallucination

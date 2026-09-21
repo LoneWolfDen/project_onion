@@ -1,1 +1,37 @@
-{"clients":[{"id":"acme-corp","name":"Acme Corp","domain":"acme.com","projects":["Apollo-123","Apollo-124","Helios-09"]},{"id":"novatech","name":"NovaTech Industries","domain":"novatech.com","projects":["NovaTech-42"]},{"id":"stellar","name":"Stellar Dynamics","domain":"stellar-dynamics.com","projects":["Stellar-09"]}],"all_clients":["Apollo-123","Apollo-124","Helios-09","NovaTech-42","Stellar-09"]}
+{
+  "clients": [
+    {
+      "id": "acme-corp",
+      "name": "Acme Corp",
+      "domain": "acme.com",
+      "projects": [
+        "Apollo-123",
+        "Apollo-124",
+        "Helios-09"
+      ]
+    },
+    {
+      "id": "novatech",
+      "name": "NovaTech Industries",
+      "domain": "novatech.com",
+      "projects": [
+        "NovaTech-42"
+      ]
+    },
+    {
+      "id": "stellar",
+      "name": "Stellar Dynamics",
+      "domain": "stellar-dynamics.com",
+      "projects": [
+        "Stellar-09"
+      ]
+    }
+  ],
+  "all_clients": [
+    "Apollo-123",
+    "Apollo-124",
+    "Helios-09",
+    "NovaTech-42",
+    "Stellar-09"
+  ]
+}

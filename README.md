@@ -33,3 +33,14 @@ All screens say Archive not Obsolete — Archive button next to each piece — m
 
 - **Service.py fixed /app 404:** PWAHandler maps / and /app and /app/ to index.html — fixes Error 404 File not found on http://localhost:8002/app — logs index.html exists True size ~230K+ — old FastAPI version had route for /app 200 OK http.server needs explicit mapping
 
+
+
+## v0.18.0 clean — Full 3-day audit restore
+- Fix: Project overview existing fields and key moments status cards were all into one expand/collapse — now separate — Project overview collapse, Key Moments each card Expand FULL PROVENANCE, Status cards each Expand provenance — restore
+- Fix: no more expand on Status cards — restore Expand provenance link
+- Fix: Client 360 not shown except mint bar Client: GE Aero 360 disappearing — now stable page Acme Corp [← Back] Aggregated Contacts grouped by project_names Support Teams Playbooks All projects under client — not disappearing
+- Fix: Edit option missing — restore red pill Edit right after Apollo-123 | OPP-8891 ... — overlay right after project name top 60px full width rounded 16px shadow-xl — Save Edit blue + Cancel grey at bottom clear — Done removed — style from Screenshot_2026-09-21_at_02.53.28.png
+- Fix: Expand project looking clean single line PRJ ID PRJ-A1B2C3D4E5F6 • Created • GDP • Extracted ID • Domains auto — not duplicated twice
+- Fix: collars worked up — restore pastel simple exact from image_a0eec4.png Header mint gradient #D6F5E8->#D6E8FF badges rounded 20px pastel blue #D6E8FF mint #D6F5E8 yellow #FFF5D6 lavender #E8D6FF helper grey italic #6b7280 11px input filled #f0f7ff border #bfdbfe simple not noisy — removed purple Vector DB Duplicate check and red PII banner from central — keep simple pastel
+- Keep: ALL Clients amazing addition, breadcrumb fix changing client Acme/GE/ALL updates top breadcrumb, Add new repeatable fields + empty + Add URL, test data per project dynamic, Vector DB mock, Merge duplicate, Admin enable, Excel Weekly yellow, Full provenance clickable SSO, Your Notes rephrase, Handover Pack Export, PII redacted — but UI simple not worked up
+- Layout stable — only fixing related components — not rebuilding whole layout — context handling: keep Project-Onion-Final-Pastel-Ux-Reference.html + Relationship Model + BACKLOG as source of truth, tag after each version, use feature branches, don't overwrite index.html without backup

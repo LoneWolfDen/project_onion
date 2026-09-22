@@ -40,11 +40,11 @@ def install():
     <div class="card"><h3>Drag to bookmarks bar:</h3><p><a class="bookmarklet" href="__JS__">Onion Capture O-5030460 + 006Uj...</a></p></div>
     <div class="card"><h3>How it works</h3><ul style="font-size:13px;line-height:1.6">
     <li>Go to /Opportunity/006Uj00000QOBkvIAH/view - extracts 006Uj... 18-char regex ^006[A-Za-z0-9]{15}$</li>
-    <li>Find O-5030460 from PS-v2026.2a-GE-Aero-(O-5030460)-V6.3_ESC - regex O-\d{7}</li>
-    <li>SharePoint geadinspf + GDP 8399 - maps to O-5030460 + 006Uj...</li>
+    <li>Find O-5030460 from PS-v2026.2a-Acme-Corp-(O-5030460)-V6.3_ESC - regex O-\d{7}</li>
+    <li>SharePoint acmespf + GDP 8399 - maps to O-5030460 + 006Uj...</li>
     <li>Dedupe V6.3_ESC vs V6.2 - doc vs timeline separate</li>
     <li>Validation Relevant? Yes/No/Edit if same SharePoint linked to different ConnectedRecord</li>
-    <li>POST to :8000 PUT /anchor/GE Aero/GE Aero DIP Discovery - multi-multi preserved</li>
+    <li>POST to :8000 PUT /anchor/Acme Corp/Acme Corp DIP Discovery - multi-multi preserved</li>
     <li>Open PWA http://localhost:8002/app</li></ul></div>
     </body></html>"""
     html = html.replace("__JS__", js_code.replace('"', '&quot;'))

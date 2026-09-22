@@ -11,9 +11,9 @@
       ]
     },
     {
-      "id": "novatech",
-      "name": "NovaTech Industries",
-      "domain": "novatech.com",
+      "id": "novatech-labs",
+      "name": "NovaTech Labs",
+      "domain": "novatechlabs.com",
       "projects": [
         "NovaTech-42"
       ]

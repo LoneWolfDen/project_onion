@@ -2,14 +2,14 @@
 
 ## Client Master — First Level PRIMARY FILTER dropdown NOT editable
 
-- Field: client_name — Account Name from Connected screen Field name Account Name — unique — from data/seed/clients.json — PRIMARY_UNIQUE — EXACT condition — from Connected: Account Name — editable false — example Client A / GE Aero — First Level PRIMARY FILTER dropdown from data/seed/clients.json NOT editable unique
+- Field: client_name — Account Name from Connected screen Field name Account Name — unique — from data/seed/clients.json — PRIMARY_UNIQUE — EXACT condition — from Connected: Account Name — editable false — example Client A / Acme Corp — First Level PRIMARY FILTER dropdown from data/seed/clients.json NOT editable unique
 
 ## Project Card / Anchor — Second Level — anchor_id shorter better — just project name — Project_ReferenceID auto generated UniqueID
 
 - project_name: PRIMARY_UNIQUE — EXACT — example Agentic FullMigration — Second Level user provides after selecting client — anchor_id shorter just project name — not repeating client name as filtered visible — required True — anchor_id = slugify(project_name) short just project name
 - Project_ReferenceID: PRIMARY_UNIQUE — EXACT — example PRJ-A1B2C3D4E5F6 auto generated when user adds new project under Account Name — UniqueID to refer each project when multiple Project IDs Opportunity IDs connected_record_ids GDP IDs — PRJ- + 12 hex — auto generated — required False auto_generated True — helps uniquely identify project in scenarios where Project Card/Anchor will have multiple Project IDs, Opportunity IDs, connected_record_ids, GDP IDs — systems Auto generated when user adds new project under Account Name
 - project_ids: PRIMARY_UNIQUE — EXACT — example 99974052, 0000606071 multiple — multiple True — 99974052, 0000606071 — PRIMARY_UNIQUE multiple EXACT
-- opportunity_numbers: SECONDARY_REF — EXACT — example O-5030460, O-5552629, O-908078 Extension & Expansion same GDP — multiple True — O-5030460 business # from file PS-v2026.2a-GE-Aero-(O-5030460)-V6.3_ESC + O-5552629 from PS-v2026.4-AWProServe Agentic Development (O-5552629)_ESC.xlsm + O-908078 new Opp same GDP on Extension — multi-multi preserved
+- opportunity_numbers: SECONDARY_REF — EXACT — example O-5030460, O-5552629, O-908078 Extension & Expansion same GDP — multiple True — O-5030460 business # from file PS-v2026.2a-Acme-Corp-(O-5030460)-V6.3_ESC + O-5552629 from PS-v2026.4-AWProServe Agentic Development (O-5552629)_ESC.xlsm + O-908078 new Opp same GDP on Extension — multi-multi preserved
 - connected_record_ids: SECONDARY_REF — URL_CONTAINS — example 006Uj00000QOBkvIAH, 007Pk00000QOA787DBC — 18-char regex ^006[A-Za-z0-9]{15}$ — 006 + 15 = 18 — multiple True — from /Opportunity/006Uj.../view URL — bookmarklet captures current page O-5030460 + 006Uj... per-record individual for every early record
 - gdp_id: SECONDARY_REF — URL_CONTAINS — example 8399 / 0000002121 — parsed from GDP URL /project-details/{id} — unique for project but multiple Project IDs Opp IDs logic still apply — same GDP can have new Opp IDs O-908078 on Extension & Expansion
 - gdp_url: PRIMARY_UNIQUE — URL_CONTAINS — example https://gdp.allegisgroup.com/gdp/#/dashboard/project-details/7189 — user gives GDP URL -> parse GDP ID — from Solution Documents GDP table — required False
@@ -18,7 +18,7 @@
 - contacts: SECONDARY_REF — DOMAIN — example from collaboration*.docx + scan — contacts identified from user inputs (collaboration*.docx) and also from initial scan users need to mark if relevant or not — at same time users should be able to add to keep it relevant — collapsable card at top which shows all details like project ids etc, contacts etc., all details gathered across fields — contacts[] (parsed) Client + Internal from docx — from sp_comm_plan to project_card feeds contacts — multiple True
 - start_date / end_date: SECONDARY_REF — DATE_RANGE — example 01/02/2024 - 01/09/2027 — mutable Extension & Expansion new Opp O-908078 same GDP — dates change over time — Anchor start and end dates + GDP mutable — Extension & Expansion new OpportunityIDs O-908078 but same GDP — required False
 - keywords SoW PO Contract: SECONDARY_REF — CONTAINS — example SoW-2024-001, PO-88921, Contract numbers — Anchor free but typed — filter_keywords_typed — no free text — multiple True — SoW / PO / Contract numbers — Anchor free but typed
-- client_domains: SECONDARY_REF — DOMAIN — example allegisgroup.com, ge.com — from Client Master Client Domains — DOMAIN condition — From/To domains + contacts on Project details window collapsable card at top — multiple True
+- client_domains: SECONDARY_REF — DOMAIN — example allegisgroup.com, acme.com — from Client Master Client Domains — DOMAIN condition — From/To domains + contacts on Project details window collapsable card at top — multiple True
 
 ## Filter Conditions No Free Text — Typed Enum — Reusable
 

@@ -19,7 +19,7 @@
                 - OneDrive URL
             - Once Opportunity marked WON, Delivery process starts where Project related structure created:
                 - Project ID: Unique ID created, unique key which identifies records from Peoplesoft systems Time&Labour, expenses, each entry has Project ID reference thus we can map
-                - SharePoint: https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/<uniqueID> e.g., geadinspf — standard Libraries created:
+                - SharePoint: https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/<uniqueID> e.g., acmespf — standard Libraries created:
                     - Budget: burndown template or financial details
                     - Communication: sub-folders/files, Service Reviews or Monthly Business Reviews similar names multiple sub-folders, Collaboration_Plan.docx official contacts client and internal, Value Framework.ppt Value driver, Messaging/Visioning, Enablement/Delivery, Realization
                     - Solution Documents: Contains SoW, PO, WO, change requests final signed copies from Connected Notes&Attachments
@@ -35,14 +35,14 @@
                     - GDP portal also have multiple other excel exports which contains lot of valuable details — Reports page shows: Engagement Data Export Active/All, Milestone Agile Sprint Report Active/All, Milestone Delivery Report Active/All, TGS IS Security Profile Report Active/All, PMO Compliance Report, All Stakeholders Data — need to figure out to refresh if new file to update details — share more on these excel columns later — screenshot shows all with Excel download icons
 
 ## Multi-Multi Relationship — KEY — to nail at this stage
-- Project Reference: Logical grouping under Client Master — e.g., "GE Aviation Discovery" — user creates this. NOT OpportunityID or ProjectID. This is anchor.
+- Project Reference: Logical grouping under Client Master — e.g., "ACME Discovery" — user creates this. NOT OpportunityID or ProjectID. This is anchor.
     - Link table:
-        - ProjectRef <-> OpportunityIDs: many-many — e.g., ProjectRef GE-Discovery links to OPP-5030460 initial + OPP-5030460-Extension new Opp but same ProjectID
+        - ProjectRef <-> OpportunityIDs: many-many — e.g., ProjectRef Acme-Discovery links to OPP-5030460 initial + OPP-5030460-Extension new Opp but same ProjectID
         - ProjectRef <-> ProjectIDs: many-many — same ProjectRef links to ProjectID 12345 UK team + 12346 Hungary team — both same Opportunity
         - ProjectRef <-> GDP IDs: many-many — GDP 8399 may link to both ProjectIDs above
-        - ProjectRef <-> SharePoint SMPs: many-many — geadinspf may serve both ProjectIDs
-    - Rule: When we scan, if we find new OpportunityID/ProjectID/GDPID from any source, ask user: "We found OPP-8893 linked to same SharePoint geadinspf — Relevant? Yes/No/Edit — add to ProjectRef?" — already in.html
-    - Example from screenshots: Opportunity 006Uj00000QOBkvIAH GE AVIATION UK Bristol Robotics Digital Inspection Platform Discovery — has Notes&Attachments V6.3_ESC, V6.2, V6.1 etc — all linked to same ProjectRef — SharePoint geadinspf — GDP 8399 — same client
+        - ProjectRef <-> SharePoint SMPs: many-many — acmespf may serve both ProjectIDs
+    - Rule: When we scan, if we find new OpportunityID/ProjectID/GDPID from any source, ask user: "We found OPP-8893 linked to same SharePoint acmespf — Relevant? Yes/No/Edit — add to ProjectRef?" — already in.html
+    - Example from screenshots: Opportunity 006Uj00000QOBkvIAH ACME UK Bristol Robotics Digital Inspection Platform Discovery — has Notes&Attachments V6.3_ESC, V6.2, V6.1 etc — all linked to same ProjectRef — SharePoint acmespf — GDP 8399 — same client
 
 ## SharePoint Scan — handle different file names/sub-folders — pattern not path
 - Don't rely on exact path /Budget/Burndown.xlsx — use:
@@ -63,7 +63,7 @@
 
 ## PII
 - PII fields: email, amount Total Revenue £129,768.00 GBP, payroll TGS_EmpID 8261003, Resource_Name Alex Nejat, Location UK, Budget £119,560 Outcome based SoW value — mark as PII — screenshot shows Allocation 80% FTE, 100% PAYE etc
-- Non-PII: OpportunityID 006Uj..., ProjectID, GDPID 8399, Engagement Name GE Aerospace Digital Inspection Platform Discovery, Account Name Ge Aviation Uk, Status Indicator Green/Yellow/Red, Current Phase Execution, Engagement Risk Yellow, Resources list
+- Non-PII: OpportunityID 006Uj..., ProjectID, GDPID 8399, Engagement Name Acme Corp Digital Inspection Platform Discovery, Account Name Acme UK, Status Indicator Green/Yellow/Red, Current Phase Execution, Engagement Risk Yellow, Resources list
 - Rule: PII screener is platform middleware — must call before any save — CI fails if module saves without calling it
 
 ## Integrations

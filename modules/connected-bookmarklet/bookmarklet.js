@@ -6,16 +6,16 @@ javascript:(function(){
   const fileMatch = bodyText.match(/PS-v[\w\.\-]*\((O-\d{7})\)-V[\d\.]+_?ESC/i);
   const oppMatch = bodyText.match(/O-\d{7}/) || url.match(/O-\d{7}/);
   const opportunityNumber = fileMatch ? fileMatch[1] : (oppMatch ? oppMatch[0] : null);
-  const sharepointMatch = bodyText.match(/geadinspf|rrdiscovery|clienta/i);
-  const sharepointSmp = sharepointMatch ? sharepointMatch[0].toLowerCase() : 'geadinspf';
+  const sharepointMatch = bodyText.match(/acmespf|rrdiscovery|clienta/i);
+  const sharepointSmp = sharepointMatch ? sharepointMatch[0].toLowerCase() : 'acmespf';
   const gdpMatch = bodyText.match(/\b84\d{2}\b/);
   const gdpId = gdpMatch ? gdpMatch[0] : '8399';
   const versionMatch = bodyText.match(/V(\d+\.\d+)_?ESC/i);
   const version = versionMatch ? versionMatch[0] : 'V6.3_ESC';
   if(!connectedId){ alert('Project Onion: No ConnectedRecord 006Uj... found in URL ' + url); return; }
-  const clientName = 'GE Aero';
-  const projectRefName = 'GE Aero DIP Discovery';
-  const anchorId = 'GEAERO-DIP-DISCOVERY';
+  const clientName = 'Acme Corp';
+  const projectRefName = 'Acme Corp DIP Discovery';
+  const anchorId = 'ACME-DIP-DISCOVERY';
   const payload = {
     client_name: clientName,
     project_ref_name: projectRefName,

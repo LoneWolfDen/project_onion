@@ -1,8 +1,8 @@
 # INBOX Review — Gaps and Confirmation
 
 ## You have all critical relations — confirmed from screenshots
-- Connected Opportunity 006Uj00000QOBkvIAH GE AVIATION UK Bristol Robotics Digital Inspection Platform Discovery — Details tabs Prospect/Interest/Qualifying/Solutioning/Proposing/Negotiating/Closed/System Information/Archive — Chatter feed — Notes & Attachments 28 items Sorted by Last Modified V6.3_ESC 966KB etc — multi-version handling needed — you captured
-- SharePoint SMP https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/geadinspf — Libraries Budget, Communication, Solution Documents, Planning Documents — same set files but different names/sub-folders — you flagged — pattern not path needed — you have
+- Connected Opportunity 006Uj00000QOBkvIAH ACME UK Bristol Robotics Digital Inspection Platform Discovery — Details tabs Prospect/Interest/Qualifying/Solutioning/Proposing/Negotiating/Closed/System Information/Archive — Chatter feed — Notes & Attachments 28 items Sorted by Last Modified V6.3_ESC 966KB etc — multi-version handling needed — you captured
+- SharePoint SMP https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/acmespf — Libraries Budget, Communication, Solution Documents, Planning Documents — same set files but different names/sub-folders — you flagged — pattern not path needed — you have
 - GDP Portal gdp.allegisgroup.com — Dashboard Engagement Status, Status Report 8399, Project Details Stakeholders, Reports Engagement Data Export Active/All etc Excel downloads — multi-multi OpportunityID ProjectID GDPID — you flagged — KEY — you have
 - Multi-multi: Project Reference logical grouping under Client Master — many-many link table OpportunityIDs, ProjectIDs, GDPIDs, SharePoint SMPs — validation prompt Relevant? Yes/No/Edit — you have
 

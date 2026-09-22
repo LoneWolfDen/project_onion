@@ -14,7 +14,7 @@ const TOKENS = {
 
 export function ProjectHeader({anchor}){
   const [open, setOpen] = useState(true);
-  // anchor = {anchor_id: 'GE-Discovery', client_name: 'Ge Aviation Uk', opportunity_ids: ['006Uj...'], project_ids: ['12345','12346'], gdp_ids: ['8399'], sharepoint_smps: ['geadinspf'], freshness: '2d ago', status_indicator: 'Green'}
+  // anchor = {anchor_id: 'Acme-Discovery', client_name: 'Acme UK', opportunity_ids: ['006Uj...'], project_ids: ['12345','12346'], gdp_ids: ['8399'], sharepoint_smps: ['acmespf'], freshness: '2d ago', status_indicator: 'Green'}
 
   const freshnessColor = anchor.freshness?.includes('2d') ? '#10B981' : anchor.freshness?.includes('Stale') ? '#EF4444' : '#F59E0B';
 

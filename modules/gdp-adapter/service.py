@@ -19,14 +19,14 @@ STORE = {}  # key = gdp_id#client_name
 
 class GDPCreate(BaseModel):
     gdp_id: str  # 8399
-    client_name: str  # GE Aero - PRIMARY FILTER
-    project_ref_name: str  # GE Aero DIP Discovery
-    anchor_id: str  # GEAERO-DIP-DISCOVERY
+    client_name: str  # Acme Corp - PRIMARY FILTER
+    project_ref_name: str  # Acme Corp DIP Discovery
+    anchor_id: str  # ACME-DIP-DISCOVERY
     engagement_name: str  # from Engagement Data Export - Active - exact columns
     engagement_status: str  # Active
     opportunity_numbers: List[str] = []  # O-5030460
     connected_record_ids: List[str] = []  # 006Uj00000QOBkvIAH
-    sharepoint_smps: List[str] = []  # geadinspf
+    sharepoint_smps: List[str] = []  # acmespf
     budget: Optional[float] = None  # £129,768 - redacted to $XXXk in PII screener
     significance_raw: float = 0.5  # from GDP - maps to cards significance_score
     export_columns: Dict = {}  # exact columns from Engagement Data Export - Active
@@ -44,10 +44,10 @@ def root():
         "port": 8003,
         "cors": "allow_origins * for PWA :8002",
         "export": "Engagement Data Export - Active - exact columns - full read on HEAD change",
-        "eventbridge": "6h HEAD check for gdp_ids 8399 + sharepoint geadinspf - full read on change",
+        "eventbridge": "6h HEAD check for gdp_ids 8399 + sharepoint acmespf - full read on change",
         "levels": {
-            "first_level": "GE Aero PRIMARY FILTER",
-            "second_level": "GEAERO-DIP-DISCOVERY anchor_id",
+            "first_level": "Acme Corp PRIMARY FILTER",
+            "second_level": "ACME-DIP-DISCOVERY anchor_id",
             "gdp_id": "8399 - maps to opportunity_numbers O-5030460 + connected_record_ids 006Uj..."
         },
         "significance_mapping": "GDP significance_raw 0.9 EXTENSION -> cards significance_score 0.9 show vs 0.25 CHASING hide"
@@ -99,7 +99,7 @@ def get_gdp(gdp_id: str):
 @app.get("/gdps/{client_name}")
 def list_by_client(client_name: str):
     results = [v for k,v in STORE.items() if v["client_name"]==client_name]
-    return {"client_name": client_name, "count": len(results), "level": "First Level PRIMARY FILTER GE Aero", "gdps": results}
+    return {"client_name": client_name, "count": len(results), "level": "First Level PRIMARY FILTER Acme Corp", "gdps": results}
 
 @app.get("/gdps")
 def list_all():
@@ -109,30 +109,30 @@ def list_all():
 def ingest_gdp(payload: Dict):
     # Simulates full read on HEAD change - Engagement Data Export - Active exact columns
     gdp_id = payload.get("gdp_id", "8399")
-    client_name = payload.get("client_name", "GE Aero")
+    client_name = payload.get("client_name", "Acme Corp")
     key = f"{gdp_id}#{client_name}"
     # Exact columns from Engagement Data Export - Active - example
     export_columns = payload.get("export_columns", {
-        "Engagement Name": "GE Aero DIP Discovery",
-        "Client": "GE Aero",
+        "Engagement Name": "Acme Corp DIP Discovery",
+        "Client": "Acme Corp",
         "Status": "Active",
         "GDP ID": gdp_id,
         "Opportunity Number": "O-5030460",
         "Connected Record ID": "006Uj00000QOBkvIAH",
-        "SharePoint SMP": "geadinspf",
+        "SharePoint SMP": "acmespf",
         "Budget": "£129,768 - redacted to $XXXk in PII screener",
         "Engagement Data Export - Active - Exact Columns": ["Engagement Name", "Client", "Status", "GDP ID", "Opportunity Number", "Connected Record ID", "SharePoint SMP", "Budget", "Significance"]
     })
     record = {
         "gdp_id": gdp_id,
         "client_name": client_name,
-        "project_ref_name": payload.get("project_ref_name", "GE Aero DIP Discovery"),
-        "anchor_id": payload.get("anchor_id", "GEAERO-DIP-DISCOVERY"),
-        "engagement_name": export_columns.get("Engagement Name", "GE Aero DIP Discovery"),
+        "project_ref_name": payload.get("project_ref_name", "Acme Corp DIP Discovery"),
+        "anchor_id": payload.get("anchor_id", "ACME-DIP-DISCOVERY"),
+        "engagement_name": export_columns.get("Engagement Name", "Acme Corp DIP Discovery"),
         "engagement_status": "Active",
         "opportunity_numbers": [export_columns.get("Opportunity Number", "O-5030460")],
         "connected_record_ids": [export_columns.get("Connected Record ID", "006Uj00000QOBkvIAH")],
-        "sharepoint_smps": [export_columns.get("SharePoint SMP", "geadinspf")],
+        "sharepoint_smps": [export_columns.get("SharePoint SMP", "acmespf")],
         "export_columns": export_columns,
         "freshness": {"label": "today", "color": "green", "last_refreshed": datetime.utcnow().isoformat(), "head_check": "6h HEAD - full read on change"},
         "eventbridge_check": {"schedule": "6h HEAD", "full_read_on_change": True},

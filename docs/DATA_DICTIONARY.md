@@ -14,23 +14,23 @@ Chat is RAM, HDD is this file + data/seed/*.json — versioned with git tags —
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
 | client_id | string | C-001 | internal id, not Salesforce |
-| client_name | string | GE Aero | PRIMARY FILTER — PK in anchors — dropdown — NOT editable — from Client Master |
-| client_code | string | GEAERO | slug upper — for anchor_id |
-| connected_client_name | string | Ge Aviation Uk | variation from Salesforce / SharePoint — maps to same client_name GE Aero |
+| client_name | string | Acme Corp | PRIMARY FILTER — PK in anchors — dropdown — NOT editable — from Client Master |
+| client_code | string | ACME | slug upper — for anchor_id |
+| connected_client_name | string | Acme Corp UK | variation from Salesforce / SharePoint — maps to same client_name Acme Corp |
 | is_active | bool | true | filter active clients |
 | created_at | iso | 2026-05-13T10:00:00Z | freshness |
 
 ### PK/SK — DynamoDB — Client Master Table (if separate) OR in-memory STORE key
-- PK = client_name — GE Aero — PRIMARY FILTER
+- PK = client_name — Acme Corp — PRIMARY FILTER
 - SK = client_id — C-001 — optional
-- GSI = client_code-index — GEAERO -> client_name
+- GSI = client_code-index — ACME -> client_name
 
 ### Seed Data — data/seed/clients.json
 ```json
 [
-  {"client_id": "C-001", "client_name": "GE Aero", "client_code": "GEAERO", "connected_names": ["Ge Aviation Uk", "GE Aviation", "GE"], "is_active": true},
+  {"client_id": "C-001", "client_name": "Acme Corp", "client_code": "ACME", "connected_names": ["Acme Corp UK", "Acme Corp", "ACME"], "is_active": true},
   {"client_id": "C-002", "client_name": "Rolls-Royce", "client_code": "ROLLS", "connected_names": ["Rolls-Royce Plc", "RR"], "is_active": true},
-  {"client_id": "C-003", "client_name": "ClientA", "client_code": "CLIENTA", "connected_names": ["Client A Ltd"], "is_active": true}
+  {"client_id": "C-003", "client_name": "NovaTech Labs", "client_code": "NOVATECH", "connected_names": ["NovaTech Labs Ltd"], "is_active": true}
 ]
 ```
 
@@ -66,18 +66,18 @@ aws dynamodb batch-write-item --request-items file://data/seed/clients.json --en
 ### Schema
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| client_name | string | GE Aero | First Level FK — PRIMARY FILTER |
-| project_ref_name | string | GE Aero DIP Discovery | Second Level — editable — user can rename Phase 2 |
-| anchor_id | string | GEAERO-DIP-DISCOVERY | slugified client + project_ref — readable — SK |
-| opportunity_numbers | list | [O-5030460] | business # from PS-v2026.2a-...-(O-5030460)-V6.3_ESC — GSI |
+| client_name | string | Acme Corp | First Level FK — PRIMARY FILTER |
+| project_ref_name | string | Apollo-123 | Second Level — editable — user can rename Phase 2 |
+| anchor_id | string | ACME-APOLLO-123 | slugified client + project_ref — readable — SK |
+| opportunity_numbers | list | [O-008891] | business # from Apollo ESC (O-008891) — GSI |
 | connected_record_ids | list | [006Uj00000QOBkvIAH] | Salesforce 18-char — GSI |
 | gdp_ids | list | [8399] | GDP ID — from Engagement Data Export |
-| sharepoint_smps | list | [geadinspf] | SharePoint site |
+| sharepoint_smps | list | [apollo123] | SharePoint site |
 
 ### PK/SK — Anchor Table
-- PK = client_name — GE Aero — PRIMARY FILTER — dropdown
-- SK = anchor_id — GEAERO-DIP-DISCOVERY — editable
-- GSI1 = opportunity_number-index — O-5030460 -> anchor
+- PK = client_name — Acme Corp — PRIMARY FILTER — dropdown
+- SK = anchor_id — ACME-APOLLO-123 — editable
+- GSI1 = opportunity_number-index — O-008891 -> anchor
 - GSI2 = connected_record_id-index — 006Uj... -> anchor
 
 ## Cards — Third Level — under ProjectRef
@@ -85,9 +85,9 @@ aws dynamodb batch-write-item --request-items file://data/seed/clients.json --en
 ### Schema
 | Field | Type | Example | Notes |
 |-------|------|---------|-------|
-| anchor_id | string | GEAERO-DIP-DISCOVERY | PK — second level |
+| anchor_id | string | ACME-APOLLO-123 | PK — second level |
 | card_id | string | timeline#Week33 | SK — type#id |
-| client_name | string | GE Aero | GSI — ensures PRIMARY FILTER |
+| client_name | string | Acme Corp | GSI — ensures PRIMARY FILTER |
 | card_type | string | timeline | timeline, doc, budget, stakeholder |
 | significance_score | float | 0.9 | 0.9-1.0 EXTENSION/APPROVAL vs 0.25 CHASING |
 | freshness | dict | {days:2,label:2d ago,color:green} | 2d ago green >1 month red Stale |
@@ -104,8 +104,8 @@ aws dynamodb batch-write-item --request-items file://data/seed/clients.json --en
 # Insert Rolls-Royce as new Client Master
 curl -s -X PUT http://localhost:8000/anchor/Rolls-Royce/RR%20Discovery -H "Content-Type: application/json" -d '{"client_name":"Rolls-Royce","project_ref_name":"RR Discovery","opportunity_numbers":["O-5030461"],"connected_record_ids":["006Uj00000QOBkvIAJ"],"gdp_ids":["8400"],"sharepoint_smps":["rrdiscovery"]}' | python3 -m json.tool
 
-# Verify PRIMARY FILTER dropdown now has GE Aero + Rolls-Royce
-curl -s http://localhost:8000/anchors/GE%20Aero | python3 -m json.tool
+# Verify PRIMARY FILTER dropdown now has Acme Corp + Rolls-Royce
+curl -s http://localhost:8000/anchors/Acme%20Corp | python3 -m json.tool
 curl -s http://localhost:8000/anchors/Rolls-Royce | python3 -m json.tool
 
 # Seed from JSON — Data as Code

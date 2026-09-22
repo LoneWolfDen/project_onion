@@ -143,3 +143,16 @@ vite.config.ts.timestamp-*
 .vite/
 .DS_Store
 modules/.DS_Store
+
+# --- Hackathon Safety Ignores ---
+*.bak
+*.pre-esm
+static_backup/
+__pycache__/
+*.pyc
+.venv/
+env/
+.DS_Store
+Thumbs.db
+.env
+*.local

@@ -20,8 +20,8 @@ def seed(clients, base_url="http://localhost:8000", dry_run=False, only_dip=Fals
         project_refs = client.get("project_refs", [])
         if not project_refs:
             project_refs = ["Apollo-123", "Apollo-124"] if client_name == "Acme Corp" else [client.get("project_ref_name", f"{client_name} Discovery")]
-        if only_dip and client_name == "GE Aero":
-            project_refs = ["GE Aero DIP Discovery"]
+        if only_dip and client_name == "Acme Corp":
+            project_refs = ["Acme Corp DIP Discovery"]
         if only_dip and client_name == "Acme Corp":
             project_refs = ["Apollo-123"]
         for project_ref in project_refs:

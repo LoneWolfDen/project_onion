@@ -24,9 +24,36 @@ def slugify(t: str) -> str:
     t = re.sub(r'-+', '-', t).strip('-')
     return t[:64]
 
-def gen_project_reference_id(client_name: str, project_name: str) -> str:
-    raw = f"{client_name}|{project_name}|{uuid.uuid4()}"
-    return "PRJ-" + hashlib.sha256(raw.encode()).hexdigest()[:12].upper()
+def _sanitize_prefix(name: str) -> str:
+    import re as _re
+    first = (str(name or "").strip().split()[0] if str(name or "").strip() else "PRJ")
+    # split on space/_/- like frontend, take first token
+    first = _re.split(r'[\s\-_]+', str(name or "").strip())[0] if str(name or "").strip() else "PRJ"
+    first = _re.sub(r'[^A-Za-z0-9]', '', first)[:12] or "PRJ"
+    return first
+
+def _sanitize_opp(opp: str) -> str:
+    s = str(opp or "").strip().replace(" ", "")
+    return s or "O-0000"
+
+def gen_project_reference_id(project_name: str, primary_opp_id: str = "", now: Optional[datetime] = None, existing_refs: Optional[List[str]] = None) -> str:
+    # Canonical per .clinerules id_disambiguation_rule + frontend core/schema.js:
+    # Format [Prefix]-[OppID]-[DDMMYY][HHMMSS] e.g. Apollo-O-008891-22092645...
+    # NEVER random hex. Prefix = first token of project_name sanitized.
+    # OppID = primary opportunity number sanitized. Stamp = DDMMYYHHMMSS.
+    # Collision suffix -nn if base already exists.
+    now = now or datetime.now()
+    prefix = _sanitize_prefix(project_name)
+    opp = _sanitize_opp(primary_opp_id)
+    stamp = f"{now.day:02d}{now.month:02d}{str(now.year)[-2:]:0>2}{now.hour:02d}{now.minute:02d}{now.second:02d}"
+    base = f"{prefix}-{opp}-{stamp}"
+    existing = set(existing_refs or [])
+    if base not in existing:
+        return base
+    i = 1
+    while f"{base}-{i:02d}" in existing:
+        i += 1
+    return f"{base}-{i:02d}"
 
 def extract_connected_id_from_url(url_or_id: str) -> str:
     url_or_id = url_or_id.strip()
@@ -193,7 +220,9 @@ def create_anchor(client_name: str, project_name: str, payload: AnchorCreate):
         project_reference_id = existing["project_reference_id"]
         first_seen = existing["freshness"]["first_seen"]
     else:
-        project_reference_id = gen_project_reference_id(client_name, project_name)
+        _primary_opp = (payload.opportunity_numbers[0].strip() if payload.opportunity_numbers else "O-0000")
+        _existing_refs = [v.get("project_reference_id") for v in STORE.values() if v.get("project_reference_id")]
+        project_reference_id = gen_project_reference_id(project_name, _primary_opp, datetime.now(), _existing_refs)
         first_seen = datetime.utcnow().isoformat()
 
     contacts_clean = []; domains = set()

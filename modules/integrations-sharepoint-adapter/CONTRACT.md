@@ -4,7 +4,7 @@
 Project SharePoint once Opportunity WON — default libraries created — Home, Budget, Communications, Solution Documents, Planning Documents — same set of files but each person manages different file names/sub-folders
 
 ## Inputs
-- sharepoint_smp_url: url — https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/<uniqueID> e.g., geadinspf
+- sharepoint_smp_url: url — https://allegiscloud.sharepoint.com/teams/TEK-UKDelivery/<uniqueID> e.g., acmespf
 - anchor_id: string — ProjectRef
 - last_successful_harvest: timestamp — for incremental HEAD check
 

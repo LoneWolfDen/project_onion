@@ -6,7 +6,7 @@ Platform middleware — MUST be called before any save — CI fails if module sa
 ## Inputs
 - text: string — any text from Connected Chatter, GDP Summary, SharePoint doc, email, Teams chat
 - source_type: enum [connected, sharepoint, gdp, email, teams, excel, onedrive]
-- anchor: ProjectRef ID e.g., GE-Discovery
+- anchor: ProjectRef ID e.g., Acme-Discovery
 
 ## Outputs
 - pii_detected: boolean

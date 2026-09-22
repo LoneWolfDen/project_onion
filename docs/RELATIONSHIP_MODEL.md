@@ -6,15 +6,15 @@ Do NOT invent fields not in user columns. See docs/RELATIONSHIP_MODEL.md + data/
 ## Client Master — First Level PRIMARY FILTER dropdown NOT editable
 
 - Source: data/seed/clients.json — unique field Account Name from Connected screen
-- Example: Client A / GE Aero
+- Example: Acme Corp / NovaTech Labs
 - Filter: EXACT Account Name -> client_name
-- Client Domains: allegisgroup.com, ge.com — SECONDARY_REF — for DOMAIN condition in Emails + Teams VTTs
+- Client Domains: acme.com, novatechlabs.com — SECONDARY_REF — for DOMAIN condition in Emails + Teams VTTs
 
 ## Project Card / Anchor — Second Level — anchor_id short project name only
 
 - Primary Identifiers: project_name (short anchor_id), Project_ReferenceID auto generated UniqueID to refer each project Card/Anchor when multiple Project IDs, Opportunity IDs, connected_record_ids, GDP IDs, Oppurtunit_id, project_id
 - Fields:
-  - client_name FOREIGN example Client A
+  - client_name FOREIGN example Acme Corp
   - project_name PRIMARY_UNIQUE example Agentic FullMigration
   - project_ids PRIMARY_UNIQUE example 99974052, 0000606071
   - opportunity_ids SECONDARY_REF example O-5030460, O-5552629, O-908078 (Extension & Expansion same GDP)
@@ -63,7 +63,7 @@ Do NOT invent fields not in user columns. See docs/RELATIONSHIP_MODEL.md + data/
 - Users will give GDP url (from where we will have GDP ID), and option to upload excel for hackathon
 - Column Headers and 4 weekly updates you provided:
   - Engagement Name, Account Name, GDP ID, Project ID, GDD, GDM, PrgM, EM / DL, Status Date, Current Phase, Status Indicator, Start Date, End Date, Location, Summary, Practice, Business Unit / BSV
-  - Example rows: Migrate to Migrate Client A 0000002121 99974052 Bill Byron Jane Austin John Dew John smith 09/19/2026 Startup Green 01/02/2024 01/09/2027 Remote Project is BAU...
+  - Example rows: Apollo-123 Acme Corp 0000002121 99974052 Bill Byron Jane Austin John Dew John smith 09/19/2026 Startup Green 01/02/2024 01/09/2027 Remote Project is BAU...
   - Significance: no formula, not in any columns — we do NOT invent significance — anti-hallucination
   - Weekly Report: Delta, can be downloaded per week so Delta
   - GDP ID 8399 unique for project but logic of multiple project IDs and Opportunity IDs still apply — same GDP can have new Opp IDs O-908078 on Extension & Expansion

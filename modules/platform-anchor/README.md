@@ -25,8 +25,8 @@ bash modules/platform-anchor/test-anchor-api.sh
 
 ## Multi-multi validation
 
-When new ConnectedRecord 006Uj... found linked to same SMP geadinspf with same O-5030460 base:
-Returns validation_prompt: "We found new ConnectedRecord 006Uj00000QOBkvIAI linked to same SharePoint geadinspf — Relevant? Yes/No/Edit — add to ProjectRef GE-Discovery?"
+When new ConnectedRecord 006Uj... found linked to same SMP acmespf with same O-5030460 base:
+Returns validation_prompt: "We found new ConnectedRecord 006Uj00000QOBkvIAI linked to same SharePoint acmespf — Relevant? Yes/No/Edit — add to ProjectRef Acme-Discovery?"
 
 ## HDD Memory update
 

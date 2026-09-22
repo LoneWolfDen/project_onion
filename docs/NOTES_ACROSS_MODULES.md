@@ -17,7 +17,7 @@
 
 ## modules/platform-anchor/seed_clients.py
 
-- Seeds clients.json — Acme Corp Apollo-123 Apollo-124 + GE Aero — Connected URL https://.../Opportunity/006Uj.../view — GDP URL https://gdp.../project-details/8399 — SharePoint URLs Service review folder, Collaboration Plan, Risk Log, ESC, Site URL — Teams channels — Contacts with project_names — Notes with text "Client wants MS3 extended..." rephrased + source_url + origin + references — archived_items empty — dry-run option.
+- Seeds clients.json — Acme Corp Apollo-123 Apollo-124 + Acme Corp — Connected URL https://.../Opportunity/006Uj.../view — GDP URL https://gdp.../project-details/8399 — SharePoint URLs Service review folder, Collaboration Plan, Risk Log, ESC, Site URL — Teams channels — Contacts with project_names — Notes with text "Client wants MS3 extended..." rephrased + source_url + origin + references — archived_items empty — dry-run option.
 
 ## modules/experience-pwa/static/index.html
 
@@ -39,7 +39,7 @@
 
 ## data/seed/clients.json
 
-- Acme Corp Apollo-123 Apollo-124 + GE Aero — connected_example 006Uj..., opportunity_example OPP-8891, project_id_example PO-12345, gdp_example 8399, service_review_url, collab_plan_url, risk_log_url with ?e=abc123&csf=1&web=1 for cleaning test, esc_url, site_url, teams_channels, contacts J.Smith etc., client_domains acme.com, sow_numbers, po_numbers, dates.
+- Acme Corp Apollo-123 Apollo-124 + Acme Corp — connected_example 006Uj..., opportunity_example OPP-8891, project_id_example PO-12345, gdp_example 8399, service_review_url, collab_plan_url, risk_log_url with ?e=abc123&csf=1&web=1 for cleaning test, esc_url, site_url, teams_channels, contacts J.Smith etc., client_domains acme.com, sow_numbers, po_numbers, dates.
 
 ## docs/
 

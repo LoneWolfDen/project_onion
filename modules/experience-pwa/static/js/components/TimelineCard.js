@@ -40,6 +40,20 @@ function initialsFor(author) {
   if (w.length === 1) return w.toUpperCase();
   return w[0].toUpperCase();
 }
+function iconForSource(src) {
+  var s = String(src || '').toLowerCase();
+  if (s.indexOf('outlook') >= 0 || s.indexOf('mail') >= 0 || s.indexOf('email') >= 0) return '✉️';
+  if (s.indexOf('raid') >= 0 || s.indexOf('excel') >= 0 || s.indexOf('tracker') >= 0 || s.indexOf('jira') >= 0) return '📊';
+  if (s.indexOf('teams') >= 0 || s.indexOf('chat') >= 0) return '💬';
+  if (s.indexOf('gdp') >= 0 || s.indexOf('status') >= 0) return '📈';
+  return '📄';
+}
+function miniTimelineFor(m) {
+  var srcs = [];
+  if (m && m.source) srcs.push(String(m.source));
+  if (m && m.type && String(m.type) !== String(m.source)) srcs.push(String(m.type));
+  return srcs.filter(Boolean).slice(0, 3);
+}
 function sourceListFor(m) {
   const out = [];
   if (m && m.source) out.push(String(m.source));
@@ -60,6 +74,9 @@ export function TimelineCard(props) {
   const onAddNote = async (text, privacyVal, reset) => { const v = String(text || '').trim(); if (!v || !project) return; const screened = piiScreen(v); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; const payload = { project_name: project.project_name, Project_ReferenceID: project.Project_ReferenceID, projectId: project.project_name, original: screened.text, title: v.slice(0, 80), content: screened.text, rephrased: screened.text, privacy: privacyVal || notePrivacy || 'Team Shared', piiStatus: screened.flag, syncStatus: 'pending_upload', refs: [], updates: [] }; if (dbApi && dbApi.saveNote) { await dbApi.saveNote(payload); } if (reset) reset(''); else setDraft(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || note.privacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; if (dbApi && dbApi.updateNotePrivacy) { await dbApi.updateNotePrivacy(note.id, next); } };
   const flip = (setter, id) => setter((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const activePersona = props.activePersona || '';
+  const onProvenanceClick = () => alert('That interest to review AI optimised content for the actual source is the definition of Human in the loop! (This is test data)');
+  const onMergeClick = () => alert('Merged cards — duplicates removed.');
   const focusId = props.focusId || null;
   const impactOf = (m) => {
     if (m && typeof m.impactScore === 'number') return m.impactScore;
@@ -73,7 +90,16 @@ export function TimelineCard(props) {
     return { raw: m, clean: s.text, flag: s.flag, pct };
   });
   const moments = allMoments.filter((d) => !isNoise(d.raw)).slice(0, 10);
-  const projNotes = notes.filter((n) => matchRef(n, project)).filter((n) => !privacyFilter || privacyFilter === 'Both' || n.privacy === privacyFilter);
+  const projNotes = notes.filter((n) => matchRef(n, project)).filter((n) => {
+    const pv = String(n.privacy || 'Team Shared');
+    const mine = String(n.author || '') === String(activePersona || '');
+    const isTeam = pv === 'Team Shared';
+    const isMine = (pv === 'My Notes' || pv === 'Private' || pv === 'My Notes (Private)') && mine;
+    if (!privacyFilter || privacyFilter === 'Both') return isTeam || isMine;
+    if (privacyFilter === 'My Notes') return isMine;
+    if (privacyFilter === 'Team Shared') return isTeam;
+    return true;
+  });
   // Rich Status Cards feed: the full privacy-filtered timeline rendered as independent
   // blocks (no vertical left-border timeline line). Key Moments stays compact in AppCenter.
   const feedCards = moments.map((d) => {
@@ -88,6 +114,10 @@ export function TimelineCard(props) {
     const initials = initialsFor(author);
     const body = String(m.synthesizedText || m.content || m.detail || d.clean || '');
     const chips = sourceListFor(m);
+    const mini = miniTimelineFor(m);
+    const structEntries = (m && m.structured && typeof m.structured === 'object') ? Object.keys(m.structured).map(function (k) { return [k, String(m.structured[k])]; }) : [];
+    const effPii = String(m.piiStatus || d.flag || 'Clean');
+    const isApproved = effPii === 'Approved' || effPii === 'Clean' || (props.approved && props.approved.has && props.approved.has(m.id));
     const open = openProv.has(m.id) || (focusId && String(focusId) === String(m.id));
     const key = String(m.id || m.title || label);
     return html`<div key=${key} id=${'tl-' + String(m.id || '')} className="bg-white border border-[#e5e7eb] rounded-[16px] p-4 mb-4 shadow-sm">
@@ -100,18 +130,26 @@ export function TimelineCard(props) {
         </div>
         <span title=${author || 'User'} className="bg-gray-200 text-gray-700 rounded-full h-8 w-8 flex items-center justify-center text-[11px] font-bold shrink-0">${initials}</span>
       </div>
-      <div className="mt-2 text-[13px] leading-relaxed text-[#1E293B]">${body}</div>
-      ${chips.length ? html`<div className="mt-3 flex flex-wrap gap-1.5">${chips.map((c) => html`<span key=${c} className="text-[10px] px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B]">${c}</span>`)}</div>` : null}
+      <div className="mt-2 text-[13px] leading-relaxed text-[#1E293B]" style=${open ? null : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>${body}</div>
+      ${!open && mini.length ? html`<div className="mt-2 flex items-center gap-1">${mini.map(function (s, i) { return html`<span key=${s + i} className="flex items-center gap-1">${i > 0 ? html`<span className="inline-block h-px w-6 bg-[#cbd5e1]"></span>` : null}<span title=${s} className="inline-flex items-center justify-center rounded-full border border-[#e2e8f0] bg-white" style=${{ width: '18px', height: '18px', fontSize: '10px' }}>${iconForSource(s)}</span></span>`; })}</div>` : null}
+      ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] px-2 py-0.5 rounded-full bg-[#f1f5f9] border border-[#e2e8f0] text-[#1F4A7A] underline cursor-pointer">${c}</button>`)}</div>` : null}
       <div className="mt-3 flex items-center justify-between gap-2">
         <span className="text-[11px] text-[#64748B]">${d.pct}% confidence${d.flag === 'Redacted_Review' ? ' • PII redacted' : ''}</span>
-        <button onClick=${() => flip(setOpenProv, m.id)} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">${open ? 'Collapse' : 'Expand'}</button>
+        <button onClick=${() => flip(setOpenProv, m.id)} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">${open ? 'Collapse' : 'Review'}</button>
       </div>
+      ${!open ? html`<div className="mt-2 flex items-center gap-1 text-[10px] italic text-[#6b7280]"><span className="w-5 h-5 rounded-full bg-[#E8F2FF] text-[#1F4A7A] inline-flex items-center justify-center not-italic font-semibold text-[9px]">RAW</span><span className="w-6 h-px bg-[#E6EAF2] mx-1 inline-block"></span><span className="w-5 h-5 rounded-full bg-[#D4EFDF] text-[#1E5631] inline-flex items-center justify-center not-italic font-semibold text-[9px]">AI</span><span className="ml-1">Extracted • AI Fused</span></div>` : null}
       ${open ? html`<div className="mt-3 bg-[#f8fafc] rounded-[12px] p-3 space-y-2">
-        <div className="text-[11px] font-semibold">Model Confidence — ${d.pct}% (${d.pct >= 85 ? 'High' : d.pct >= 60 ? 'Medium' : 'Low'})</div>
-        <div className="text-[11px] text-[#475569]">Fused from ${m.source || m.type || 'Timeline'} • Impact ${(typeof m.impactScore === 'number' ? m.impactScore.toFixed(1) : (m.impact || 3))}</div>
-        <div className="text-[11px] font-semibold">PII Gate — ${d.flag === 'Redacted_Review' ? 'Redacted_Review: personal detail screened before sharing' : 'Clean: safe for Team Shared'}</div>
-        <div className="text-[11px] text-[#475569]">Provenance: ${m.title} • ${m.source || m.type || 'Timeline'} • ${m.syncStatus || 'synced'}</div>
-        <div className="text-[11px] italic text-[#64748B]">Structured: ${m.structured || m.title}</div>
+        ${m.mergeHint ? html`<div className="flex items-center gap-2 p-2 rounded-[10px] bg-[#FFF7ED] border border-[#fed7aa] text-[11px]"><span>⚡ ${m.mergeHint}</span><button type="button" onClick=${onMergeClick} className="ml-auto px-2 py-0.5 rounded-full bg-white border text-[11px]">Merge</button></div>` : null}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="p-2 rounded-[10px] bg-white border">
+            <div className="text-[11px] font-semibold">Model Confidence — ${d.pct}% (${d.pct >= 85 ? 'High' : d.pct >= 60 ? 'Medium' : 'Low'})</div>
+            <div className="text-[11px] text-[#475569]">Fused from ${m.source || m.type || 'Timeline'} • Impact ${(typeof m.impactScore === 'number' ? m.impactScore.toFixed(1) : (m.impact || 3))}</div>
+            <div className="text-[11px] font-semibold">PII Gate — ${d.flag === 'Redacted_Review' ? 'Redacted_Review: personal detail screened before sharing' : 'Clean: safe for Team Shared'}</div>
+            ${isApproved ? html`<button type="button" disabled className="mt-2 px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-medium">Approved for Team Share</button>` : html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-3 py-1 rounded-full bg-[#FFF0F0] text-[#7A1F1F] border border-[#FFB3B3] text-[11px] font-medium">Approve redacted share</button>`}
+          </div>
+          ${structEntries.length ? html`<div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Structured data</div><div className="grid grid-cols-2 gap-1">${structEntries.map((kv) => html`<div key=${kv[0]} className="p-1.5 rounded-[8px] bg-[#f8fafc] border"><div className="text-[10px] font-semibold text-[#64748B]">${kv[0]}</div><div className="text-[12px] text-[#1E293B]">${kv[1]}</div></div>`)}</div></div>` : null}
+        </div>
+        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Provenance</div><div className="space-y-1">${chips.map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#f1f5f9] border" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title} • ${m.syncStatus || 'synced'}</span></div>`)}</div></div>
       </div>` : null}
     </div>`;
   });

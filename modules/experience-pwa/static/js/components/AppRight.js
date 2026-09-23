@@ -1,6 +1,30 @@
-// AppRight.js — RIGHT Smart Assistant (verbatim v0.18 Tailwind).
+// AppRight.js — RIGHT Smart Assistant (verbatim v0.18 Tailwind + dynamic Filter Aid from scoped #tags).
 const htmlR = window.htm.bind(window.React.createElement);
+function uniqueTagsFromContext(contextCards, keywords) {
+  const seen = {};
+  const out = [];
+  const pushTag = (v) => {
+    const t = String(v || '').trim();
+    if (!t) return;
+    if (t.charAt(0) !== '#') return;
+    if (!seen[t]) { seen[t] = 1; out.push(t); }
+  };
+  (Array.isArray(contextCards) ? contextCards : []).forEach((c) => {
+    (Array.isArray(c && c.tags) ? c.tags : []).forEach(pushTag);
+    const hay = [(c && c.title) || '', (c && c.detail) || '', (c && c.content) || '', (c && c.synthesizedText) || ''].join(' ');
+    const found = String(hay || '').match(/#[A-Za-z0-9_]+/g) || [];
+    found.forEach(pushTag);
+  });
+  if (!out.length) (Array.isArray(keywords) ? keywords : []).forEach((k) => {
+    const t = String(k || '').trim();
+    if (!t) return;
+    const tag = t.charAt(0) === '#' ? t : '#' + t;
+    if (!seen[tag]) { seen[tag] = 1; out.push(tag); }
+  });
+  return out;
+}
 export function AppRight(p) {
+  const aidTags = uniqueTagsFromContext(p.contextCards, p.keywords);
   return htmlR`<div className="w-full lg:w-[340px] shrink-0 border-l border-[#e5e7eb] bg-white lg:min-h-[calc(100vh-56px)]">
     <div className="p-4 space-y-4">
       <div><div className="font-semibold flex items-center gap-2"><span className="w-4 h-4">✦</span>Smart Assistant</div>
@@ -16,7 +40,7 @@ export function AppRight(p) {
       <div className="rounded-[12px] bg-white border p-3"><div className="font-medium text-[12px]">Handover Pack</div>
         <div className="mt-2 flex gap-2"><button className="px-3 py-1.5 rounded-full bg-black text-white text-[11px]">Generate Pack</button></div></div>
       <div className="rounded-[12px] bg-[#D6E8FF] border border-[#bfdbfe] p-3"><div className="font-medium text-[12px]">Client Artefacts</div><div className="mt-2"><button onClick=${p.onClientArtefacts} className="px-3 py-1.5 rounded-full bg-white border text-[11px]">Open Client View</button></div></div>
-      <div className="rounded-[12px] bg-[#f0f7ff] border border-[#bfdbfe] p-3"><div className="font-medium text-[12px]">Filter Aid</div><div className="mt-1 flex flex-wrap gap-1">${p.keywords.map((k) => htmlR`<span key=${k} className="px-2 py-0.5 rounded-full bg-white border text-[11px]">${k}</span>`)}</div></div>
+      <div className="rounded-[12px] bg-[#f0f7ff] border border-[#bfdbfe] p-3"><div className="font-medium text-[12px]">Filter Aid</div><div className="mt-1 text-[10px] italic text-[#6b7280]">Tap a tag to populate the Smart Assistant</div><div className="mt-1 flex flex-wrap gap-1">${aidTags.map((k) => htmlR`<button type="button" key=${k} onClick=${() => p.setAsk(k)} title=${'Filter by ' + k} className="px-2 py-0.5 rounded-full bg-white border text-[11px] hover:border-[#bfdbfe] hover:bg-[#f0f7ff]">${k}</button>`)}</div></div>
     </div>
   </div>`;
 }

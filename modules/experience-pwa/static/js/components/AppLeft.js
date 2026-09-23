@@ -18,7 +18,7 @@ export function AppLeft(p) {
         </button>`)}
         <div className="mt-3"><button onClick=${p.onRegister} className="w-full px-3 py-2 rounded-full bg-white border border-[#bfdbfe] text-[12px] font-medium text-[#1e40af]">+ Add Project</button></div>
       </div>
-      <div className="p-3 rounded-[12px] bg-[#E8D6FF] border border-[#d8b4fe] flex gap-2"><span className="w-4 h-4 shrink-0 mt-0.5">◈</span><div className="text-[11px]"><div className="font-medium">Similar to #c4 Apollo-123 92% match</div><div className="italic text-[#6b7280]">Extension details overlap</div><button className="mt-1 px-2 py-0.5 rounded-full bg-white border text-[11px]">Merge</button></div></div>
+
     </div>
   </div>`;
 }

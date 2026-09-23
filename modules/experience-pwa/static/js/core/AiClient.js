@@ -14,6 +14,8 @@ function mockResult(text, type) {
   if (/payroll|milestone|sow|contract/.test(lower)) tags.push('#Milestone_Tracked');
   if (/furlough/.test(lower)) tags.push('#Furlough_Flag');
   const impactScore = /po|invoice|risk|overrun|milestone|payroll/.test(lower) ? 0.9 : 0.35;
+  const isInvoice = /po|invoice|invoic|payment|billing/.test(lower);
+  const isRisk = /risk|raid|overrun|delay|blocker|blocked/.test(lower);
   return {
     synthesizedText:
       'AI Synthesis (' + String(type || 'general') + '): ' +
@@ -22,6 +24,12 @@ function mockResult(text, type) {
       ' — Key entities preserved; noise stripped; next action inferred for timeline.',
     tags,
     impactScore,
+    mergeHint: isInvoice
+      ? 'Similar to existing RAID log — details overlap'
+      : (isRisk ? 'Similar to existing RAID log — details overlap' : 'Aggregated from ' + String(type || 'general') + ' + RAID log — requires human validation'),
+    structured: isInvoice
+      ? { Milestone: 'Sprint 1', Amount: '$45k', Status: 'Blocked' }
+      : { Milestone: 'Sprint 1', Amount: '$45k', Status: impactScore >= 0.5 ? 'Needs Review' : 'Tracked' },
   };
 }
 
@@ -37,6 +45,20 @@ export function privacyMatchesCard(cardPrivacy, mode) {
 export async function processWithAI(text, type) {
   const input = String(text || '');
   const kind = String(type || 'general');
+  const enrichWithAggregation = (base) => {
+    const out = Object.assign({}, base);
+    if (!out.mergeHint) {
+      const l = String(input || '').toLowerCase();
+      out.mergeHint = (/po|invoice|risk|raid|overrun|delay|block/.test(l))
+        ? 'Similar to existing RAID log — details overlap'
+        : 'Aggregated from ' + kind + ' + RAID log — requires human validation';
+    }
+    if (!out.structured || typeof out.structured !== 'object') {
+      out.structured = { Milestone: 'Sprint 1', Amount: '$45k', Status: 'Blocked' };
+    }
+    if (out.privacy == null) out.privacy = 'Team Shared';
+    return out;
+  };
   let apiKey = null;
   let model = DEFAULT_MODEL;
   try {
@@ -45,7 +67,7 @@ export async function processWithAI(text, type) {
   } catch (e) { apiKey = null; }
   if (!apiKey || !String(apiKey).trim()) {
     await new Promise((r) => setTimeout(r, 1200));
-    return mockResult(input, kind);
+    return enrichWithAggregation(mockResult(input, kind));
   }
   try {
     const res = await fetch(OPENROUTER_URL, {
@@ -78,22 +100,26 @@ export async function processWithAI(text, type) {
     // Try strict JSON first, then extract {...} block.
     try {
       const parsed = JSON.parse(String(raw).trim());
-      return {
+      return enrichWithAggregation({
         synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
         tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
         impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
-      };
+        mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
+        structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
+      });
     } catch (e) {
       const m = String(raw).match(/\{[\s\S]*\}/);
       if (m) {
         const parsed = JSON.parse(m[0]);
-        return {
+        return enrichWithAggregation({
           synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
           tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
           impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
-        };
+          mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
+          structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
+        });
       }
-      return { synthesizedText: String(raw).slice(0, 2000) || mockResult(input, kind).synthesizedText, tags: ['#Auto_Tagged'], impactScore: 0.7 };
+      return enrichWithAggregation({ synthesizedText: String(raw).slice(0, 2000) || mockResult(input, kind).synthesizedText, tags: ['#Auto_Tagged'], impactScore: 0.7 });
     }
   } catch (err) {
     await new Promise((r) => setTimeout(r, 1200));

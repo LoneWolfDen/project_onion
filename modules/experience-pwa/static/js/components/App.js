@@ -1,5 +1,5 @@
 // App orchestrator P1 — imports + state + helpers.
-import { OnionDB, readLocal } from '../core/FailoverDB.js';
+import { OnionDB, readLocal, writeLocal } from '../core/FailoverDB.js';
 import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ProjectModal } from './ProjectModal.js';
@@ -7,7 +7,7 @@ import { AppLeft } from './AppLeft.js';
 import { AppCenter } from './AppCenter.js';
 import { AppRight } from './AppRight.js';
 import { genProjectReferenceID, projectIdEquals, stripLeadingZeros } from '../core/schema.js';
-import { askSmartAssistant, privacyMatchesCard } from '../core/AiClient.js';
+import { askSmartAssistant } from '../core/AiClient.js';
 import { piiScreen } from '../core/PiiGate.js';
 const { useState, useEffect, useMemo } = window.React;
 const html = window.htm.bind(window.React.createElement);
@@ -60,6 +60,28 @@ export function App() {
   const setMOppConnItem = (i, field, v) => { setMOppConnList((p) => { const a = (Array.isArray(p) && p.length ? p : [{ oppId: '', connectedUrl: '' }]).map((x) => Object.assign({}, x)); while (a.length <= i) a.push({ oppId: '', connectedUrl: '' }); a[i][field] = v; return a; }); if (field === 'oppId') { setMOppList((p) => { const a = (p || ['']).slice(); while (a.length <= i) a.push(''); a[i] = v; return a; }); if (i === 0) setMOpp(v); } if (field === 'connectedUrl') { setMConnList((p) => { const a = (p || ['']).slice(); while (a.length <= i) a.push(''); a[i] = v; return a; }); if (i === 0) setMConnected(v); } };
   const pushOppConn = () => { setMOppConnList((p) => (Array.isArray(p) ? p : []).concat([{ oppId: '', connectedUrl: '' }])); pushField(setMOppList); pushField(setMConnList); };
   const [approved, setApproved] = useState(new Set());
+  const setProject = (refId) => {
+    setActiveRef(refId);
+    setMode('project');
+    try {
+      const proj = (db.projects || []).find((pp) => pp && pp.Project_ReferenceID === refId);
+      if (proj && proj.client_name) { setClient(proj.client_name); setC360(proj.client_name); }
+    } catch (e) {}
+  };
+  const handleApproveCard = async (cardId) => {
+    setApproved((prev) => { const n = new Set(prev); n.add(cardId); return n; });
+    try {
+      const s = readLocal();
+      let touched = null;
+      (s.timeline || []).forEach((t) => { if (t && String(t.id) === String(cardId)) { t.piiStatus = 'Approved'; if (!t.syncStatus) t.syncStatus = 'pending_upload'; touched = t; } });
+      (s.notes || []).forEach((nn) => { if (nn && String(nn.id) === String(cardId)) { nn.piiStatus = 'Approved'; touched = touched || nn; } });
+      writeLocal(s);
+      try {
+        const isNote = (s.notes || []).some((nn) => nn && String(nn.id) === String(cardId));
+        if (isNote && touched && OnionDB && OnionDB.saveNote) { await OnionDB.saveNote(Object.assign({}, touched, { piiStatus: 'Approved' })); }
+      } catch (e) {}
+    } catch (e) {}
+  };
   const clients = (db.clients || []).map((c) => c.account_name);
   const projects = useMemo(() => {
     let d = [...(db.projects || [])];
@@ -132,6 +154,7 @@ export function App() {
       const s = piiScreen(desc);
       out.push(toPayload({ id: 'excel-' + Date.now() + '-' + i, projectId: active.project_name, type: 'Excel', title: 'Excel row ' + (i + 1), source, content: s.text, piiStatus: s.flag }));
     });
+    out.forEach((o) => { if (o && !o.privacy) o.privacy = 'Team Shared'; });
     setStaged((p) => p.concat(out));
     setHStatus('Staged ' + out.length + ' hits from ' + source + '.');
   };
@@ -213,19 +236,27 @@ export function App() {
   };
   const onAskClear = (v) => { setAsk(v); if (!String(v || '').trim()) { setAssistantAnswer(''); setAssistantSources([]); setAssistantLoading(false); } };
   const onViewHit = (id) => { if (id) setFocusId(id); try { const el = document.getElementById('tl-' + id); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} };
-  const onApproveNote = (id) => setApproved((prev) => new Set(prev).add(id));
+  const onApproveNote = (id) => handleApproveCard(id);
   const matchActive = (t) => !!active && !!t && (t.Project_ReferenceID === active.Project_ReferenceID || t.project_name === active.project_name || t.projectId === active.project_name);
+  // Data Privacy Filter Matrix (strict, persona-synchronized):
+  // - My Notes: ONLY card.privacy === 'My Notes' AND card.author === activePersona
+  // - Team Shared: ONLY card.privacy === 'Team Shared' (no private notes)
+  // - Both (Default): Team Shared PLUS My Notes where card.author === activePersona (never others' private notes)
+  const isTeamSharedCard = (t) => String((t && t.privacy) || 'Team Shared') === 'Team Shared';
+  const isMyNotesCard = (t) => { const v = String((t && t.privacy) || ''); return v === 'My Notes' || v === 'Private' || v === 'My Notes (Private)'; };
+  const isAuthorMatch = (t) => String((t && t.author) || '') === String(activePersona || '');
   const scopeByPrivacyMode = (arr, pMode) => (Array.isArray(arr) ? arr : []).filter((t) => {
     const mode = String(pMode || privacy || 'Both');
-    if (!privacyMatchesCard(t && (t.privacy || 'Team Shared'), mode)) return false;
-    if (mode === 'My Notes') return String((t && t.author) || '') === String(activePersona || '');
-    return true;
+    if (mode === 'My Notes') return isMyNotesCard(t) && isAuthorMatch(t);
+    if (mode === 'Team Shared') return isTeamSharedCard(t);
+    return isTeamSharedCard(t) || (isMyNotesCard(t) && isAuthorMatch(t));
   });
   const scopedBaseFor = (pMode) => active ? scopeByPrivacyMode((db.timeline || []).filter(matchActive).concat((db.notes || []).filter(matchActive)), pMode || privacy) : [];
+  // Re-evaluated on every render: switching activePersona dropdown automatically refreshes timeline + Smart Assistant context.
   const contextCards = scopedBaseFor(privacy);
-  const personaTimeline = (db.timeline || []).filter((t) => privacy === 'My Notes' ? String((t && t.author) || '') === String(activePersona || '') : true);
-  const personaNotes = (db.notes || []).filter((t) => privacy === 'My Notes' ? String((t && t.author) || '') === String(activePersona || '') : true);
-  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${onApproveNote} />` : null;
+  const personaTimeline = scopeByPrivacyMode(db.timeline || [], privacy);
+  const personaNotes = scopeByPrivacyMode(db.notes || [], privacy);
+  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} />` : null;
   const askQ = String(ask || '').trim().toLowerCase();
   const hits = (askQ ? contextCards.filter((t) => [t.title, t.detail, t.content, t.synthesizedText, t.source, t.type].join(' ').toLowerCase().includes(askQ)) : contextCards).slice(0, 3);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
@@ -246,9 +277,9 @@ export function App() {
       </div>
     </div>
     <div className="flex flex-col lg:flex-row">
-      <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} projects=${projects} fmt=${fmtDate} onPick=${(r) => { setActiveRef(r); setMode('project'); }} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
-      <${AppCenter} mode=${mode} c360=${c360} activePersona=${activePersona} onBack=${() => setMode('project')} onPickProject=${(r) => { setActiveRef(r); setMode('project'); }} allProjects=${db.projects} timeline=${db.timeline} notes=${db.notes} domains=${domains} keywords=${keywords} active=${active} fmt=${fmtDate} onEdit=${openEdit} onDetails=${() => setDetailsOpen((v) => !v)} detailsOpen=${detailsOpen} editSlot=${editSlot} timelineSlot=${timelineSlot} archived=${archived} />
-      <${AppRight} privacy=${privacy} setPrivacy=${onPrivacyChange} ask=${ask} setAsk=${onAskClear} hits=${hits} onView=${onViewHit} keywords=${keywords} onClientArtefacts=${() => setMode('client360')} onAsk=${onAskAssistant} assistantAnswer=${assistantAnswer} assistantLoading=${assistantLoading} assistantSources=${assistantSources} scopedCount=${contextCards.length} />
+      <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} projects=${projects} fmt=${fmtDate} onPick=${(r) => setProject(r)} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
+      <${AppCenter} mode=${mode} c360=${c360} activePersona=${activePersona} onBack=${() => setMode('project')} onPickProject=${(r) => setProject(r)} allProjects=${db.projects} timeline=${db.timeline} notes=${db.notes} domains=${domains} keywords=${keywords} active=${active} fmt=${fmtDate} onEdit=${openEdit} onDetails=${() => setDetailsOpen((v) => !v)} detailsOpen=${detailsOpen} editSlot=${editSlot} timelineSlot=${timelineSlot} archived=${archived} />
+      <${AppRight} privacy=${privacy} setPrivacy=${onPrivacyChange} ask=${ask} setAsk=${onAskClear} hits=${hits} onView=${onViewHit} keywords=${keywords} contextCards=${contextCards} onClientArtefacts=${() => setMode('client360')} onAsk=${onAskAssistant} assistantAnswer=${assistantAnswer} assistantLoading=${assistantLoading} assistantSources=${assistantSources} scopedCount=${contextCards.length} />
     </div>
     <div className="px-4 py-2 text-[10px] italic text-[#9ca3af] border-t bg-white flex flex-wrap gap-3"><span>Project Onion v0.18.0 clean</span></div>
     ${regSlot}

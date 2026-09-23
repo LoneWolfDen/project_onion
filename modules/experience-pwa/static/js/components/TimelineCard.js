@@ -49,10 +49,40 @@ function iconForSource(src) {
   return '📄';
 }
 function miniTimelineFor(m) {
+  if (m && Array.isArray(m.timeline) && m.timeline.length) return m.timeline.slice(0, 6).map((t) => ({
+    kind: String((t && t.kind) || 'EV').toUpperCase(),
+    label: String((t && t.label) || (t && t.kind) || ''),
+    stagedAppend: !!(t && t.stagedAppend),
+  }));
+  if (m && Array.isArray(m.nodes) && m.nodes.length) return m.nodes.slice(0, 6).map((n) => ({
+    kind: String((n && n.kind) || 'EV').toUpperCase(),
+    label: String((n && n.text) || (n && n.kind) || '').slice(0, 28) || String((n && n.kind) || ''),
+    stagedAppend: !!(n && n.stagedAppend),
+  }));
   var srcs = [];
   if (m && m.source) srcs.push(String(m.source));
   if (m && m.type && String(m.type) !== String(m.source)) srcs.push(String(m.type));
-  return srcs.filter(Boolean).slice(0, 3);
+  var out = srcs.filter(Boolean).slice(0, 3).map((s) => ({ kind: String(s).slice(0, 2).toUpperCase(), label: s }));
+  if (m && m.timestamp) out.push({ kind: String(m.timestamp).slice(0, 2).toUpperCase(), label: String(m.timestamp) });
+  return out.slice(0, 4);
+}
+function mockPillDate(idx) {
+  // Deterministic mock DDMMYYYY strings rotating per pill index (e.g. 23092026).
+  const dates = ['23092026', '24092026', '25092026', '26092026', '27092026', '28092026'];
+  return dates[Number(idx || 0) % dates.length];
+}
+function timelineStrip(m) {
+  const items = miniTimelineFor(m);
+  if (!items.length) return null;
+  return html`<div className="mt-2 relative" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-stretch gap-1.5 overflow-x-auto no-scrollbar pb-1">${items.map((t, i) => {
+    const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
+    return html`<span key=${String(t.kind) + '-' + i} className="flex items-stretch shrink-0"><span title=${t.label} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1" style=${{ minWidth: '52px', background: t.stagedAppend ? '#fef3c7' : '#E8F2FF', borderColor: t.stagedAppend ? '#f59e0b' : '#A8C6F0', color: '#1F4A7A', lineHeight: '1.1' }}><span className="text-[9px] font-bold">${ref}</span><span className="text-[9px] text-[#64748B]">${mockPillDate(i)}</span>${t.stagedAppend ? html`<span className="text-[9px] font-bold text-[#92400e]">private</span>` : null}</span></span>`;
+  })}</div></div>`;
+}
+function pendingAppendsBanner(m) {
+  const n = Array.isArray(m && m.pendingAppends) ? m.pendingAppends.length : 0;
+  if (!n) return null;
+  return html`<div className="mt-2 px-2 py-1 rounded-[8px] bg-[#fffbeb] border border-[#fcd34d] text-[10px] text-[#92400e]">🔗 Smart Append: ${n} staged update(s) appended as horizontal RAW/AI nodes — private / pending review</div>`;
 }
 function sourceListFor(m) {
   const out = [];
@@ -67,13 +97,20 @@ export function TimelineCard(props) {
   const timeline = props.timeline || [];
   const notes = props.notes || [];
   const privacyFilter = props.privacyFilter || 'Both';
+  const collapseAllTrigger = props.collapseAllTrigger || 0;
   const [openProv, setOpenProv] = window.React.useState(new Set());
   const [notesOpen, setNotesOpen] = window.React.useState(true);
   const [draft, setDraft] = window.React.useState('');
-  const [notePrivacy, setNotePrivacy] = window.React.useState('Team Shared');
-  const onAddNote = async (text, privacyVal, reset) => { const v = String(text || '').trim(); if (!v || !project) return; const screened = piiScreen(v); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; const payload = { project_name: project.project_name, Project_ReferenceID: project.Project_ReferenceID, projectId: project.project_name, original: screened.text, title: v.slice(0, 80), content: screened.text, rephrased: screened.text, privacy: privacyVal || notePrivacy || 'Team Shared', piiStatus: screened.flag, syncStatus: 'pending_upload', refs: [], updates: [] }; if (dbApi && dbApi.saveNote) { await dbApi.saveNote(payload); } if (reset) reset(''); else setDraft(''); };
+  const [noteMsg, setNoteMsg] = window.React.useState('');
+  const onAddNote = async (text, privacyVal, reset) => { const v = String(text || '').trim(); if (!v || !project) return; const screened = piiScreen(v); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; const payload = { project_name: project.project_name, Project_ReferenceID: project.Project_ReferenceID, projectId: project.project_name, original: screened.text, title: v.slice(0, 80), content: screened.text, rephrased: screened.text, privacy: privacyVal || 'Team Shared', piiStatus: screened.flag, syncStatus: 'pending_upload', author: props.activePersona || activePersona || 'Brené', refs: [], updates: [] }; try { if (!dbApi || !dbApi.saveNote) { setNoteMsg('Save failed — kept as draft'); return; } await dbApi.saveNote(payload); setNoteMsg('Saved locally (pending_upload)'); } catch (e2) { setNoteMsg('Save failed — kept as draft'); return; } if (reset) reset(''); else setDraft(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || note.privacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; if (dbApi && dbApi.updateNotePrivacy) { await dbApi.updateNotePrivacy(note.id, next); } };
+  const onForceSyncTc = async () => { try { const a = (typeof window !== 'undefined' && window.OnionDB) || null; if (a && a.forceSync) { const r = await a.forceSync(); setNoteMsg('Force Sync: ' + (r.synced || 0) + ' item(s) synced'); } } catch (e) {} };
+  const isPrivTc = (d) => { const v = String((d && d.privacy) || ''); return v === 'Private' || v === 'My Notes' || v === 'My Notes (Private)'; };
+  const onEditTcNote = (d) => { try { setDraft(String(d.original || d.title || d.content || '')); } catch (e) {} };
+  const tcNoteRow = (d, priv) => html`<button key=${d.id} onClick=${() => onEditTcNote(d)} title=${'Click to edit: ' + String(d.original || d.title || d.content || '')} className="w-full text-left py-1.5 border-b border-[#E6EAF2]"><div className="flex items-center gap-1 text-[12px] text-[#1E293B] truncate" style=${{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span className="flex-1 min-w-0 truncate">${d.original || d.title || d.content || ''}</span><span className="shrink-0 text-[#94A3B8]" title=${d.syncStatus || 'synced'}>☁️</span></div></button>`;
   const flip = (setter, id) => setter((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  // Collapse All: force-close every expanded card whenever AppCenter bumps the trigger.
+  window.React.useEffect(() => { if (collapseAllTrigger) setOpenProv(new Set()); }, [collapseAllTrigger]);
   const activePersona = props.activePersona || '';
   const onProvenanceClick = () => alert('That interest to review AI optimised content for the actual source is the definition of Human in the loop! (This is test data)');
   const onMergeClick = () => alert('Merged cards — duplicates removed.');
@@ -100,6 +137,22 @@ export function TimelineCard(props) {
     if (privacyFilter === 'Team Shared') return isTeam;
     return true;
   });
+  const tcPrivRows = projNotes.filter((d) => isPrivTc(d)).map((d) => tcNoteRow(d, true));
+  const tcTeamRows = projNotes.filter((d) => !isPrivTc(d)).map((d) => tcNoteRow(d, false));
+  const renderYourNotesFallback = () => {
+    if (props.hideYourNotes) return null;
+    return html`<div className="rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4">
+      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2">YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">Force Sync ☁️</button></h3></div>
+
+      ${notesOpen ? html`<div className="mt-3 space-y-3">
+        <div className="flex gap-2 flex-wrap"><input value=${draft} onInput=${(e) => setDraft(e.target.value)} placeholder="Add a note..." className="flex-1 bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" />
+        <button onClick=${() => (props.onAddNote || onAddNote)(draft, 'Private', setDraft)} className="px-3 py-2 rounded-full bg-white border border-[#111827] text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#fff', color: '#111827', border: '1px solid #111827' }}>🔒 Add as Private (Only Me)</button><button onClick=${() => (props.onAddNote || onAddNote)(draft, 'Team Shared', setDraft)} className="px-3 py-2 rounded-full bg-black text-white text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#111827', color: '#fff', border: '1px solid #111827' }}>👥 Add as Team Shared</button></div>
+        ${noteMsg ? html`<div className="text-[11px] italic text-[#64748B]">${noteMsg}</div>` : null}
+        ${projNotes.length >= 0 ? html`<div className="mt-3 flex flex-row gap-4"><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1E293B]">Private Notes (${projNotes.filter((d) => isPrivTc(d)).length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${tcPrivRows.length ? tcPrivRows : html`<div className="py-1.5 text-[11px] italic text-[#64748B]">No private notes.</div>`}</div></div><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1F4A7A]">Team Shared Notes (${projNotes.filter((d) => !isPrivTc(d)).length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${tcTeamRows.length ? tcTeamRows : html`<div className="py-1.5 text-[11px] italic text-[#64748B]">No team notes.</div>`}</div></div></div>` : null}
+        ${projNotes.length >= 0 && false ? html`<div></div>` : null}
+      </div>` : null}
+    </div>`;
+  };
   // Rich Status Cards feed: the full privacy-filtered timeline rendered as independent
   // blocks (no vertical left-border timeline line). Key Moments stays compact in AppCenter.
   const feedCards = moments.map((d) => {
@@ -114,62 +167,38 @@ export function TimelineCard(props) {
     const initials = initialsFor(author);
     const body = String(m.synthesizedText || m.content || m.detail || d.clean || '');
     const chips = sourceListFor(m);
-    const mini = miniTimelineFor(m);
     const structEntries = (m && m.structured && typeof m.structured === 'object') ? Object.keys(m.structured).map(function (k) { return [k, String(m.structured[k])]; }) : [];
     const effPii = String(m.piiStatus || d.flag || 'Clean');
     const isApproved = effPii === 'Approved' || effPii === 'Clean' || (props.approved && props.approved.has && props.approved.has(m.id));
     const open = openProv.has(m.id) || (focusId && String(focusId) === String(m.id));
     const key = String(m.id || m.title || label);
-    return html`<div key=${key} id=${'tl-' + String(m.id || '')} className="bg-white border border-[#e5e7eb] rounded-[16px] p-4 mb-4 shadow-sm">
-      <div className="flex items-start gap-2 flex-wrap">
+    return html`<div key=${key} id=${'tl-' + String(m.id || '')} className="bg-white border border-[#E6EAF2] rounded-[16px] p-4 mb-6 shadow-sm relative">
+      <button onClick=${() => flip(setOpenProv, m.id)} title=${open ? 'Collapse' : 'Expand'} aria-label=${open ? 'Collapse' : 'Expand'} className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">${open ? '-' : '+'}</button>
+      <div className="flex items-start gap-2 flex-wrap pr-10">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-          <span className=${'text-[11px] px-2 py-0.5 rounded-full border font-semibold ' + pill}>${label}</span>
           <span className="text-[13px] font-semibold text-[#1E293B]">${m.title}</span>
-          ${age ? html`<span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-[#f8fafc] border border-[#e5e7eb] text-[#475569]"><span style=${{ width: '6px', height: '6px', borderRadius: '999px', background: dot, display: 'inline-block' }}></span>${age}</span>` : null}
-          <span className=${isPrivate ? 'text-[11px] px-2 py-0.5 rounded-full bg-[#F1F5F9] border border-[#E2E8F0] text-[#64748B]' : 'text-[11px] px-2 py-0.5 rounded-full bg-[#E8F2FF] border border-[#A8C6F0] text-[#1F4A7A]'}>${isPrivate ? '🔒 Private' : '🔓 Team Shared'}</span>
+          ${age ? html`<span className="inline-flex items-center gap-1 text-[11px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B]"><span style=${{ width: '6px', height: '6px', borderRadius: '999px', background: dot, display: 'inline-block' }}></span>${age}</span>` : null}
+          <span className="text-[10px] italic text-[#94A3B8]">${d.pct}% confidence</span>
         </div>
-        <span title=${author || 'User'} className="bg-gray-200 text-gray-700 rounded-full h-8 w-8 flex items-center justify-center text-[11px] font-bold shrink-0">${initials}</span>
       </div>
       <div className="mt-2 text-[13px] leading-relaxed text-[#1E293B]" style=${open ? null : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>${body}</div>
-      ${!open && mini.length ? html`<div className="mt-2 flex items-center gap-1">${mini.map(function (s, i) { return html`<span key=${s + i} className="flex items-center gap-1">${i > 0 ? html`<span className="inline-block h-px w-6 bg-[#cbd5e1]"></span>` : null}<span title=${s} className="inline-flex items-center justify-center rounded-full border border-[#e2e8f0] bg-white" style=${{ width: '18px', height: '18px', fontSize: '10px' }}>${iconForSource(s)}</span></span>`; })}</div>` : null}
-      ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] px-2 py-0.5 rounded-full bg-[#f1f5f9] border border-[#e2e8f0] text-[#1F4A7A] underline cursor-pointer">${c}</button>`)}</div>` : null}
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <span className="text-[11px] text-[#64748B]">${d.pct}% confidence${d.flag === 'Redacted_Review' ? ' • PII redacted' : ''}</span>
-        <button onClick=${() => flip(setOpenProv, m.id)} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">${open ? 'Collapse' : 'Review'}</button>
-      </div>
-      ${!open ? html`<div className="mt-2 flex items-center gap-1 text-[10px] italic text-[#6b7280]"><span className="w-5 h-5 rounded-full bg-[#E8F2FF] text-[#1F4A7A] inline-flex items-center justify-center not-italic font-semibold text-[9px]">RAW</span><span className="w-6 h-px bg-[#E6EAF2] mx-1 inline-block"></span><span className="w-5 h-5 rounded-full bg-[#D4EFDF] text-[#1E5631] inline-flex items-center justify-center not-italic font-semibold text-[9px]">AI</span><span className="ml-1">Extracted • AI Fused</span></div>` : null}
+      ${timelineStrip(m)}
+      ${pendingAppendsBanner(m)}
+      ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B] underline cursor-pointer">${c}</button>`)}</div>` : null}
+      <div className="mt-2 flex items-center gap-1 text-[10px] italic text-[#94A3B8]"><span>Extracted</span><span className="w-6 h-px bg-[#E6EAF2] mx-1 inline-block"></span><span>AI Fused</span></div>
       ${open ? html`<div className="mt-3 bg-[#f8fafc] rounded-[12px] p-3 space-y-2">
         ${m.mergeHint ? html`<div className="flex items-center gap-2 p-2 rounded-[10px] bg-[#FFF7ED] border border-[#fed7aa] text-[11px]"><span>⚡ ${m.mergeHint}</span><button type="button" onClick=${onMergeClick} className="ml-auto px-2 py-0.5 rounded-full bg-white border text-[11px]">Merge</button></div>` : null}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="p-2 rounded-[10px] bg-white border">
-            <div className="text-[11px] font-semibold">Model Confidence — ${d.pct}% (${d.pct >= 85 ? 'High' : d.pct >= 60 ? 'Medium' : 'Low'})</div>
-            <div className="text-[11px] text-[#475569]">Fused from ${m.source || m.type || 'Timeline'} • Impact ${(typeof m.impactScore === 'number' ? m.impactScore.toFixed(1) : (m.impact || 3))}</div>
-            <div className="text-[11px] font-semibold">PII Gate — ${d.flag === 'Redacted_Review' ? 'Redacted_Review: personal detail screened before sharing' : 'Clean: safe for Team Shared'}</div>
-            ${isApproved ? html`<button type="button" disabled className="mt-2 px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 text-[11px] font-medium">Approved for Team Share</button>` : html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-3 py-1 rounded-full bg-[#FFF0F0] text-[#7A1F1F] border border-[#FFB3B3] text-[11px] font-medium">Approve redacted share</button>`}
-          </div>
-          ${structEntries.length ? html`<div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Structured data</div><div className="grid grid-cols-2 gap-1">${structEntries.map((kv) => html`<div key=${kv[0]} className="p-1.5 rounded-[8px] bg-[#f8fafc] border"><div className="text-[10px] font-semibold text-[#64748B]">${kv[0]}</div><div className="text-[12px] text-[#1E293B]">${kv[1]}</div></div>`)}</div></div>` : null}
-        </div>
-        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Provenance</div><div className="space-y-1">${chips.map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#f1f5f9] border" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title} • ${m.syncStatus || 'synced'}</span></div>`)}</div></div>
+        ${structEntries.length ? html`<div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Structured data</div><div className="grid grid-cols-2 gap-1">${structEntries.map((kv) => html`<div key=${kv[0]} className="p-1.5 rounded-[8px] bg-[#f8fafc] border"><div className="text-[10px] font-semibold text-[#64748B]">${kv[0]}</div><div className="text-[12px] text-[#1E293B]">${kv[1]}</div></div>`)}</div></div>` : null}
+        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Provenance</div><div className="max-h-32 overflow-y-auto no-scrollbar space-y-1">${chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title} • ${m.syncStatus || 'synced'}</span></div>`)}</div></div>
       </div>` : null}
+      <div className="mt-3 pt-2 border-t border-[#E6EAF2] flex items-center justify-between gap-2">
+        <span className="text-[10px] italic text-[#94A3B8]">${isPrivate ? 'Private' : 'Team Shared'}</span>
+        <span className="text-[10px] italic text-[#94A3B8]">${m.source || m.type || 'Timeline'} • ${effPii}${d.flag === 'Redacted_Review' ? ' • PII redacted' : ''} • ${m.syncStatus || 'synced'}</span>
+      </div>
     </div>`;
   });
   return html`<div className="space-y-5">
-    <div className="rounded-[16px] bg-white border border-[#e5e7eb] shadow-sm p-4">
-      <div className="flex items-center justify-between"><h3 className="font-semibold flex items-center gap-2">YOUR NOTES</h3><button onClick=${() => setNotesOpen((v) => !v)} className="px-3 py-1 rounded-full bg-[#f0f7ff] border border-[#bfdbfe] text-[11px]">${notesOpen ? 'Collapse' : 'Expand'}</button></div>
-      
-      ${notesOpen ? html`<div className="mt-3 space-y-3">
-        <div className="flex gap-2 flex-wrap"><input value=${draft} onInput=${(e) => setDraft(e.target.value)} placeholder="Add a note..." className="flex-1 bg-[#f0f7ff] border border-[#bfdbfe] rounded-[10px] px-3 py-2 text-[12px]" />
-        <div className="flex gap-1 items-center">${["Private","Team Shared"].map((v) => html`<button type="button" key=${v} onClick=${() => setNotePrivacy(v)} className=${"px-2 py-1 rounded-full border text-[11px] " + (notePrivacy === v ? "bg-black text-white" : "bg-white")}>${v}</button>`)}</div><button onClick=${() => (props.onAddNote || onAddNote)(draft, notePrivacy, setDraft)} className="px-3 py-2 rounded-full bg-black text-white text-[11px]">Add update</button></div>
-        ${projNotes.map((d) => html`<div key=${d.id} className="rounded-[12px] bg-[#f9fafb] border p-3">
-          <div className="flex items-center gap-2"><span className=${'text-[10px] px-2 py-0.5 rounded-full border ' + (d.privacy === 'My Notes (Private)' || d.privacy === 'Private' ? 'bg-[#fecaca]' : 'bg-[#D6F5E8]')}>${d.privacy}</span><span className="text-[11px] italic text-[#6b7280]">refs: ${(d.refs || []).join(', ') || 'none'}</span><div className="ml-auto flex gap-1">${["Private","Team Shared"].map((v) => html`<button type="button" key=${v} onClick=${() => (props.onFlipPrivacy || onFlipPrivacy)(Object.assign({}, d, { __curPrivacy: d.privacy, __nextPrivacy: v }))} className=${"px-2 py-0.5 rounded-full border text-[10px] " + ((d.privacy === v || (v === "Private" && (d.privacy === "My Notes" || d.privacy === "My Notes (Private)"))) ? "bg-black text-white" : "bg-white")}>${v}</button>`)}</div></div>
-          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2"><div className="p-2 rounded-[8px] bg-white border"><div className="text-[10px] font-semibold text-[#6b7280]">Original</div><div className="text-[12px]">${d.original || d.title || d.content || ''}</div></div>
-          <div className="p-2 rounded-[8px] bg-[#D6E8FF] border border-[#bfdbfe]"><div className="text-[10px] font-semibold">Rephrased — Copilot</div><div className="text-[12px]">${d.rephrased || '—'}</div></div></div>
-          ${(d.updates || []).length > 0 ? html`<div className="mt-2 text-[11px]"><div className="font-medium">Threaded updates append only — latest at top</div>${(d.updates || []).map((u, i) => html`<div key=${i} className="mt-1 p-1.5 rounded-[6px] bg-white border text-[11px]">${u}</div>`)}</div>` : null}
-          
-          ${d.piiStatus === 'Redacted_Review' && props.approved && !props.approved.has(d.id) ? html`<div className="p-2 rounded-[8px] bg-[#fecaca] border border-[#fca5a5] flex items-center gap-2 text-[11px]">PII redacted — Email detected — Approve redacted share <button onClick=${() => props.onApprove && props.onApprove(d.id)} className="ml-auto px-2 py-0.5 rounded-full bg-white border">Approve</button></div>` : null}
-        </div>`)}
-      </div>` : null}
-    </div>
+    ${renderYourNotesFallback()}
     <div>${feedCards}
       ${moments.length === 0 ? html`<div className="rounded-[16px] bg-white border border-[#e5e7eb] shadow-sm p-4"><div className="text-[11px] italic text-[#6b7280]">No harvested moments yet — run Harvester Control to ingest.</div></div>` : null}
     </div>

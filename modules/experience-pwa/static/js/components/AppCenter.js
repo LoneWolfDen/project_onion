@@ -1,4 +1,5 @@
 // AppCenter.js — CENTER column (UX polish; htm-safe: child VNodes precomputed in JS, templates stay flat).
+import { piiScreen } from '../core/PiiGate.js';
 const htmlC = window.htm.bind(window.React.createElement);
 function getGdpId(a) {
   if (!a) return '';
@@ -82,6 +83,11 @@ function scrollToTimelineCard(id) {
 }
 export function AppCenter(p) {
   const active = p.active;
+  const [collapseAllTrigger, setCollapseAllTrigger] = window.React.useState(0);
+  const [infoOpen, setInfoOpen] = window.React.useState({});
+  const [noteDraft, setNoteDraft] = window.React.useState('');
+  const [noteSaving, setNoteSaving] = window.React.useState(false);
+  const [noteMsg, setNoteMsg] = window.React.useState('');
   if (p.mode === 'client360') {
     const c360Name = p.c360 || (active && active.client_name) || '';
     const c360Projs = c360Projects(p, c360Name);
@@ -133,6 +139,21 @@ export function AppCenter(p) {
   const centerScoped = slotTimeline.filter((t) => centerMatch(t, centerProject));
   const centerFiltered = centerScoped.filter((t) => !centerIsNoise(t));
   const centerTop5 = centerFiltered.slice().sort((a, b) => centerImpactOf(b) - centerImpactOf(a)).slice(0, 5);
+  // Split Key Moments: Timeline Events (top 5 by impact) vs Informational Updates
+  // (explicit #Info tag OR low impact score < 0.4) rendered as compact collapsible rows.
+  const isInfoCard = (m) => {
+    const tags = Array.isArray(m && m.tags) ? m.tags.map((t) => String(t || '').toLowerCase()) : [];
+    if (tags.some((t) => t === '#info' || t.indexOf('#info') === 0)) return true;
+    return centerImpactOf(m) < 0.4;
+  };
+  const infoCards = centerScoped.filter(isInfoCard);
+  const infoRows = infoCards.length ? infoCards.map((m) => {
+    const key = String(m.id || m.title || centerTitle(m));
+    const open = !!infoOpen[key];
+    const title = centerTitle(m);
+    const preview = String(m.synthesizedText || m.content || m.detail || title || '').slice(0, 120);
+    return htmlC`<div key=${key} className="rounded-[10px] bg-white border border-[#E6EAF2]"><button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]: !prev[key] }))} className="w-full text-left px-2.5 py-1.5 text-[12px] text-[#475569] truncate" title=${title}>${open ? '▾ ' : '▸ '}heard about: ${title}</button>${open ? htmlC`<div className="px-2.5 pb-2 text-[12px] text-[#1E293B]">${preview}</div>` : null}</div>`;
+  }) : [htmlC`<div className="text-[11px] italic text-[#64748B]">No informational updates.</div>`];
   const keyRows = centerTop5.length ? centerTop5.map((m) => {
     const age = centerAge(m);
     const title = centerTitle(m);
@@ -140,8 +161,39 @@ export function AppCenter(p) {
     const key = String(m.id || m.title || title);
     return htmlC`<button key=${key} onClick=${() => scrollToTimelineCard(m.id)} className="w-full text-left flex items-center gap-3 p-2.5 rounded-[12px] bg-white border border-[#E6EAF2] hover:border-[#A8C6F0] hover:shadow-sm transition"><span className="w-7 h-7 rounded-full bg-[#E8F2FF] border border-[#A8C6F0] flex items-center justify-center text-[12px] font-bold text-[#1F4A7A] shrink-0">${icon}</span><span className="text-[11px] font-semibold text-[#64748B] min-w-[52px] shrink-0">${age}</span><span className="text-[13px] text-[#1E293B] flex-1 min-w-0 truncate" title=${title}>${title}</span><span className="text-[11px] text-[#1F4A7A] font-medium shrink-0">→ View Card</span></button>`;
   }) : [htmlC`<div className="p-2.5 rounded-[12px] bg-white border border-[#E6EAF2] text-[12px] text-[#64748B]">No key moments yet — run Harvester Control to ingest.</div>`];
-  const keyMoments = htmlC`<div className="mt-4 rounded-[16px] bg-[#EEF6FF] border border-[#dbeafe] p-4"><div className="flex items-center justify-between gap-2 flex-wrap"><h3 className="text-[13px] font-semibold">Key Moments — Last 5</h3><span className="text-[11px] px-2 py-0.5 rounded-full bg-white border border-[#A8C6F0] text-[#1F4A7A]">Top 5 by impact — noise filtered</span></div><div className="mt-3 space-y-2.5">${keyRows}</div></div>`;
+  const keyMoments = htmlC`<div className="mt-4 rounded-[16px] bg-[#EEF6FF] border border-[#dbeafe] p-4 px-4"><div className="flex items-center justify-between gap-2 flex-wrap"><h3 className="text-[13px] font-semibold">Key Moments — Last 5</h3><span className="text-[11px] px-2 py-0.5 rounded-full bg-white border border-[#A8C6F0] text-[#1F4A7A]">Top 5 by impact — noise filtered</span></div><div className="mt-3 px-4"><div className="text-[11px] font-semibold text-[#1F4A7A] mb-1">Timeline Events</div><div className="space-y-2.5">${keyRows}</div></div><div className="mt-3 px-4"><div className="text-[11px] font-semibold text-[#64748B] mb-1">Informational Updates</div><div className="space-y-1.5">${infoRows}</div></div></div>`;
   const statusFeed = slotNotes.length || centerScoped.length ? p.timelineSlot : null;
+  // Collapse All + hide YOUR NOTES inside the feed (now in AppCenter center column).
+  let statusFeedWithCollapse = statusFeed;
+  try {
+    if (statusFeed) statusFeedWithCollapse = window.React.cloneElement(statusFeed, { collapseAllTrigger, hideYourNotes: true });
+  } catch (e) {}
+  const submitNote = async (priv) => {
+    const v = String(noteDraft || '').trim();
+    if (!v || !active || noteSaving) return;
+    setNoteSaving(true); setNoteMsg('');
+    try {
+      const s = piiScreen(v);
+      const payload = { project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: v.slice(0, 80), content: s.text, rephrased: s.text, privacy: priv, piiStatus: s.flag, syncStatus: 'pending_upload', author: (p.activePersona || 'Brené'), refs: [], updates: [] };
+      // Pure-offline: never fetch localhost:8000 (CORS in air-gapped PWA). Only OnionDB local storage.
+      const api = (typeof window !== 'undefined' && window.OnionDB) || null;
+      if (!api || !api.saveNote) throw new Error('OnionDB unavailable');
+      await api.saveNote(payload);
+      setNoteDraft('');
+      setNoteMsg('Saved locally (pending_upload)');
+    } catch (e) { setNoteMsg('Save failed — kept as draft'); }
+    setNoteSaving(false);
+  };
+  const cNotes = (p.notes || []).filter((n) => n && (n.Project_ReferenceID === active.Project_ReferenceID || n.project_name === active.project_name || n.projectId === active.project_name));
+  const isPrivateNote = (d) => { const v = String((d && d.privacy) || ''); return v === 'Private' || v === 'My Notes' || v === 'My Notes (Private)'; };
+  const privateNotes = cNotes.filter(isPrivateNote);
+  const teamNotes = cNotes.filter((d) => !isPrivateNote(d));
+  const onForceSync = async () => { try { const api = (typeof window !== 'undefined' && window.OnionDB) || null; if (api && api.forceSync) { const r = await api.forceSync(); setNoteMsg('Force Sync: ' + (r.synced || 0) + ' item(s) marked synced'); } } catch (e) {} };
+  const onEditNote = (d) => { try { setNoteDraft(String(d.original || d.title || d.content || '')); } catch (e) {} };
+  const noteRow = (d) => htmlC`<button key=${String(d.id || d.title)} onClick=${() => onEditNote(d)} title=${'Click to edit: ' + String(d.original || d.title || d.content || '')} className="w-full text-left py-1.5 border-b border-[#E6EAF2]"><div className="flex items-center gap-1 text-[12px] text-[#1E293B] truncate" style=${{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span className="flex-1 min-w-0 truncate">${d.original || d.title || d.content || ''}</span><span className="shrink-0 text-[#94A3B8]" title=${d.syncStatus || 'synced'}>☁️</span></div></button>`;
+  const privateCols = privateNotes.length ? privateNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No private notes.</div>`];
+  const teamCols = teamNotes.length ? teamNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No team notes.</div>`];
+  const yourNotes = htmlC`<div className="mt-4 rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-[13px]">YOUR NOTES</h3><span className="flex items-center gap-2"><button onClick=${onForceSync} title="Flip pending_upload to synced for offline/online UI test" className="text-[10px] underline text-[#1F4A7A]">Force Sync ☁️ (${cNotes.length} notes)</button></span></div><div className="mt-3 flex gap-2 flex-wrap"><input value=${noteDraft} onInput=${(e) => setNoteDraft(e.target.value)} placeholder="Add a note..." className="flex-1 min-w-[180px] bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" /><button onClick=${() => submitNote('Private')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-white border border-[#111827] text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#fff', color: '#111827', border: '1px solid #111827' }}>🔒 Add as Private (Only Me)</button><button onClick=${() => submitNote('Team Shared')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-black text-white text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#111827', color: '#fff', border: '1px solid #111827' }}>👥 Add as Team Shared</button></div>${noteMsg ? htmlC`<div className="mt-2 text-[11px] italic text-[#64748B]">${noteMsg}</div>` : null}<div className="mt-3 flex flex-row gap-4"><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1E293B]">Private Notes (${privateNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${privateCols}</div></div><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1F4A7A]">Team Shared Notes (${teamNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${teamCols}</div></div></div></div>`;
   const archivedRows = (p.archived || []).map((a) => htmlC`<div key=${a.Project_ReferenceID} className="p-2 rounded-[8px] bg-[#f3f4f6] border text-[11px]">${a.project_name} — ${a.archived_justification || ''}</div>`);
-  return htmlC`<div className="flex-1 min-w-0 bg-[#fbfdfb]"><div className="p-4 lg:p-5 space-y-5 relative"><div className="rounded-[16px] bg-white border border-[#e5e7eb] shadow-sm p-4 relative"><div className="flex flex-wrap items-center gap-2"><div className="min-w-0 flex flex-wrap items-center gap-2"><h2 className="text-[16px] font-semibold leading-tight">${active.project_name}</h2>${oppChips}${projChips}${personaBadge}</div><div className="ml-auto flex gap-2"><button onClick=${p.onEdit} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px] font-medium">Edit Project Details</button><button onClick=${p.onDetails} className="px-3 py-1 rounded-full bg-[#f0f7ff] border border-[#bfdbfe] text-[11px]">${p.detailsOpen ? 'Collapse' : 'Expand'}</button></div></div><div className="mt-1 text-[11px] text-[#6b7280]">${active.Project_ReferenceID} • Created ${p.fmt(active.created_at)} • Last updated ${p.fmt(active.updated_at || active.created_at)}</div>${p.editSlot}${detailsBody}${keyMoments}<div className="mt-4"><div className="text-[13px] font-semibold">Status Cards</div><div className="mt-2">${statusFeed}</div></div></div><div className="mt-3 p-2 rounded-[8px] bg-[#f3f4f6] border border-dashed text-[11px]">Archived (${(p.archived || []).length})</div><div className="mt-2 space-y-1">${archivedRows}</div></div></div>`;
+  return htmlC`<div className="flex-1 min-w-0 bg-[#fbfdfb]"><div className="p-4 lg:p-5 space-y-5 relative"><div className="rounded-[16px] bg-white border border-[#e5e7eb] shadow-sm p-4 relative"><div className="flex flex-wrap items-center gap-2"><div className="min-w-0 flex flex-wrap items-center gap-2"><h2 className="text-[16px] font-semibold leading-tight">${active.project_name}</h2>${oppChips}${projChips}${personaBadge}</div><div className="ml-auto flex gap-2"><button onClick=${p.onEdit} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px] font-medium">Edit Project Details</button><button onClick=${p.onDetails} className="px-3 py-1 rounded-full bg-[#f0f7ff] border border-[#bfdbfe] text-[11px]">${p.detailsOpen ? 'Collapse' : 'Expand'}</button></div></div><div className="mt-1 text-[11px] text-[#6b7280]">${active.Project_ReferenceID} • Created ${p.fmt(active.created_at)} • Last updated ${p.fmt(active.updated_at || active.created_at)}</div>${p.editSlot}${detailsBody}${keyMoments}${yourNotes}<div className="mt-4"><div className="flex items-center gap-2"><div className="text-[13px] font-semibold">Status Cards</div><button onClick=${() => setCollapseAllTrigger((v) => v + 1)} className="ml-auto px-3 py-1 rounded-full bg-[#FFF5D6] border border-[#fde68a] text-[11px] font-medium">Collapse All</button></div><div className="mt-2">${statusFeedWithCollapse}</div></div></div><div className="mt-3 p-2 rounded-[8px] bg-[#f3f4f6] border border-dashed text-[11px]">Archived (${(p.archived || []).length})</div><div className="mt-2 space-y-1">${archivedRows}</div></div></div>`;
 }

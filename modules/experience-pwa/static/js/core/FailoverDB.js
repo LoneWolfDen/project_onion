@@ -73,25 +73,25 @@ class FailoverDB {
     catch (err) { return readLocal().projects; }
   }
   async saveNote(note) {
-    try {
-      const saved = await tryFetch('/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(note) });
-      // Reactivity fix: mirror cloud success into local + notify subscribers so App re-renders instantly.
-      try {
-        const s = readLocal();
-        if (!Array.isArray(s.notes)) s.notes = [];
-        const rec = { id: (saved && saved.id) || ('n-' + Date.now()), created_at: new Date().toISOString(), syncStatus: 'synced', ...note, ...(saved || {}) };
-        s.notes.push(rec);
-        writeLocal(s);
-      } catch (e) {}
-      return saved;
-    }
-    catch (err) {
-      const s = readLocal();
-      const rec = tagPending({ id: 'n-local-' + Date.now(), created_at: new Date().toISOString(), ...note });
-      s.notes.push(rec);
-      writeLocal(s);
-      return rec;
-    }
+    // Pure-offline: NEVER fetch localhost:8000 (CORS in air-gapped PWA).
+    // Direct localStorage write via Failover Repository Pattern.
+    const s = readLocal();
+    if (!Array.isArray(s.notes)) s.notes = [];
+    const rec = tagPending({ id: 'n-local-' + Date.now(), created_at: new Date().toISOString(), ...note });
+    try { rec.syncStatus = 'pending_upload'; } catch (e) {}
+    s.notes.push(rec);
+    writeLocal(s);
+    return rec;
+  }
+  // Mock Sync Toggle: flip all pending_upload -> synced for offline/online UI testing.
+  async forceSync() {
+    const s = readLocal();
+    let n = 0;
+    ['timeline', 'notes', 'projects'].forEach((k) => {
+      (s[k] || []).forEach((it) => { if (it && it.syncStatus === 'pending_upload') { it.syncStatus = 'synced'; n++; } });
+    });
+    writeLocal(s);
+    return { synced: n };
   }
   async saveProject(project) {
     try {
@@ -201,6 +201,51 @@ class FailoverDB {
     const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
     if (t) { Object.assign(t, patch); t.syncStatus = 'processed'; ensureTimelineNodes(t); writeLocal(s); }
     return t || { id, ...patch };
+  }
+  // Harvester Smart Append — pure-offline entity-resolution commit.
+  // Appends reviewer-approved RAW/AI nodes to an EXISTING matched Status Card's
+  // horizontal timeline strip (no new standalone card). Staged update is marked
+  // private/pending review. Removes the now-consumed staged item. Zero network fetch.
+  async smartAppendToCard(targetCardId, stagedRawNode, stagedAiNode, meta) {
+    const s = readLocal();
+    const list = Array.isArray(s.timeline) ? s.timeline : [];
+    const target = list.find((x) => x && String(x.id) === String(targetCardId));
+    if (!target) return null;
+    if (!Array.isArray(target.nodes)) target.nodes = [];
+    const nowIso = new Date().toISOString();
+    const pushNode = (n) => {
+      if (!n || (!n.text && !n.kind)) return;
+      target.nodes.push({
+        kind: String((n && n.kind) || 'EV').toUpperCase(),
+        text: String((n && n.text) || '').slice(0, 800),
+        stagedAppend: true,
+        appendPrivacy: 'My Notes (Private)',
+        appendSyncStatus: 'pending_review',
+        appended_at: nowIso,
+      });
+    };
+    pushNode(stagedRawNode);
+    pushNode(stagedAiNode);
+    if (!Array.isArray(target.pendingAppends)) target.pendingAppends = [];
+    target.pendingAppends.push({
+      at: nowIso,
+      privacy: 'My Notes (Private)',
+      syncStatus: 'pending_review',
+      title: (meta && meta.title) || '',
+      source: (meta && meta.source) || '',
+      reasons: (meta && meta.reasons) || [],
+      score: (meta && typeof meta.score === 'number') ? meta.score : 0,
+    });
+    target.updated_at = nowIso;
+    ensureTimelineNodes(target);
+    // Remove the consumed staged (pending_processing) item so no duplicate standalone card remains.
+    const stagedId = meta && meta.stagedId;
+    if (stagedId) {
+      const si = list.findIndex((x) => x && String(x.id) === String(stagedId) && x.syncStatus === 'pending_processing');
+      if (si >= 0) list.splice(si, 1);
+    }
+    writeLocal(s);
+    return target;
   }
   async resetToSeedData() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}

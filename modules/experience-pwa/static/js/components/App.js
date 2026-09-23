@@ -67,6 +67,7 @@ export function App() {
   const [editOpen, setEditOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [staged, setStaged] = useState([]);
   const [hStatus, setHStatus] = useState('');
   const [clip, setClip] = useState('');
@@ -186,7 +187,7 @@ export function App() {
       const ho = opp && (active.opportunity_numbers || []).includes(opp);
       if (!hp && !ho) return;
       const s = piiScreen(desc);
-      out.push(toPayload({ id: 'excel-' + Date.now() + '-' + i, projectId: active.project_name, type: 'Excel', title: 'Excel row ' + (i + 1), source, content: s.text, piiStatus: s.flag }));
+      out.push(toPayload({ id: 'excel-' + Date.now() + '-' + i, projectId: active.project_name, type: 'Excel', title: 'Excel row ' + (i + 1), source, content: s.text, piiStatus: s.flag }, activePersona));
     });
     out.forEach((o) => { if (o && !o.privacy) o.privacy = 'Team Shared'; });
     setStaged((p) => p.concat(out));
@@ -237,7 +238,7 @@ export function App() {
     setActiveRef(ref);
     setRegOpen(false);
   }} />` : null;
-  const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: v.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', refs: [], updates: [] }); if (reset) reset(''); };
+  const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: v.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', author: activePersona || 'Brené', refs: [], updates: [] }); if (reset) reset(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); await (window.OnionDB || OnionDB).updateNotePrivacy(note.id, next); };
   const onAskAssistant = async (overridePrivacy) => {
     const pMode = String(overridePrivacy || privacy || 'Both');
@@ -306,18 +307,24 @@ export function App() {
         <div className="flex items-center gap-2">
           <label className="text-[11px] text-[#6b7280]">Persona</label><select value=${activePersona} onChange=${(e) => setActivePersona(e.target.value)} className="bg-white border border-[#bfdbfe] rounded-full px-3 py-1 text-[11px] font-medium" title="Switch persona view"><option>Brené</option><option>Malcolm</option><option>Walter</option><option>Daniel</option></select>
           <div className="text-[11px] text-[#6b7280] italic flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse inline-block"></span>Sync latest</div>
-          <button onClick=${() => alert('Guide coming soon')} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
+          <button onClick=${() => setGuideOpen(true)} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
         </div>
       </div>
     </div>
     <div className="flex flex-col lg:flex-row">
-      <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} projects=${projects} fmt=${fmtDate} onPick=${(r) => setProject(r)} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
+      <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} onClientArtefacts=${() => setMode('client360')} projects=${projects} fmt=${fmtDate} onPick=${(r) => setProject(r)} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
       <${AppCenter} mode=${mode} c360=${c360} activePersona=${activePersona} onBack=${() => setMode('project')} onPickProject=${(r) => setProject(r)} allProjects=${db.projects} timeline=${db.timeline} notes=${db.notes} domains=${domains} keywords=${keywords} active=${active} fmt=${fmtDate} onEdit=${openEdit} onDetails=${() => setDetailsOpen((v) => !v)} detailsOpen=${detailsOpen} editSlot=${editSlot} timelineSlot=${timelineSlot} archived=${archived} />
       <${AppRight} privacy=${privacy} setPrivacy=${onPrivacyChange} ask=${ask} setAsk=${onAskClear} hits=${hits} onView=${onViewHit} keywords=${keywords} contextCards=${contextCards} onClientArtefacts=${() => setMode('client360')} onAsk=${onAskAssistant} assistantAnswer=${assistantAnswer} assistantLoading=${assistantLoading} assistantSources=${assistantSources} scopedCount=${contextCards.length} />
     </div>
     <div className="px-4 py-2 text-[10px] italic text-[#9ca3af] border-t bg-white flex flex-wrap gap-3"><span>Project Onion v0.18.0 clean</span></div>
     ${regSlot}
-    <${HarvesterPanel} project=${active} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} />
+    ${guideOpen ? html`<div className="fixed inset-0 z-50" style=${{ background: 'rgba(15,23,42,0.35)' }} onClick=${() => setGuideOpen(false)}>
+      <aside onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} aria-label="Project Onion Guide panel" style=${{ position: 'fixed', top: 0, right: 0, height: '100vh', width: '25vw', minWidth: '320px', background: '#fff', borderLeft: '1px solid #e5e7eb', boxShadow: '-8px 0 24px rgba(31,74,122,.16)', display: 'flex', flexDirection: 'column', zIndex: 51 }}>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[#e5e7eb]"><div className="font-semibold text-[14px]" style=${{ textAlign: 'left' }}>Project Onion - Guide</div><div className="ml-auto flex flex-col items-end gap-1"><a href="/docs/guide.html" target="_blank" rel="noopener" title="Open in New Tab" className="px-2 py-0.5 rounded bg-[#f0f7ff] border border-[#bfdbfe] text-[12px]">↗</a><button onClick=${() => setGuideOpen(false)} title="Close" className="px-2 py-0.5 rounded bg-white border border-[#bfdbfe] text-[12px]">✕</button></div></div>
+        <iframe src="/docs/guide.html" title="Project Onion Guide" style=${{ flex: 1, width: '100%', border: '0', background: '#fff' }}></iframe>
+      </aside>
+    </div>` : null}
+    <${HarvesterPanel} project=${active} activePersona=${activePersona} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} />
   </div>`;
 
 

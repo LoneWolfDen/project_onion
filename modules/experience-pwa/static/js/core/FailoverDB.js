@@ -183,6 +183,12 @@ class FailoverDB {
       synthesizedText: (aiResult && aiResult.synthesizedText) || '',
       tags: (aiResult && aiResult.tags) || [],
       impactScore: (aiResult && typeof aiResult.impactScore === 'number') ? aiResult.impactScore : 0.7,
+      // Rich UI persistence: keep horizontal timeline, merge banners, and
+      // structured grids visible after reload. Default privacy Fail Closed
+      // to 'Team Shared' when the AI result carries no explicit value.
+      mergeHint: (aiResult && aiResult.mergeHint) || '',
+      structured: (aiResult && aiResult.structured && typeof aiResult.structured === 'object') ? aiResult.structured : {},
+      privacy: (aiResult && aiResult.privacy) ? aiResult.privacy : 'Team Shared',
       syncStatus: 'processed',
       processed_at: new Date().toISOString(),
     };

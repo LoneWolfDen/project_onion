@@ -33,13 +33,36 @@ function mockResult(text, type) {
   };
 }
 
-export function privacyMatchesCard(cardPrivacy, mode) {
+export function privacyMatchesCard(cardOrPrivacy, mode, activePersona) {
+  // Persona-synchronized privacy matrix — mirrors App.js scopeByPrivacyMode exactly:
+  // - My Notes: card.privacy === 'My Notes' (incl. 'Private' aliases) AND card.author === activePersona.
+  // - Team Shared: card.privacy === 'Team Shared'.
+  // - Both: Team Shared OR (My Notes AND card.author === activePersona).
+  // Backward compat: first arg accepts either a card object {privacy, author}
+  // or a legacy privacy string. When activePersona is unknown (legacy 2-arg
+  // callers), preserve legacy pass-through so pre-scoped App.js flows keep working.
+  let cardPrivacy;
+  let cardAuthor;
+  if (cardOrPrivacy && typeof cardOrPrivacy === 'object') {
+    cardPrivacy = cardOrPrivacy.privacy;
+    cardAuthor = cardOrPrivacy.author;
+  } else {
+    cardPrivacy = cardOrPrivacy;
+    cardAuthor = undefined;
+  }
   const m = String(mode || 'Both');
-  if (m === 'Both') return true;
-  const cp = String((cardPrivacy == null ? 'Team Shared' : cardPrivacy));
-  if (m === 'My Notes') return /my notes|private/i.test(cp);
-  if (m === 'Team Shared') return cp === 'Team Shared';
-  return true;
+  const persona = (activePersona == null ? '' : String(activePersona));
+  const hasPersona = persona !== '';
+  const cp = String((cardPrivacy == null || cardPrivacy === '' ? 'Team Shared' : cardPrivacy));
+  const isTeamShared = cp === 'Team Shared';
+  const isMyNotes = cp === 'My Notes' || cp === 'Private' || cp === 'My Notes (Private)';
+  if (m === 'My Notes') {
+    if (!hasPersona) return isMyNotes;
+    return isMyNotes && String(cardAuthor || '') === persona;
+  }
+  if (m === 'Team Shared') return isTeamShared;
+  if (!hasPersona) return true;
+  return isTeamShared || (isMyNotes && String(cardAuthor || '') === persona);
 }
 
 export async function processWithAI(text, type) {
@@ -128,37 +151,48 @@ export async function processWithAI(text, type) {
     return fb;
   }
 }
-function scopeCardsByPrivacy(cards, privacyMode) {
+function scopeCardsByPrivacy(cards, privacyMode, activePersona) {
   const arr = Array.isArray(cards) ? cards : [];
   const mode = String(privacyMode || 'Both');
-  if (mode === 'Both') return arr.slice();
-  return arr.filter((c) => privacyMatchesCard(c && (c.privacy || 'Team Shared'), mode));
+  // Persona-synchronized: pass full card + activePersona so 'Both'/'My Notes'
+  // enforce card.author === activePersona (same rules as App.js).
+  return arr.filter((c) => privacyMatchesCard(c || {}, mode, activePersona));
 }
-function mockQaFallback(question, scopedCards, privacyMode) {
+function mockQaFallback(question, scopedCards, privacyMode, activePersona) {
   const q = String(question || '').toLowerCase();
   const mode = String(privacyMode || 'Both');
+  const persona = (activePersona == null ? '' : String(activePersona));
+  // Respect the already-scoped set only: NEVER fall back to hardcoded
+  // persona-blind answers that could leak another persona's private note.
+  // If scoping removed everything, return an explicit empty-scope message.
+  if (!Array.isArray(scopedCards) || scopedCards.length === 0) {
+    return { answer: 'No scoped sources are available in the current privacy scope' + (persona ? ' for ' + persona : '') + '. Switch scope or ingest more cards to enable synthesis.', sources: [] };
+  }
+  const scopedSources = (Array.isArray(scopedCards) ? scopedCards : []).slice(0, 3).map((c) => String((c && (c.source || c.title || c.id)) || 'Timeline'));
   const hit = /why|delayed|delay|blocked|block/i.test(q) || /\bpo\b|po-\d+/i.test(q);
   if (hit && mode === 'My Notes') {
-    return { answer: 'The Apollo migration is currently delayed pending AWS gateway VNet peering approval from Client Infosec.', sources: ['Sarah ADR (Solutions Architect)'] };
+    return { answer: 'The Apollo migration is currently delayed pending AWS gateway VNet peering approval from Client Infosec.' + (persona ? ' (scoped to ' + persona + '\'s My Notes)' : ''), sources: scopedSources.length ? scopedSources : ['Scoped My Notes'] };
   }
   if (hit) {
-    return { answer: 'Work is halted because PO-88921 funding Infosec consultants is depleted. However, Lead Dev Raj identified a legacy on-prem gateway workaround that can bypass the block immediately pending Delivery Manager sign-off.', sources: ['David Invoicing Email (PO-88921)', 'Raj Teams Transcript', 'Sarah ADR'] };
+    return { answer: 'Work is halted because PO-88921 funding Infosec consultants is depleted. However, Lead Dev Raj identified a legacy on-prem gateway workaround that can bypass the block immediately pending Delivery Manager sign-off.', sources: scopedSources.length ? scopedSources : ['Timeline'] };
   }
   const top = (Array.isArray(scopedCards) && scopedCards.length ? scopedCards[0] : null) || null;
-  if (!top) return { answer: 'No scoped sources are available in the current privacy scope. Switch scope or ingest more cards to enable synthesis.', sources: [] };
+  if (!top) return { answer: 'No scoped sources are available in the current privacy scope' + (persona ? ' for ' + persona : '') + '. Switch scope or ingest more cards to enable synthesis.', sources: [] };
   const title = String(top.title || top.id || 'Untitled card');
   const source = String(top.source || top.type || 'Timeline');
   const body = String(top.synthesizedText || top.content || top.detail || '').slice(0, 220);
   return { answer: 'Based on ' + String(scopedCards.length) + ' scoped source(s), the most relevant is "' + title + '" from ' + source + (body ? ': ' + body : '.'), sources: [source] };
 }
-export async function askSmartAssistant(question, contextCards, privacyMode) {
+export async function askSmartAssistant(question, contextCards, privacyMode, activePersona) {
   const q = String(question || '');
   const mode = String(privacyMode || 'Both');
-  const scoped = scopeCardsByPrivacy(contextCards, mode);
+  const persona = (activePersona == null ? '' : String(activePersona));
+  const scoped = scopeCardsByPrivacy(contextCards, mode, persona);
   const lite = scoped.slice(0, 12).map((c) => ({
     id: (c && c.id) || '', title: (c && c.title) || '',
     source: (c && (c.source || c.type)) || '',
     type: (c && c.type) || '', privacy: (c && c.privacy) || 'Team Shared',
+    author: (c && c.author) || '',
     content: String((c && (c.synthesizedText || c.content || c.detail)) || '').slice(0, 800),
   }));
   let ctx = '[]';
@@ -171,8 +205,8 @@ export async function askSmartAssistant(question, contextCards, privacyMode) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + String(apiKey).trim(), 'HTTP-Referer': (typeof location !== 'undefined' && location.href) || 'http://localhost', 'X-Title': 'Project Continuum Smart Assistant' },
         body: JSON.stringify({ model, messages: [
-          { role: 'system', content: 'You are a Project Delivery Copilot. Synthesize a concise 2-3 sentence answer citing source names, strictly limited to information present in the provided context cards. Return ONLY valid JSON with keys: answer (string), sources (array of source-name strings). Privacy scope: ' + mode + '.' },
-          { role: 'user', content: 'Question: ' + q + '\nPrivacy scope: ' + mode + '\nContext cards:\n' + ctx },
+          { role: 'system', content: 'You are a Project Delivery Copilot. Synthesize a concise 2-3 sentence answer citing source names, strictly limited to information present in the provided context cards. Return ONLY valid JSON with keys: answer (string), sources (array of source-name strings). Privacy scope: ' + mode + (persona ? ' (active persona: ' + persona + ')' : '') + '.' },
+          { role: 'user', content: 'Question: ' + q + '\nPrivacy scope: ' + mode + (persona ? '\nActive persona: ' + persona : '') + '\nContext cards:\n' + ctx },
         ] }),
       });
       if (!res.ok) throw new Error('OpenRouter HTTP ' + res.status);
@@ -189,10 +223,10 @@ export async function askSmartAssistant(question, contextCards, privacyMode) {
       throw new Error('Empty LLM answer');
     } catch (err) {
       await new Promise((r) => setTimeout(r, 900));
-      return mockQaFallback(q, scoped, mode);
+      return mockQaFallback(q, scoped, mode, persona);
     }
   }
   await new Promise((r) => setTimeout(r, 900));
-  return mockQaFallback(q, scoped, mode);
+  return mockQaFallback(q, scoped, mode, persona);
 }
 export default { processWithAI, askSmartAssistant, privacyMatchesCard };

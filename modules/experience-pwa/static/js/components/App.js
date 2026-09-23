@@ -24,6 +24,7 @@ export function App() {
   const [mode, setMode] = useState('project');
   const [c360, setC360] = useState('Acme Corp');
   const [privacy, setPrivacy] = useState('Both');
+  const [activePersona, setActivePersona] = useState('Brené');
   const [focusId, setFocusId] = useState(null);
   const [ask, setAsk] = useState('');
   const [assistantAnswer, setAssistantAnswer] = useState('');
@@ -214,10 +215,17 @@ export function App() {
   const onViewHit = (id) => { if (id) setFocusId(id); try { const el = document.getElementById('tl-' + id); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} };
   const onApproveNote = (id) => setApproved((prev) => new Set(prev).add(id));
   const matchActive = (t) => !!active && !!t && (t.Project_ReferenceID === active.Project_ReferenceID || t.project_name === active.project_name || t.projectId === active.project_name);
-  const scopeByPrivacyMode = (arr, pMode) => (Array.isArray(arr) ? arr : []).filter((t) => privacyMatchesCard(t && (t.privacy || 'Team Shared'), pMode || privacy));
+  const scopeByPrivacyMode = (arr, pMode) => (Array.isArray(arr) ? arr : []).filter((t) => {
+    const mode = String(pMode || privacy || 'Both');
+    if (!privacyMatchesCard(t && (t.privacy || 'Team Shared'), mode)) return false;
+    if (mode === 'My Notes') return String((t && t.author) || '') === String(activePersona || '');
+    return true;
+  });
   const scopedBaseFor = (pMode) => active ? scopeByPrivacyMode((db.timeline || []).filter(matchActive).concat((db.notes || []).filter(matchActive)), pMode || privacy) : [];
   const contextCards = scopedBaseFor(privacy);
-  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${db.timeline} notes=${db.notes} privacyFilter=${privacy} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${onApproveNote} />` : null;
+  const personaTimeline = (db.timeline || []).filter((t) => privacy === 'My Notes' ? String((t && t.author) || '') === String(activePersona || '') : true);
+  const personaNotes = (db.notes || []).filter((t) => privacy === 'My Notes' ? String((t && t.author) || '') === String(activePersona || '') : true);
+  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${onApproveNote} />` : null;
   const askQ = String(ask || '').trim().toLowerCase();
   const hits = (askQ ? contextCards.filter((t) => [t.title, t.detail, t.content, t.synthesizedText, t.source, t.type].join(' ').toLowerCase().includes(askQ)) : contextCards).slice(0, 3);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
@@ -231,7 +239,7 @@ export function App() {
           <div className="flex items-center gap-1 bg-white rounded-full px-3 py-1 border border-[#bfdbfe] shadow-sm"><button onClick=${() => { setClient('ALL Clients'); setQ(''); setMode('project'); }} className="font-medium" title="Show all clients">All Clients</button>${active ? html`<span className="text-[#6b7280]">/</span><button onClick=${() => { setClient(active.client_name); setQ(''); setMode('client360'); setC360(active.client_name); }} className="font-medium" title="Filter to this client">${active.client_name}</button><span className="text-[#6b7280]">/</span><span className="font-semibold">${active.project_name}</span>` : (client !== 'ALL Clients' ? html`<span className="text-[#6b7280]">/</span><span className="font-medium">${client}</span>` : null)}</div>
         </div>
         <div className="flex items-center gap-2">
-          
+          <label className="text-[11px] text-[#6b7280]">Persona</label><select value=${activePersona} onChange=${(e) => setActivePersona(e.target.value)} className="bg-white border border-[#bfdbfe] rounded-full px-3 py-1 text-[11px] font-medium" title="Switch persona view"><option>Brené</option><option>Malcolm</option><option>Walter</option><option>Daniel</option></select>
           <div className="text-[11px] text-[#6b7280] italic flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse inline-block"></span>Sync latest</div>
           <button onClick=${() => alert('Guide coming soon')} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
         </div>
@@ -239,7 +247,7 @@ export function App() {
     </div>
     <div className="flex flex-col lg:flex-row">
       <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} projects=${projects} fmt=${fmtDate} onPick=${(r) => { setActiveRef(r); setMode('project'); }} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
-      <${AppCenter} mode=${mode} c360=${c360} onBack=${() => setMode('project')} domains=${domains} keywords=${keywords} active=${active} fmt=${fmtDate} onEdit=${openEdit} onDetails=${() => setDetailsOpen((v) => !v)} detailsOpen=${detailsOpen} editSlot=${editSlot} timelineSlot=${timelineSlot} archived=${archived} />
+      <${AppCenter} mode=${mode} c360=${c360} activePersona=${activePersona} onBack=${() => setMode('project')} onPickProject=${(r) => { setActiveRef(r); setMode('project'); }} allProjects=${db.projects} timeline=${db.timeline} notes=${db.notes} domains=${domains} keywords=${keywords} active=${active} fmt=${fmtDate} onEdit=${openEdit} onDetails=${() => setDetailsOpen((v) => !v)} detailsOpen=${detailsOpen} editSlot=${editSlot} timelineSlot=${timelineSlot} archived=${archived} />
       <${AppRight} privacy=${privacy} setPrivacy=${onPrivacyChange} ask=${ask} setAsk=${onAskClear} hits=${hits} onView=${onViewHit} keywords=${keywords} onClientArtefacts=${() => setMode('client360')} onAsk=${onAskAssistant} assistantAnswer=${assistantAnswer} assistantLoading=${assistantLoading} assistantSources=${assistantSources} scopedCount=${contextCards.length} />
     </div>
     <div className="px-4 py-2 text-[10px] italic text-[#9ca3af] border-t bg-white flex flex-wrap gap-3"><span>Project Onion v0.18.0 clean</span></div>

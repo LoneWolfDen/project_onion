@@ -38,7 +38,14 @@ body { font-family: Inter, system-ui, sans-serif; background: #fafcfe; color: #1
 .modal { position: fixed; inset: 20% 25%; background: #fff; border: 1px solid #CBD5E1; border-radius: 12px; padding: 16px; z-index: 80; }
 .err { color: #991B1B; background: #FFD6D6; padding: 6px 8px; border-radius: 8px; font-size: 12px; }
 
+/* ===== UX minimal pass: hidden scrollbars + notebook + palette tokens ===== */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 /* ===== ESM Phase-2 layout bridge (matches App/TimelineCard/HarvesterPanel/ProjectModal classNames) ===== */
+:root {
+  --ink: #1E293B; --muted: #64748B; --faint: #94A3B8;
+  --line: #E6EAF2; --wash: #F8FAFC; --accent: #1F4A7A;
+}
 /* Without these, ESM emits bare <header>/<section>/<aside> with no Tailwind classes -> unstyled stack. */
 .app { min-height: 100vh; background: #fafcfe; }
 .app-header { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 14px 20px; background: linear-gradient(135deg, #F0F7FF 0%, #F3ECFF 60%, #FFF9F0 100%); border-bottom: 1px solid #D6E8FF; }

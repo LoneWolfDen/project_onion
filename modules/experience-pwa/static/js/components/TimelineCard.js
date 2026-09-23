@@ -71,13 +71,23 @@ function mockPillDate(idx) {
   const dates = ['23092026', '24092026', '25092026', '26092026', '27092026', '28092026'];
   return dates[Number(idx || 0) % dates.length];
 }
-function timelineStrip(m) {
-  const items = miniTimelineFor(m);
+function timelineStrip(m, isOwner) {
+  const rawItems = miniTimelineFor(m);
+  const combinedNodes = Array.isArray(rawItems) ? rawItems : [];
+  // Matrix Step 3: private/pending Smart Append nodes visible to card owner only.
+  // (miniTimelineFor projects nodes to {kind,label,stagedAppend}, so node-level
+  // author is unavailable here — card-level isOwner is the ownership signal.)
+  const visibleNodes = combinedNodes.filter((n) => {
+    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) || !!(n && n.stagedAppend);
+    if (!isPrivateNode) return true;
+    return !!isOwner;
+  });
+  const items = visibleNodes;
   if (!items.length) return null;
-  return html`<div className="mt-2 relative" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-stretch gap-1.5 overflow-x-auto no-scrollbar pb-1">${items.map((t, i) => {
+  return html`<div className="overflow-x-auto scrollbar-thin max-w-full pb-2 mb-1"><div className="mt-2 relative" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-center gap-2 w-max">${items.map((t, i) => {
     const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
     return html`<span key=${String(t.kind) + '-' + i} className="flex items-stretch shrink-0"><span title=${t.label} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1" style=${{ minWidth: '52px', background: t.stagedAppend ? '#fef3c7' : '#E8F2FF', borderColor: t.stagedAppend ? '#f59e0b' : '#A8C6F0', color: '#1F4A7A', lineHeight: '1.1' }}><span className="text-[9px] font-bold">${ref}</span><span className="text-[9px] text-[#64748B]">${mockPillDate(i)}</span>${t.stagedAppend ? html`<span className="text-[9px] font-bold text-[#92400e]">private</span>` : null}</span></span>`;
-  })}</div></div>`;
+  })}</div></div></div>`;
 }
 function pendingAppendsBanner(m) {
   const n = Array.isArray(m && m.pendingAppends) ? m.pendingAppends.length : 0;
@@ -142,7 +152,7 @@ export function TimelineCard(props) {
   const renderYourNotesFallback = () => {
     if (props.hideYourNotes) return null;
     return html`<div className="rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4">
-      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2">YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">Force Sync ☁️</button></h3></div>
+      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2"><span title=${'Active persona: ' + String(activePersona || '')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold" style=${{ width: '24px', height: '24px', fontSize: '12px' }}>${String(activePersona || 'B').slice(0, 1).toUpperCase()}</span>YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">Force Sync ☁️</button></h3></div>
 
       ${notesOpen ? html`<div className="mt-3 space-y-3">
         <div className="flex gap-2 flex-wrap"><input value=${draft} onInput=${(e) => setDraft(e.target.value)} placeholder="Add a note..." className="flex-1 bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" />
@@ -170,6 +180,10 @@ export function TimelineCard(props) {
     const structEntries = (m && m.structured && typeof m.structured === 'object') ? Object.keys(m.structured).map(function (k) { return [k, String(m.structured[k])]; }) : [];
     const effPii = String(m.piiStatus || d.flag || 'Clean');
     const isApproved = effPii === 'Approved' || effPii === 'Clean' || (props.approved && props.approved.has && props.approved.has(m.id));
+    const isOwner = String(m.author) === String(props.activePersona) || String(m.contributor) === String(props.activePersona);
+    const confText = (m && m.confidence) || ("Medium — Fused from Data Park Dropzone · Impact " + ((m && m.impactScore) || 0.7));
+    const hasPendingAppends = isOwner && (/private/i.test(JSON.stringify(m.nodes || [])) || /private/i.test(JSON.stringify(m.timeline || [])) || (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some(function (n) { return n && n.stagedAppend; })));
+    const approveCta = hasPendingAppends ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve Updates & Share</button>` : (((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved) ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve redacted share</button>` : html`<button type="button" disabled className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Approved for Team Share</button>`);
     const open = openProv.has(m.id) || (focusId && String(focusId) === String(m.id));
     const key = String(m.id || m.title || label);
     return html`<div key=${key} id=${'tl-' + String(m.id || '')} className="bg-white border border-[#E6EAF2] rounded-[16px] p-4 mb-6 shadow-sm relative">
@@ -182,18 +196,18 @@ export function TimelineCard(props) {
         </div>
       </div>
       <div className="mt-2 text-[13px] leading-relaxed text-[#1E293B]" style=${open ? null : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>${body}</div>
-      ${timelineStrip(m)}
+      ${timelineStrip(m, isOwner)}
       ${pendingAppendsBanner(m)}
       ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B] underline cursor-pointer">${c}</button>`)}</div>` : null}
       <div className="mt-2 flex items-center gap-1 text-[10px] italic text-[#94A3B8]"><span>Extracted</span><span className="w-6 h-px bg-[#E6EAF2] mx-1 inline-block"></span><span>AI Fused</span></div>
       ${open ? html`<div className="mt-3 bg-[#f8fafc] rounded-[12px] p-3 space-y-2">
         ${m.mergeHint ? html`<div className="flex items-center gap-2 p-2 rounded-[10px] bg-[#FFF7ED] border border-[#fed7aa] text-[11px]"><span>⚡ ${m.mergeHint}</span><button type="button" onClick=${onMergeClick} className="ml-auto px-2 py-0.5 rounded-full bg-white border text-[11px]">Merge</button></div>` : null}
-        ${structEntries.length ? html`<div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Structured data</div><div className="grid grid-cols-2 gap-1">${structEntries.map((kv) => html`<div key=${kv[0]} className="p-1.5 rounded-[8px] bg-[#f8fafc] border"><div className="text-[10px] font-semibold text-[#64748B]">${kv[0]}</div><div className="text-[12px] text-[#1E293B]">${kv[1]}</div></div>`)}</div></div>` : null}
+        ${structEntries.length ? html`<div className="grid gap-2" style=${{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}><div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Model Confidence / PII Gate</div><div className="text-[11px] text-[#1E293B]">${confText}</div><div className="text-[10px] italic text-[#64748B] mt-1">PII: ${effPii}</div>${approveCta}</div><div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Structured data</div><div className="grid grid-cols-2 gap-1">${structEntries.map((kv) => html`<div key=${kv[0]} className="p-1.5 rounded-[8px] bg-[#f8fafc] border"><div className="text-[10px] font-semibold text-[#64748B]">${kv[0]}</div><div className="text-[12px] text-[#1E293B]">${kv[1]}</div></div>`)}</div></div></div>` : html`<div className="grid gap-2" style=${{ display: 'grid', gridTemplateColumns: '1fr' }}><div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Model Confidence / PII Gate</div><div className="text-[11px] text-[#1E293B]">${confText}</div><div className="text-[10px] italic text-[#64748B] mt-1">PII: ${effPii}</div>${approveCta}</div></div>`}
         <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Provenance</div><div className="max-h-32 overflow-y-auto no-scrollbar space-y-1">${chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title} • ${m.syncStatus || 'synced'}</span></div>`)}</div></div>
       </div>` : null}
       <div className="mt-3 pt-2 border-t border-[#E6EAF2] flex items-center justify-between gap-2">
         <span className="text-[10px] italic text-[#94A3B8]">${isPrivate ? 'Private' : 'Team Shared'}</span>
-        <span className="text-[10px] italic text-[#94A3B8]">${m.source || m.type || 'Timeline'} • ${effPii}${d.flag === 'Redacted_Review' ? ' • PII redacted' : ''} • ${m.syncStatus || 'synced'}</span>
+        <span className="text-[10px] italic text-[#94A3B8]">${m.source || m.type || 'Timeline'} • ${effPii}${d.flag === 'Redacted_Review' ? ' • PII redacted' : ''} • ${String(m.syncStatus || 'synced') === 'pending_upload' ? ((hasPendingAppends || ((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved)) ? '' : html`<button type="button" onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); if (props.onSync) props.onSync(m.id); }} className="text-[#1F4A7A] underline font-semibold cursor-pointer">Sync Now ⬆️</button>`) : html`<span className="text-green-700">synced ✅</span>`}</span>
       </div>
     </div>`;
   });

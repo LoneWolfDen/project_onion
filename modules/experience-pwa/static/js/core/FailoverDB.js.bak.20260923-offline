@@ -40,33 +40,6 @@ export function readLocal() {
     if (!Array.isArray(parsed.archived)) parsed.archived = [];
     if (!Array.isArray(parsed.clients)) parsed.clients = seedState().clients;
     try { (parsed.timeline || []).forEach(ensureTimelineNodes); } catch (e) {}
-    // Heal orphaned 'processed' statuses (pre-fix markProcessed rows) back to
-    // 'pending_upload' so Phase-4 Sync gate (Sync Now CTA) renders correctly.
-    // Failover Repository Pattern: silent local repair on load, no network.
-    try {
-      const heal = (list) => {
-        if (!Array.isArray(list)) return false;
-        let touched = false;
-        list.forEach((it) => {
-          if (it && it.syncStatus === 'processed') { it.syncStatus = 'pending_upload'; touched = true; }
-          // Backfill appended-node author fields so Phase-3 isOwner checks work
-          // for rows written before the author-propagation fix.
-          if (it && Array.isArray(it.nodes)) {
-            it.nodes.forEach((n) => {
-              if (n && n.stagedAppend && !n.author) {
-                n.author = it.author || 'User';
-                n.contributor = it.contributor || n.author;
-                touched = true;
-              }
-            });
-          }
-        });
-        return touched;
-      };
-      const t1 = heal(parsed.timeline);
-      const t2 = heal(parsed.notes);
-      if (t1 || t2) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {} }
-    } catch (e) {}
     return parsed;
   } catch (err) {
     const s2 = seedState();
@@ -92,12 +65,12 @@ async function tryFetch(path, options) {
 }
 class FailoverDB {
   async getClients() {
-    // Pure-offline: immediate local read, zero network fetch (air-gapped PWA).
-    return readLocal().clients;
+    try { return await tryFetch('/clients'); }
+    catch (err) { return readLocal().clients; }
   }
   async listProjects() {
-    // Pure-offline: immediate local read, zero network fetch (air-gapped PWA).
-    return readLocal().projects;
+    try { return await tryFetch('/projects'); }
+    catch (err) { return readLocal().projects; }
   }
   async saveNote(note) {
     // Pure-offline: NEVER fetch localhost:8000 (CORS in air-gapped PWA).
@@ -121,15 +94,30 @@ class FailoverDB {
     return { synced: n };
   }
   async saveProject(project) {
-    // Pure-offline: immediate local write via readLocal()/writeLocal(), zero network fetch.
-    const s = readLocal();
-    if (!Array.isArray(s.projects)) s.projects = [];
-    const rec = tagPending({ created_at: new Date().toISOString(), ...project });
-    const i = s.projects.findIndex((p) => p.Project_ReferenceID === rec.Project_ReferenceID);
-    if (i >= 0) s.projects[i] = { ...s.projects[i], ...rec };
-    else s.projects.push(rec);
-    writeLocal(s);
-    return rec;
+    try {
+      const saved = await tryFetch('/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(project) });
+      // Reactivity fix: mirror cloud success into local + notify subscribers so App re-renders instantly.
+      try {
+        const s = readLocal();
+        if (!Array.isArray(s.projects)) s.projects = [];
+        const rec = { created_at: new Date().toISOString(), syncStatus: 'synced', ...project, ...(saved || {}) };
+        const i = s.projects.findIndex((p) => p.Project_ReferenceID === rec.Project_ReferenceID);
+        if (i >= 0) s.projects[i] = { ...s.projects[i], ...rec };
+        else s.projects.push(rec);
+        writeLocal(s);
+      } catch (e) {}
+      return saved;
+    }
+    catch (err) {
+      const s = readLocal();
+      if (!Array.isArray(s.projects)) s.projects = [];
+      const rec = tagPending({ created_at: new Date().toISOString(), ...project });
+      const i = s.projects.findIndex((p) => p.Project_ReferenceID === rec.Project_ReferenceID);
+      if (i >= 0) s.projects[i] = { ...s.projects[i], ...rec };
+      else s.projects.push(rec);
+      writeLocal(s);
+      return rec;
+    }
   }
   async archiveProject(ref, justification) {
     if (!justification || !String(justification).trim()) throw new Error('Archive requires mandatory justification');
@@ -145,11 +133,20 @@ class FailoverDB {
     return mv;
   }
   async updateNotePrivacy(id, privacy) {
-    // Pure-offline: immediate local write via readLocal()/writeLocal(), zero network fetch.
-    const s = readLocal();
-    const n = (s.notes || []).find((x) => x.id === id);
-    if (n) { n.privacy = privacy; n.syncStatus = 'pending_upload'; writeLocal(s); }
-    return n || { id, privacy };
+    try {
+      await tryFetch('/notes/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ privacy }) });
+      try {
+        const s = readLocal();
+        const n = (s.notes || []).find((x) => x.id === id);
+        if (n) { n.privacy = privacy; n.syncStatus = 'synced'; writeLocal(s); }
+      } catch (e) {}
+      return { id, privacy };
+    } catch (err) {
+      const s = readLocal();
+      const n = (s.notes || []).find((x) => x.id === id);
+      if (n) { n.privacy = privacy; n.syncStatus = 'pending_upload'; writeLocal(s); }
+      return n || { id, privacy };
+    }
   }
   // --- Data Park (Step 1 Harvester) — Failover Repository Pattern (PURE OFFLINE MODE) ---
   // Hackathon demo: NEVER attempt fetch('http://localhost:8000/harvest') here.
@@ -194,7 +191,7 @@ class FailoverDB {
       mergeHint: (aiResult && aiResult.mergeHint) || '',
       structured: (aiResult && aiResult.structured && typeof aiResult.structured === 'object') ? aiResult.structured : {},
       privacy: (aiResult && aiResult.privacy) ? aiResult.privacy : 'Team Shared',
-      syncStatus: 'pending_upload',
+      syncStatus: 'processed',
       processed_at: new Date().toISOString(),
     };
     if (patch.title === undefined) delete patch.title;
@@ -202,7 +199,7 @@ class FailoverDB {
     // Write directly to local storage via readLocal()/writeLocal().
     const s = readLocal();
     const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
-    if (t) { Object.assign(t, patch); t.syncStatus = 'pending_upload'; ensureTimelineNodes(t); writeLocal(s); }
+    if (t) { Object.assign(t, patch); t.syncStatus = 'processed'; ensureTimelineNodes(t); writeLocal(s); }
     return t || { id, ...patch };
   }
   // Harvester Smart Append — pure-offline entity-resolution commit.
@@ -210,27 +207,17 @@ class FailoverDB {
   // horizontal timeline strip (no new standalone card). Staged update is marked
   // private/pending review. Removes the now-consumed staged item. Zero network fetch.
   async smartAppendToCard(targetCardId, stagedRawNode, stagedAiNode, meta) {
-    // Pure-offline: immediate local state via readLocal()/writeLocal(), zero network fetch.
     const s = readLocal();
-    const tlList = Array.isArray(s.timeline) ? s.timeline : [];
-    const nList = Array.isArray(s.notes) ? s.notes : [];
-    let target = tlList.find((x) => x && String(x.id) === String(targetCardId));
-    if (!target) target = nList.find((x) => x && String(x.id) === String(targetCardId));
+    const list = Array.isArray(s.timeline) ? s.timeline : [];
+    const target = list.find((x) => x && String(x.id) === String(targetCardId));
     if (!target) return null;
     if (!Array.isArray(target.nodes)) target.nodes = [];
     const nowIso = new Date().toISOString();
-    // Phase-3 leak-prevention: appended nodes must carry author/contributor so
-    // TimelineCard isOwner (activePersona) checks can render them for the owner
-    // and strip them for other personas. Fall back to target author / 'User'.
-    const metaAuthor = (meta && (meta.author || meta.contributor)) || target.author || target.contributor || 'User';
-    const metaContrib = (meta && (meta.contributor || meta.author)) || target.contributor || target.author || metaAuthor;
     const pushNode = (n) => {
       if (!n || (!n.text && !n.kind)) return;
       target.nodes.push({
         kind: String((n && n.kind) || 'EV').toUpperCase(),
         text: String((n && n.text) || '').slice(0, 800),
-        author: String((n && (n.author || n.contributor)) || metaAuthor || 'User'),
-        contributor: String((n && (n.contributor || n.author)) || metaContrib || 'User'),
         stagedAppend: true,
         appendPrivacy: 'My Notes (Private)',
         appendSyncStatus: 'pending_review',
@@ -244,21 +231,18 @@ class FailoverDB {
       at: nowIso,
       privacy: 'My Notes (Private)',
       syncStatus: 'pending_review',
-      author: String(metaAuthor || 'User'),
-      contributor: String(metaContrib || metaAuthor || 'User'),
       title: (meta && meta.title) || '',
       source: (meta && meta.source) || '',
       reasons: (meta && meta.reasons) || [],
       score: (meta && typeof meta.score === 'number') ? meta.score : 0,
     });
     target.updated_at = nowIso;
-    target.syncStatus = 'pending_upload';
     ensureTimelineNodes(target);
     // Remove the consumed staged (pending_processing) item so no duplicate standalone card remains.
     const stagedId = meta && meta.stagedId;
     if (stagedId) {
-      const si = tlList.findIndex((x) => x && String(x.id) === String(stagedId) && x.syncStatus === 'pending_processing');
-      if (si >= 0) tlList.splice(si, 1);
+      const si = list.findIndex((x) => x && String(x.id) === String(stagedId) && x.syncStatus === 'pending_processing');
+      if (si >= 0) list.splice(si, 1);
     }
     writeLocal(s);
     return target;

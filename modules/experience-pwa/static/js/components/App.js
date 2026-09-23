@@ -108,13 +108,41 @@ export function App() {
     try {
       const s = readLocal();
       let touched = null;
-      (s.timeline || []).forEach((t) => { if (t && String(t.id) === String(cardId)) { t.piiStatus = 'Approved'; if (!t.syncStatus) t.syncStatus = 'pending_upload'; touched = t; } });
-      (s.notes || []).forEach((nn) => { if (nn && String(nn.id) === String(cardId)) { nn.piiStatus = 'Approved'; touched = touched || nn; } });
+      const scrubPrivateNodes = (t) => {
+        if (!t || !Array.isArray(t.nodes)) return;
+        t.nodes = t.nodes.map((n) => {
+          if (!n || typeof n !== 'object') return n;
+          const c = Object.assign({}, n);
+          try { delete c.private; delete c.pending; } catch (e) {}
+          try {
+            if (typeof c.text === 'string' && /private/i.test(c.text)) c.text = c.text.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
+            if (typeof c.label === 'string' && /private/i.test(c.label)) c.label = c.label.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
+          } catch (e) {}
+          try { if (c.appendPrivacy) c.appendPrivacy = 'Team Shared'; } catch (e) {}
+          try { if (c.stagedAppend) c.stagedAppend = false; } catch (e) {}
+          return c;
+        });
+        try { if (Array.isArray(t.pendingAppends)) t.pendingAppends = []; } catch (e) {}
+        try { if (Array.isArray(t.timeline)) t.timeline = t.timeline.map((x) => (x && typeof x === 'object') ? Object.assign({}, x, { stagedAppend: false }) : x); } catch (e) {}
+      };
+      (s.timeline || []).forEach((t) => { if (t && String(t.id) === String(cardId)) { t.piiStatus = 'Approved'; scrubPrivateNodes(t); if (!t.syncStatus) t.syncStatus = 'pending_upload'; touched = t; } });
+      (s.notes || []).forEach((nn) => { if (nn && String(nn.id) === String(cardId)) { nn.piiStatus = 'Approved'; scrubPrivateNodes(nn); touched = touched || nn; } });
       writeLocal(s);
       try {
         const isNote = (s.notes || []).some((nn) => nn && String(nn.id) === String(cardId));
         if (isNote && touched && OnionDB && OnionDB.saveNote) { await OnionDB.saveNote(Object.assign({}, touched, { piiStatus: 'Approved' })); }
       } catch (e) {}
+    } catch (e) {}
+  };
+  const handleSyncCard = async (cardId) => {
+    try {
+      const s = readLocal();
+      let touched = null;
+      let isNoteCard = false;
+      (s.timeline || []).forEach((t) => { if (t && String(t.id) === String(cardId)) { t.syncStatus = 'synced'; touched = t; } });
+      (s.notes || []).forEach((nn) => { if (nn && String(nn.id) === String(cardId)) { nn.syncStatus = 'synced'; touched = touched || nn; isNoteCard = true; } });
+      writeLocal(s);
+      try { if (isNoteCard && touched && window.OnionDB && window.OnionDB.saveNote) { await window.OnionDB.saveNote(Object.assign({}, touched, { syncStatus: 'synced' })); } } catch (e) {}
     } catch (e) {}
   };
   const clients = (db.clients || []).map((c) => c.account_name);
@@ -291,7 +319,7 @@ export function App() {
   const contextCards = scopedBaseFor(privacy);
   const personaTimeline = scopeByPrivacyMode(db.timeline || [], privacy);
   const personaNotes = scopeByPrivacyMode(db.notes || [], privacy);
-  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} />` : null;
+  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} onSync=${handleSyncCard} />` : null;
   const askRaw = String(ask || '').trim();
   const hits = (askRaw ? contextCards.filter((t) => matchesAssistantQuery(t, askRaw)) : contextCards).slice(0, 3);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">

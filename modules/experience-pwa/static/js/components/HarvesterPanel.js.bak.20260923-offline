@@ -47,29 +47,10 @@ export function findSmartAppendMatch(stagedText, stagedTitle) {
   const stagedToks = new Set(topicTokens(hay));
   const cards = readAllTimelineCards().filter((c) => c && c.syncStatus !== 'pending_processing');
   let best = null; let bestScore = 0; let bestReasons = [];
-  // High-value signals nuke immediately; ubiquitous project IDs (O-xxxxxx /
-  // OPP-xxxx) are too generic across Apollo/NovaTech cards to auto-append alone.
-  // They only count as weak context and still require topic/token confirmation.
-  const isHighValueRef = (r) => {
-    try {
-      const t = String(r || '').toUpperCase();
-      if (/^FW-REQ-/i.test(t)) return true;
-      if (/^PO-/i.test(t)) return true;
-      if (/^SOW-/i.test(t)) return true;
-      if (/^AP-/i.test(t)) return true;
-      if (/^MS\d/i.test(t)) return true;
-      if (/^R-\d/i.test(t)) return true;
-      return false;
-    } catch (e) { return false; }
-  };
-  for (const c of cards) {
+  cards.forEach((c) => {
     const cHay = [c.title, c.detail, c.content, c.synthesizedText, c.opportunity_id, (c.opportunity_numbers || []).join(' '), (c.project_ids || []).join(' '), (c.tags || []).join(' ')].join(' ');
     const cRefs = extractRefTokens(cHay);
     const refOverlap = stagedRefs.filter((r) => cRefs.indexOf(r) >= 0);
-    // THE NUKE: exact high-value Reference ID overlap (e.g. FW-REQ-4471) is an
-    // automatic, undeniable match — stop searching, guarantee the append.
-    const highValueHit = refOverlap.filter((r) => isHighValueRef(r));
-    if (highValueHit.length > 0) { best = c; bestScore = 100; bestReasons = ['Exact ID match: ' + highValueHit[0]]; break; }
     const cToks = new Set(topicTokens(cHay));
     let tokOverlap = 0;
     stagedToks.forEach((t) => { if (cToks.has(t)) tokOverlap++; });
@@ -77,20 +58,13 @@ export function findSmartAppendMatch(stagedText, stagedTitle) {
     const lowStaged = String(hay).toLowerCase();
     const lowTitle = String(c.title || '').toLowerCase();
     const titleHit = lowTitle && lowTitle.length > 4 && (lowStaged.indexOf(lowTitle) >= 0 || (lowStaged.length > 4 && String(cHay).toLowerCase().indexOf(String(stagedTitle || '').toLowerCase()) >= 0 && String(stagedTitle || '').length > 4));
-    // Generic O-/OPP- overlap alone is NOT enough — treat as +0 unless backed
-    // by topic/title evidence (prevents every Apollo card matching O-008891).
-    const genericOnly = refOverlap.length > 0 && highValueHit.length === 0;
-    let score = (genericOnly ? 0 : refOverlap.length * 3) + tokOverlap * 1 + (titleHit ? 4 : 0);
+    let score = refOverlap.length * 3 + tokOverlap * 1 + (titleHit ? 4 : 0);
     const reasons = [];
-    if (refOverlap.length && !genericOnly) reasons.push('ref:' + refOverlap.slice(0, 3).join(','));
-    else if (genericOnly) reasons.push('generic ref:' + refOverlap.slice(0, 3).join(',') + ' (needs topic confirm)');
+    if (refOverlap.length) reasons.push('ref:' + refOverlap.slice(0, 3).join(','));
     if (titleHit) reasons.push('title/topic overlap');
-    if (tokOverlap >= 2) reasons.push(tokOverlap + ' shared keywords');
-    // Loosened threshold: force contextual overlaps to append rather than create isolated noise.
-    // Secondary fallback: token/title overlap only (generic refs excluded).
-    if (tokOverlap >= 2) score = Math.max(score, 2);
-    if (score > bestScore && (!genericOnly ? (refOverlap.length > 0 || titleHit || tokOverlap >= 2) : (titleHit || tokOverlap >= 2))) { bestScore = score; best = c; bestReasons = reasons; }
-  }
+    if (tokOverlap >= 3) reasons.push(tokOverlap + ' shared keywords');
+    if (score > bestScore && (refOverlap.length > 0 || titleHit || tokOverlap >= 3)) { bestScore = score; best = c; bestReasons = reasons; }
+  });
   if (!best) return null;
   return { card: best, score: bestScore, reasons: bestReasons };
 }
@@ -251,8 +225,10 @@ export function HarvesterPanel(props) {
           author: payload.author || props.activePersona || 'Brené',
           contributor: payload.contributor || props.activePersona || 'Brené',
         });
-        // Review-queue only: NEVER write to DB here (no stageToDataPark) to avoid duplicate cards.
-        // (Removed direct Data Park staging try/catch — onRunClipboardHarvest only builds review queue.)
+        try {
+          const api = dbApi();
+          if (api && api.stageToDataPark) await api.stageToDataPark(payload);
+        } catch (e2) {}
       }
       setParsedReviewQueue((prev) => (Array.isArray(prev) ? prev : []).concat(out));
       setParkMsg('Harvester refined ' + out.length + ' clipboard card(s) — ready for review below.');
@@ -396,7 +372,7 @@ export function HarvesterPanel(props) {
               card.smartAppend.targetCardId,
               { kind: 'RAW', text: String(card.content || card.synthesizedText || card.title || '') },
               { kind: 'AI', text: String(card.synthesizedText || card.content || card.title || '') },
-              { title: card.title, source: card.source, reasons: card.smartAppend.matchReasons, score: card.smartAppend.matchScore, stagedId: card.sourceId, author: card.author, contributor: card.contributor }
+              { title: card.title, source: card.source, reasons: card.smartAppend.matchReasons, score: card.smartAppend.matchScore, stagedId: card.sourceId }
             );
             ok = !!updated;
           }
@@ -446,7 +422,7 @@ export function HarvesterPanel(props) {
         <div className="hcp-card"><div className="hcp-label">API Delta Scan Window (Outlook/Teams/GDP Status)</div><div style=${{ display: 'flex', gap: '8px' }}><input type="date" id="harvester-delta-from" value=${from} onInput=${(e) => setFrom(e.target.value)} /><input type="date" id="harvester-delta-to" value=${to} onInput=${(e) => setTo(e.target.value)} /></div></div>
         <div className="hcp-card"><div className="hcp-label">Drop Weekly GDP Tracker Spreadsheet</div><div className="hcp-drop">Drop Weekly GDP Tracker Spreadsheet here or click to browse<input type="file" accept=".xlsx,.xls,.csv" style=${{ display: 'none' }} onChange=${props.onGdpFile} /></div></div>
         <div className="hcp-card"><div className="hcp-label">Drop Project RAID Log Spreadsheet</div><div className="hcp-drop">Drop Project RAID Log Spreadsheet here or click to browse<input type="file" accept=".xlsx,.xls,.csv" style=${{ display: 'none' }} onChange=${props.onRaidFile} /></div></div>
-        <div className="hcp-card"><div className="hcp-label">Paste Bookmarklet Clipboard String</div><textarea id="harvester-clipboard" rows="4" value=${clip} onInput=${(e) => setClip(e.target.value)} placeholder="Paste Bookmarklet JSON string"></textarea><div style=${{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280' }}>Click the Continuum Bookmarklet button on a live Salesforce or GDP tab, then paste the string here.</div><div style=${{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}><button type="button" onClick=${onStageClipboard} className="px-3 py-1 rounded-full bg-white border text-[11px]">Stage clipboard</button><button type="button" disabled=${processing} onClick=${onRunClipboardHarvest} className="px-3 py-1 rounded-full bg-black text-white text-[11px]">${processing ? 'Harvester running…' : 'Run Harvester & Refine'}</button></div></div>
+        <div className="hcp-card"><div className="hcp-label">Paste Bookmarklet Clipboard String</div><textarea id="harvester-clipboard" rows="4" value=${clip} onInput=${(e) => setClip(e.target.value)} placeholder="Paste Bookmarklet JSON string"></textarea><div style=${{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280' }}>Click the Continuum Bookmarklet button on a live Salesforce or GDP tab, then paste the string here.</div><div style=${{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}><button type="button" onClick=${(e) => { if (props.onClip) props.onClip(e); return onStageClipboard(); }} className="px-3 py-1 rounded-full bg-white border text-[11px]">Stage clipboard</button><button type="button" disabled=${processing} onClick=${(e) => { if (props.onRun) props.onRun(e); return onRunClipboardHarvest(); }} className="px-3 py-1 rounded-full bg-black text-white text-[11px]">${processing ? 'Harvester running…' : 'Run Harvester & Refine'}</button></div></div>
         <div className="hcp-card"><div className="hcp-label">Staged (${staged.length})</div>${staged.map((s) => html`<div key=${s.id} className="text-[11px] italic text-[#64748B]">${s.title} [${s.piiStatus}]</div>`)}</div>
         <button id="harvester-run-btn" type="button" onClick=${(e) => { if (props.onRun) return props.onRun(e); return onProcess(); }}>Run Harvest and Refine</button>
         <div id="harvester-status" style=${{ fontSize: '11px', minHeight: '16px' }}>${status}</div>

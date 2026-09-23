@@ -148,10 +148,10 @@ class FailoverDB {
       return n || { id, privacy };
     }
   }
-  // --- Data Park (Step 1 Harvester) — Failover Repository Pattern ---
-  // Every mutation checks cloud API health first, falls back to local
-  // browser storage with syncStatus flag. PII screening is applied by
-  // callers (HarvesterPanel) before invoking these; we re-ensure here.
+  // --- Data Park (Step 1 Harvester) — Failover Repository Pattern (PURE OFFLINE MODE) ---
+  // Hackathon demo: NEVER attempt fetch('http://localhost:8000/harvest') here.
+  // CORS / port mismatch broke the Harvester, so these three methods write
+  // directly to localStorage via readLocal()/writeLocal() with 100% offline fallback.
   async stageToDataPark(payload) {
     const rec = {
       id: (payload && payload.id) || ('dp-' + Date.now() + '-' + Math.floor(Math.random() * 10000)),
@@ -167,32 +167,15 @@ class FailoverDB {
       syncStatus: 'pending_processing',
       created_at: new Date().toISOString(),
     };
-    try {
-      const saved = await tryFetch('/harvest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rec) });
-      try {
-        const s = readLocal();
-        if (!Array.isArray(s.timeline)) s.timeline = [];
-        // Mirror cloud success locally so UI reacts instantly.
-        const localRec = { ...rec, syncStatus: 'pending_processing', ...(saved || {}) };
-        // Preserve pending_processing unless cloud explicitly returns processed.
-        if (!localRec.syncStatus || localRec.syncStatus === 'synced') localRec.syncStatus = 'pending_processing';
-        s.timeline.unshift(localRec);
-        writeLocal(s);
-      } catch (e) {}
-      return saved;
-    } catch (err) {
-      const s = readLocal();
-      if (!Array.isArray(s.timeline)) s.timeline = [];
-      s.timeline.unshift(rec);
-      writeLocal(s);
-      return rec;
-    }
+    // Pure offline: write directly to local storage, no network fetch.
+    const s = readLocal();
+    if (!Array.isArray(s.timeline)) s.timeline = [];
+    s.timeline.unshift(rec);
+    writeLocal(s);
+    return rec;
   }
   async listPendingProcessing() {
-    try {
-      const remote = await tryFetch('/harvest?status=pending_processing');
-      if (Array.isArray(remote)) return remote;
-    } catch (e) {}
+    // Pure offline: bypass GET /harvest?status=pending_processing fetch (CORS risk).
     const s = readLocal();
     return (s.timeline || []).filter((t) => t && t.syncStatus === 'pending_processing');
   }
@@ -212,20 +195,12 @@ class FailoverDB {
       processed_at: new Date().toISOString(),
     };
     if (patch.title === undefined) delete patch.title;
-    try {
-      const saved = await tryFetch('/harvest/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
-      try {
-        const s = readLocal();
-        const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
-        if (t) { Object.assign(t, patch, (saved || {})); t.syncStatus = 'processed'; ensureTimelineNodes(t); writeLocal(s); }
-      } catch (e) {}
-      return saved;
-    } catch (err) {
-      const s = readLocal();
-      const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
-      if (t) { Object.assign(t, patch); t.syncStatus = 'processed'; ensureTimelineNodes(t); writeLocal(s); }
-      return t || { id, ...patch };
-    }
+    // Pure offline: bypass PATCH /harvest/:id fetch (CORS risk).
+    // Write directly to local storage via readLocal()/writeLocal().
+    const s = readLocal();
+    const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
+    if (t) { Object.assign(t, patch); t.syncStatus = 'processed'; ensureTimelineNodes(t); writeLocal(s); }
+    return t || { id, ...patch };
   }
   async resetToSeedData() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}

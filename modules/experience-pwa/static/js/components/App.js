@@ -15,6 +15,40 @@ function fmtDate(iso) { try { const d = new Date(iso); const p = (n) => String(n
 function clientKw(clientName, clients) { const c = (clients || []).find((x) => x.account_name === clientName); return (c && c.keywords) || []; }
 function projText(p, clients) { return [p.project_name, p.Project_ReferenceID, (p.project_ids || []).join(' '), (p.opportunity_numbers || []).join(' '), (p.connected_record_urls || []).join(' '), (p.salesforceUrls || []).join(' '), p.client_name, (clientKw(p.client_name, clients) || []).join(' ')].join(' ').toLowerCase(); }
 function normProjIds(arr) { return [...new Set((Array.isArray(arr) ? arr : [arr]).map((x) => String(x || '').trim()).filter(Boolean).map((x) => (/^\d+$/.test(x) ? stripLeadingZeros(x) : x)))]; }
+// Smart Assistant exact-phrase query helpers (quote-aware, shared with AppRight filter):
+// #Risk_Watch + 'Not Signed' => terms [#Risk_Watch, "Not Signed"(exact)].
+// Bare words => substring tokens; quoted spans => exact contiguous substring.
+function parseAssistantTerms(query) {
+  const q = String(query || '').trim();
+  if (!q) return [];
+  const terms = [];
+  const re = /"([^"]+)"|'([^']+)'|(\S+)/g;
+  let m = null;
+  while ((m = re.exec(q)) !== null) {
+    const quoted = (m[1] !== undefined ? m[1] : (m[2] !== undefined ? m[2] : null));
+    if (quoted !== null && quoted !== undefined) {
+      const t = String(quoted).trim().toLowerCase();
+      if (t) terms.push(t);
+    } else {
+      const tok = String(m[3] || '').trim();
+      if (!tok || tok === '+') continue;
+      const low = tok.toLowerCase();
+      if (low === 'and' || low === 'or') continue;
+      terms.push(low);
+    }
+  }
+  return terms;
+}
+function assistantHaystack(t) {
+  const tags = Array.isArray(t && t.tags) ? t.tags.join(' ') : '';
+  return [t.title, t.detail, t.content, t.synthesizedText, t.source, t.type, tags].join(' ').toLowerCase();
+}
+function matchesAssistantQuery(t, query) {
+  const terms = parseAssistantTerms(query);
+  if (!terms.length) return true;
+  const hay = assistantHaystack(t);
+  return terms.every((term) => hay.indexOf(term) !== -1);
+}
 export function App() {
   const [db, setDb] = useState(() => readLocal());
   useEffect(() => OnionDB.subscribe(setDb), []);
@@ -257,8 +291,8 @@ export function App() {
   const personaTimeline = scopeByPrivacyMode(db.timeline || [], privacy);
   const personaNotes = scopeByPrivacyMode(db.notes || [], privacy);
   const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} />` : null;
-  const askQ = String(ask || '').trim().toLowerCase();
-  const hits = (askQ ? contextCards.filter((t) => [t.title, t.detail, t.content, t.synthesizedText, t.source, t.type].join(' ').toLowerCase().includes(askQ)) : contextCards).slice(0, 3);
+  const askRaw = String(ask || '').trim();
+  const hits = (askRaw ? contextCards.filter((t) => matchesAssistantQuery(t, askRaw)) : contextCards).slice(0, 3);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
     <div className="sticky top-0 z-20 border-b border-[#d6e8ff]" style=${{ background: 'linear-gradient(90deg,#D6F5E8 0%,#D6E8FF 100%)' }}>
       <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">

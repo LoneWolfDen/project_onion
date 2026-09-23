@@ -7,7 +7,24 @@ function tagPending(entity) {
   return entity;
 }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
-export function seedState() { return clone(MOCK_SEED); }
+// Ensure every timeline card carries RAW+AI nodes so the horizontal
+// timeline strip renders reliably after seed load / reload / reset.
+export function ensureTimelineNodes(card) {
+  try {
+    if (!card || typeof card !== 'object') return card;
+    if (!Array.isArray(card.nodes) || card.nodes.length < 2) {
+      const rawText = String(card.content || card.detail || card.synthesizedText || card.title || '');
+      const aiText = String(card.synthesizedText || card.content || card.detail || card.title || '');
+      card.nodes = [{ kind: 'RAW', text: rawText }, { kind: 'AI', text: aiText }];
+    } else {
+      const kinds = card.nodes.map((n) => n && n.kind);
+      if (kinds.indexOf('RAW') < 0) card.nodes.unshift({ kind: 'RAW', text: String(card.content || card.detail || '') });
+      if (kinds.indexOf('AI') < 0) card.nodes.push({ kind: 'AI', text: String(card.synthesizedText || card.content || '') });
+    }
+  } catch (e) {}
+  return card;
+}
+export function seedState() { const s = clone(MOCK_SEED); try { (s.timeline || []).forEach(ensureTimelineNodes); } catch (e) {} return s; }
 export function readLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -22,6 +39,7 @@ export function readLocal() {
     if (!Array.isArray(parsed.notes)) parsed.notes = [];
     if (!Array.isArray(parsed.archived)) parsed.archived = [];
     if (!Array.isArray(parsed.clients)) parsed.clients = seedState().clients;
+    try { (parsed.timeline || []).forEach(ensureTimelineNodes); } catch (e) {}
     return parsed;
   } catch (err) {
     const s2 = seedState();
@@ -180,6 +198,7 @@ class FailoverDB {
   }
   async markProcessed(id, aiResult) {
     const patch = {
+      title: (aiResult && typeof aiResult.title === 'string' && aiResult.title.trim()) ? aiResult.title : undefined,
       synthesizedText: (aiResult && aiResult.synthesizedText) || '',
       tags: (aiResult && aiResult.tags) || [],
       impactScore: (aiResult && typeof aiResult.impactScore === 'number') ? aiResult.impactScore : 0.7,
@@ -192,26 +211,39 @@ class FailoverDB {
       syncStatus: 'processed',
       processed_at: new Date().toISOString(),
     };
+    if (patch.title === undefined) delete patch.title;
     try {
       const saved = await tryFetch('/harvest/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
       try {
         const s = readLocal();
         const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
-        if (t) { Object.assign(t, patch, (saved || {})); t.syncStatus = 'processed'; writeLocal(s); }
+        if (t) { Object.assign(t, patch, (saved || {})); t.syncStatus = 'processed'; ensureTimelineNodes(t); writeLocal(s); }
       } catch (e) {}
       return saved;
     } catch (err) {
       const s = readLocal();
       const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
-      if (t) { Object.assign(t, patch); t.syncStatus = 'processed'; writeLocal(s); }
+      if (t) { Object.assign(t, patch); t.syncStatus = 'processed'; ensureTimelineNodes(t); writeLocal(s); }
       return t || { id, ...patch };
     }
+  }
+  async resetToSeedData() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    const seed = seedState();
+    writeLocal(seed);
+    return seed;
   }
   subscribe(fn) {
     const h = () => { try { fn(readLocal()); } catch (e) {} };
     window.addEventListener('onion:db-update', h);
     return () => window.removeEventListener('onion:db-update', h);
   }
+}
+export async function resetToSeedData() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  const seed = seedState();
+  writeLocal(seed);
+  return seed;
 }
 export const OnionDB = new FailoverDB();
 try {

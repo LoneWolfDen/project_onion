@@ -35,6 +35,8 @@ export function HarvesterPanel(props) {
   const [model, setModel] = window.React.useState(() => { try { return localStorage.getItem('OPENROUTER_MODEL') || 'anthropic/claude-3-haiku'; } catch (e) { return 'anthropic/claude-3-haiku'; } });
   const [parkMsg, setParkMsg] = window.React.useState('');
   const [processing, setProcessing] = window.React.useState(false);
+  const [parsedReviewQueue, setParsedReviewQueue] = window.React.useState([]);
+  const [approving, setApproving] = window.React.useState(false);
   const metaClient = (project && project.client_name) || (clientMeta && clientMeta.account_name) || '—';
   const metaProject = (project && project.project_name) || '—';
   const metaOpp = (project && (project.opportunity_numbers || [])[0]) || '—';
@@ -81,16 +83,102 @@ export function HarvesterPanel(props) {
       const pending = api && api.listPendingProcessing ? await api.listPendingProcessing() : [];
       const mine = (pending || []).filter((t) => !project || t.project_name === project.project_name || t.projectId === canonicalProjectId);
       if (!mine.length) { setParkMsg('No pending_processing items for this project.'); setProcessing(false); return; }
-      let done = 0;
+      const out = [];
       for (const item of mine) {
         const text = item.content || item.detail || item.title || '';
         const ai = await processWithAI(text, item.type || kind);
-        if (api && api.markProcessed) await api.markProcessed(item.id, ai);
-        done++;
+        // Contributor Parser Review: stage AI output for human review/edit
+        // instead of directly committing via markProcessed.
+        out.push({
+          sourceId: item.id,
+          projectId: item.projectId || canonicalProjectId,
+          project_name: item.project_name || (project && project.project_name) || '',
+          Project_ReferenceID: item.Project_ReferenceID || (project && project.Project_ReferenceID) || '',
+          type: item.type || kind,
+          source: item.source || 'Data Park Dropzone',
+          timestamp: item.timestamp || 'Just now',
+          content: item.content || item.detail || '',
+          piiStatus: item.piiStatus || 'Clean',
+          title: item.title || (text || '').slice(0, 80) || ((item.type || kind) + ' fragment'),
+          synthesizedText: (ai && ai.synthesizedText) || '',
+          tags: (ai && ai.tags) || [],
+          impactScore: (ai && typeof ai.impactScore === 'number') ? ai.impactScore : 0.7,
+          mergeHint: (ai && ai.mergeHint) || '',
+          structured: (ai && ai.structured && typeof ai.structured === 'object') ? ai.structured : {},
+          privacy: (ai && ai.privacy) ? ai.privacy : 'Team Shared',
+        });
       }
-      setParkMsg('AI processing complete: ' + done + ' item(s) → processed.');
+      setParsedReviewQueue(out);
+      setParkMsg('AI parsing complete: ' + out.length + ' card(s) ready for review below.');
     } catch (e) { setParkMsg('AI processing failed: ' + String((e && e.message) || e)); }
     setProcessing(false);
+  };
+  const updateReviewCard = (idx, patch) => {
+    setParsedReviewQueue((prev) => (Array.isArray(prev) ? prev : []).map((c, i) => (i === idx ? Object.assign({}, c, patch) : c)));
+  };
+  const discardReviewCard = (idx) => {
+    setParsedReviewQueue((prev) => (Array.isArray(prev) ? prev : []).filter((_, i) => i !== idx));
+    setParkMsg('Discarded noisy card from review queue.');
+  };
+  const setReviewPrivacyAndSave = (idx, nextPrivacy) => {
+    // Automatic save on toggle: Fail Closed default is Team Shared; flipping
+    // to My Notes (Private) caches instantly to browser local space so the
+    // reviewed payload is never lost before Approve. Final persistence to
+    // FailoverDB happens in onApproveAll (offline-safe via Failover Repository).
+    const cur = Array.isArray(parsedReviewQueue) ? parsedReviewQueue.slice() : [];
+    const next = cur.map((c, i) => (i === idx ? Object.assign({}, c, { privacy: nextPrivacy }) : c));
+    setParsedReviewQueue(next);
+    try {
+      const saved = next[idx];
+      if (saved) {
+        try { localStorage.setItem('onion_review_draft_' + String(saved.sourceId || idx), JSON.stringify(saved)); } catch (e2) {}
+        try { localStorage.setItem('onion_review_queue', JSON.stringify(next)); } catch (e3) {}
+      }
+    } catch (e) {}
+    setParkMsg(nextPrivacy === 'My Notes (Private)' ? 'Saved to My Notes (Private) — local draft updated.' : 'Visibility set to Team Shared — local draft updated.');
+  };
+  const onApproveAll = async () => {
+    if (approving) return;
+    const queue = Array.isArray(parsedReviewQueue) ? parsedReviewQueue : [];
+    if (!queue.length) { setParkMsg('Review queue is empty — nothing to approve.'); return; }
+    setApproving(true);
+    setParkMsg('Approving reviewed cards…');
+    try {
+      const api = dbApi();
+      let done = 0;
+      for (const card of queue) {
+        const aiResult = {
+          title: card.title,
+          synthesizedText: card.synthesizedText,
+          tags: card.tags,
+          impactScore: card.impactScore,
+          mergeHint: card.mergeHint,
+          structured: card.structured,
+          privacy: card.privacy || 'Team Shared',
+        };
+        if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
+        done++;
+      }
+      setParsedReviewQueue([]);
+      setParkMsg('Approved & added ' + done + ' card(s) to project ✅');
+      try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { at: new Date().toISOString() } })); } catch (e) {}
+    } catch (e) { setParkMsg('Approve failed: ' + String((e && e.message) || e)); }
+    setApproving(false);
+  };
+  const onResetSeed = async () => {
+    setParkMsg('Resetting to hackathon demo data…');
+    try {
+      const api = dbApi();
+      if (api && api.resetToSeedData) await api.resetToSeedData();
+      else {
+        try {
+          const mod = await import('../core/FailoverDB.js');
+          if (mod && mod.resetToSeedData) await mod.resetToSeedData();
+        } catch (e2) {}
+      }
+      setParsedReviewQueue([]);
+      setParkMsg('Demo data restored ✅ — fresh test data loaded.');
+    } catch (e) { setParkMsg('Reset failed: ' + String((e && e.message) || e)); }
   };
   return html`<div>
     <button id="harvester-open-btn" type="button" onClick=${() => setOpen(true)}>🛸 Open Harvester Control</button>
@@ -120,6 +208,7 @@ export function HarvesterPanel(props) {
               <button type="button" onClick=${() => { try { localStorage.removeItem('OPENROUTER_API_KEY'); } catch (e) {} setApiKey(''); setParkMsg('Key cleared — Mock mode active.'); }} className="px-3 py-1 rounded-full bg-white border text-[11px]">Clear (use Mock)</button>
             </div>
             <div style=${{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280', marginTop: '4px' }}>No key → 1.2s simulated latency + mock JSON so the demo never fails.</div>
+            <button type="button" onClick=${onResetSeed} title="Clear local cache and reload hackathon seed" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset to Hackathon Demo Data</button>
           </div>` : null}
           <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>
             <select value=${kind} onChange=${(e) => setKind(e.target.value)} style=${{ background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}>
@@ -134,6 +223,27 @@ export function HarvesterPanel(props) {
           </div>
           <div style=${{ fontSize: '11px', minHeight: '16px', marginTop: '6px', fontStyle: 'italic', color: '#1e40af' }}>${parkMsg}</div>
         </div>
+        ${Array.isArray(parsedReviewQueue) && parsedReviewQueue.length ? html`<div className="hcp-card" style=${{ borderColor: '#c4b5fd', background: '#f5f3ff' }}>
+          <div className="hcp-label">Contributor Parser Review (${parsedReviewQueue.length}) — review, edit, set privacy, then approve</div>
+          <div style=${{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+            ${parsedReviewQueue.map((c, idx) => html`<div key=${String(c.sourceId || '') + '-' + idx} style=${{ background: '#fff', border: '1px solid #ddd6fe', borderRadius: '10px', padding: '8px' }}>
+              <div style=${{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style=${{ fontSize: '10px', fontWeight: 800, background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6', borderRadius: '9999px', padding: '1px 8px' }}>impact ${(typeof c.impactScore === 'number' ? c.impactScore.toFixed(2) : '0.70')}</span>
+                <span style=${{ fontSize: '10px', color: '#6b7280' }}>${(Array.isArray(c.tags) ? c.tags : []).join(' ') || '#Auto_Tagged'}</span>
+                <button type="button" title="Discard noisy card" onClick=${() => discardReviewCard(idx)} style=${{ marginLeft: 'auto', background: '#fff', border: '1px solid #fecaca', borderRadius: '9999px', width: '24px', height: '24px', cursor: 'pointer', fontSize: '12px' }}>🗑️</button>
+              </div>
+              <div style=${{ fontSize: '10px', fontWeight: 700, marginTop: '6px', color: '#4c1d95' }}>Title</div>
+              <input value=${c.title} onInput=${(e) => updateReviewCard(idx, { title: e.target.value })} style=${{ width: '100%', marginTop: '2px', background: '#f9fafb', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }} />
+              <div style=${{ fontSize: '10px', fontWeight: 700, marginTop: '6px', color: '#4c1d95' }}>Synthesized text</div>
+              <textarea rows="3" value=${c.synthesizedText} onInput=${(e) => updateReviewCard(idx, { synthesizedText: e.target.value })} style=${{ width: '100%', marginTop: '2px', background: '#f9fafb', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}></textarea>
+              <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                <button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'My Notes (Private)')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'My Notes (Private)' ? '#111827' : '#fff', color: c.privacy === 'My Notes (Private)' ? '#fff' : '#111827', border: '1px solid #111827' }}>🔒 Private (Only Me)</button>
+                <button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'Team Shared')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'Team Shared' ? '#111827' : '#fff', color: c.privacy === 'Team Shared' ? '#fff' : '#111827', border: '1px solid #111827' }}>👥 Team Shared</button>
+              </div>
+            </div>`)}
+          </div>
+          <button type="button" disabled=${approving} onClick=${onApproveAll} style=${{ marginTop: '10px', width: '100%', background: '#111827', color: '#fff', borderRadius: '9999px', padding: '8px 10px', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}>${approving ? 'Approving…' : '✅ Approve & Add to Project (' + parsedReviewQueue.length + ')'}</button>
+        </div>` : null}
 
       </div>
     </aside>

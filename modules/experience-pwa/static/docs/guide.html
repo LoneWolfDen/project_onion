@@ -1,9 +1,90 @@
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Project Onion — Guide</title></head>
-<body style="font-family:sans-serif;padding:24px;max-width:820px;margin:0 auto;">
-<h1>Project Onion — Guide (placeholder)</h1>
-<p>This placeholder stands in for the full operator guide. Harvested fragments, notes, and status cards all persist via the Failover Repository Pattern (IndexedDB / localStorage with <code>syncStatus: pending_upload</code> when the cloud API is unreachable).</p>
-<ul><li>YOUR NOTES lives between Key Moments and Status Cards.</li><li>Use Add as PRIVATE or Add as shared.</li><li>CORS/offline note saves fall back to local storage with a Saved locally indicator.</li></ul>
-</body>
-</html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Onion — Operator Guide</title>
+<style>
+:root{--blue:#D6E8FF;--mint:#D6F5E8;--peach:#FFE4D6;--lav:#E8DAFF}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:Inter,system-ui,sans-serif;margin:0;color:#1E293B;background:#070b16}
+.bg{position:fixed;inset:0;background:radial-gradient(800px 400px at 10% 0%,#274b7a,transparent),linear-gradient(180deg,#0a1122,#070b16)}
+.wrap{position:relative;max-width:1240px;margin:0 auto;padding:24px 18px 70px}
+.hero{background:linear-gradient(135deg,#f0f7ff,#f3ecff 55%,#fff6ec);border-radius:26px;padding:30px 26px}
+h1{font-size:40px;line-height:1.05;margin:12px 0;letter-spacing:-.02em;color:#0f2040}
+.grad{background:linear-gradient(90deg,#1F4A7A,#5B2EBF,#0ea5e9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:14px;color:#33507a;max-width:75ch;line-height:1.6}
+.btn{border-radius:9999px;padding:10px 12px;font-weight:600;font-size:13px;border:1px solid #A8C6F0;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center;margin:0;background:#fff;color:#0f2040}
+.hero-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0 0}
+.btn-p1{background:#D6E8FF;border-color:#A8C6F0}.btn-p2{background:#D6F5E8;border-color:#A8D5BA}.btn-p3{background:#FFE4D6;border-color:#E8A090}.btn-p4{background:#E8DAFF;border-color:#C4B5FD}.btn-p5{background:#FFF5D6;border-color:#F3D27A}
+.btn:hover{filter:brightness(.97)}
+.dark{background:#0f2040;color:#fff}.lite{background:#fff;color:#0f2040;border-color:#bfdbfe}
+.chip{font-size:11.5px;font-weight:700;background:#0f2040;color:#cfe3ff;border-radius:9999px;padding:6px 12px;display:inline-block;margin:3px}
+.nav{position:sticky;top:10px;display:flex;gap:8px;flex-wrap:wrap;background:#0a1122ee;border:1px solid #ffffff33;border-radius:9999px;padding:8px;margin:16px 0}
+.nav a{color:#dbe7ff;text-decoration:none;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9999px}
+.split{display:grid;grid-template-columns:1.05fr .95fr;gap:14px;margin:14px 0}
+.card{background:#fff;border-radius:20px;padding:20px;box-shadow:0 16px 44px rgba(10,25,60,.35)}
+.card.dk{background:linear-gradient(180deg,#0e1830,#0a1226);color:#e6efff;border:1px solid #ffffff22}
+.card.dk h2{color:#fff}.card h2{margin:4px 0 8px;font-size:21px}
+.card p,.card li{font-size:13.5px;line-height:1.65}
+.tech{font-family:ui-monospace,monospace;font-size:12px;background:#0a1428;color:#bfe0ff;border:1px solid #2b4a7a;border-radius:10px;padding:8px 10px;white-space:pre-wrap}
+.lt .tech{background:#f0f7ff;color:#16345f;border-color:#bfdbfe}
+.mono{font-family:ui-monospace,monospace;font-size:12px;background:#eef4ff;border:1px solid #bfdbfe;border-radius:6px;padding:1px 6px}
+.dk .mono{background:#12233f;color:#cfe3ff;border-color:#2b4a7a}
+.vis{border-radius:14px;padding:14px;background:linear-gradient(135deg,var(--blue),#fff 60%,var(--mint));margin:10px 0}
+.try{background:#f2fdf6;border:2px solid #a7e3c7;border-radius:12px;padding:10px;font-size:13px;margin:8px 0}
+.wrn{background:#fffbeb;border:2px solid #fde68a;border-radius:12px;padding:10px;font-size:13px;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #E6EAF2;padding:7px 9px;text-align:left}th{background:#f0f7ff}
+.dk table th,.dk table td{border-color:#2b4a7a}.dk table th{background:#12233f}
+.drop{border:2px dashed #93b8e8;border-radius:16px;padding:16px;background:#f4f9ff;text-align:center;margin:14px 0}
+.drop.over{border-color:#1F4A7A;background:#e8f1ff}
+.drop input{display:none}
+.drop .btn{cursor:pointer}
+@media(max-width:940px){.split{grid-template-columns:1fr}h1{font-size:30px}.hero-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head><body><div class="bg"></div><div class="wrap">
+<div class="hero"><span class="chip">◉ PROJECT CONTINUUM · PROJECT ONION · OPERATOR GUIDE</span>
+<h1>Systems remember <span class="grad">what was decided.</span><br>Onion captures the why.</h1>
+<p class="sub">Paste an update → review the suggestion → approve → sync. Stored on the device when offline.</p>
+<div class="hero-actions"><a class="btn btn-p1" href="#phase1">▶ Start 4-phase tour</a><a class="btn btn-p2" href="./Project-Onion-Application-Flow.html" target="_blank" rel="noopener">🧭 Test Flow</a><a class="btn btn-p3" href="./Project-Onion-Relationship-Model.html" target="_blank" rel="noopener">🕸 Relationship Map</a><a class="btn btn-p4" href="./Project-Onion-Data-Model.html" target="_blank" rel="noopener">▦ Data Model</a><a class="btn btn-p5" href="#review">✓ Review checklist</a></div></div>
+<div class="split" id="phase1"><div class="card lt"><h2>◉ Phase 1 — Harvest</h2>
+<p>Paste anything — email, Teams ping, RAID row. Codes (<span class="mono">FW-REQ-4471</span>, <span class="mono">PO-88921</span>) + topic words decide the suggestion.</p>
+<div class="vis">🟡 <b>Smart Append · 100</b> = match on an existing card.<br>🟢 <b>New Card</b> = no match, create shared.</div>
+<div class="try"><b>Try:</b> <span class="mono">UAT deploy FAILED pending FW-REQ-4471. Opp O-008891.</span> → yellow Append.</div></div>
+<div class="card dk"><h2>⚙ Matching</h2><p>Business codes (FW / PO / SoW / AP / MS / R) on a card → score 100. Opportunity IDs alone never attach. Else 2+ shared words or title match → private draft; otherwise new shared card.</p></div></div>
+<div class="split" id="phase2"><div class="card lt"><h2>◉ Phase 2 — Who sees it?</h2>
+<p><b>Client → project → privacy + persona.</b> Shared = team. My Notes = only yours. Both = both.</p>
+<div class="try"><b>Try:</b> switch persona → other private cards disappear.</div></div>
+<div class="card dk"><h2>⚙ Visibility</h2><p>Client picker, project link, then privacy + persona. Wrong client, unlinked project, or another author's private = hidden.</p></div></div>
+<div class="split" id="phase3"><div class="card lt"><h2>◉ Phase 3 — Drafts in a card</h2>
+<p>White = shared. <b>Amber = your draft</b> — only you see it.</p>
+<div class="try"><b>Try:</b> approve → amber appears → switch persona → gone → switch back → returns.</div></div>
+<div class="card dk"><h2>⚙ Drafts</h2><p>Shared shows for all; private/pending shows for the author only.</p></div></div>
+<div class="split" id="phase4"><div class="card lt"><h2>◉ Phase 4 — Approve, then Sync</h2>
+<p>🔴 <b>Approve</b> drafts + redacted share → 🔵 <b>Sync Now</b> → 🟢 <b>synced</b>.</p>
+<div class="try"><b>Try:</b> new card → blue Sync → synced. Appended card → red first, blue hidden until approved.</div></div>
+<div class="card dk"><h2>⚙ Order</h2><p>Drafts → privacy review → sync. Sync appears only when approved + stored locally.</p></div></div>
+<div class="split" id="map"><div class="card lt"><h2>◉ Map + IDs</h2>
+<p>Client → project anchor (one key → many IDs, URLs, channels, contacts, SoW/PO) → sources → grouped cards. One stable key per project; finance IDs ignore leading zeros.</p></div>
+<div class="card dk"><h2>⚙ Codes</h2><p>Example IDs: <span class="mono">O-008891 · PO-88921 · SoW-2024-001 · FW-REQ-4471</span>. Filters: exact, contains, domain, date-range, URL, token.</p></div></div>
+<div class="split" id="payload"><div class="card lt"><h2>◉ Privacy screen</h2>
+<p>Screening keeps business codes, removes personal chatter.</p>
+<div class="try"><b>Try:</b> <span class="mono">Jane likes coffee + PO-88921 approved</span> → coffee gone, PO kept.</div></div>
+<div class="card dk"><h2>⚙ Flags</h2><p><span class="mono">Clean</span> or <span class="mono">Redacted_Review</span>. Fixed fields: id, project, type, title, source, time, text, privacy, sync.</p></div></div>
+<div class="split" id="tests"><div class="card lt"><h2>◉ 60-second checklist</h2>
+<p>1) FW-REQ → yellow append → approve → amber.<br>2) Switch persona → amber gone.<br>3) Back → approve → Sync → synced.<br>4) Unrelated text → New Card → Sync.</p></div>
+<div class="card dk"><h2>⚙ Quick rules</h2><p>Codes → 100 append · O-only → new card · 2+ words → private draft · offline → stored locally · red blocks blue.</p></div></div>
+<div class="card dk" id="review"><h2>How it fits together</h2>
+<p>Harvest → check visibility → review drafts → approve + sync. Left = what to do, right = how the app enforces it.</p></div>
+<div class="drop" id="drop"><h2 style="margin:0 0 6px;font-size:16px;color:#0f2040">Have an early diagram to fold in? Drop it here</h2>
+<p class="sub" style="margin:0 0 10px">Attach the early-stage file (e.g. <span class="mono">Project-Onion-Relationship-Model*.html</span>). It stays on this device — nothing is uploaded.</p>
+<label class="btn dark" for="filepick">Choose file</label>
+<input id="filepick" type="file" accept=".html,.htm">
+<p class="sub" id="dropmsg" style="margin:10px 0 0"></p></div>
+<script>
+(function(){var z=document.getElementById('drop'),f=document.getElementById('filepick'),m=document.getElementById('dropmsg');
+function note(n){var s=(n&&n.size)?(' — '+Math.round(n.size/1024)+' KB'):'';m.textContent='Selected: '+(n?n.name:'none')+s+'. Copy it to the project via the path shown in your file manager, then reload this page.';}
+if(f){f.addEventListener('change',function(){note(f.files&&f.files[0]);});}
+if(z){['dragover','dragenter'].forEach(function(e){z.addEventListener(e,function(ev){ev.preventDefault();z.classList.add('over')})});['dragleave','drop'].forEach(function(e){z.addEventListener(e,function(ev){ev.preventDefault();z.classList.remove('over')})});z.addEventListener('drop',function(ev){var n=ev.dataTransfer&&ev.dataTransfer.files&&ev.dataTransfer.files[0];note(n);});}
+})();
+</script>
+<p style="color:#8ea6cf;font-size:12px;text-align:center">Project Onion · Reference: relationship_model.json v0.11 · Local-first storage · Privacy-first review flow.</p>
+</div></body></html>
+
+

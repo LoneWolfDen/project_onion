@@ -1,0 +1,164 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Onion — Data Model</title>
+<style>
+:root{--blue:#D6E8FF;--mint:#D6F5E8;--peach:#FFE4D6;--lav:#E8DAFF;--yel:#FFF5D6}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:Inter,system-ui,sans-serif;margin:0;color:#1E293B;background:#070b16}
+.bg{position:fixed;inset:0;background:radial-gradient(800px 400px at 10% 0%,#274b7a,transparent),linear-gradient(180deg,#0a1122,#070b16)}
+.wrap{position:relative;max-width:1240px;margin:0 auto;padding:24px 18px 70px}
+.hero{background:linear-gradient(135deg,#f0f7ff,#f3ecff 55%,#fff6ec);border-radius:26px;padding:26px}
+.hero h1{font-size:32px;line-height:1.1;margin:10px 0;letter-spacing:-.02em;color:#0f2040}
+.grad{background:linear-gradient(90deg,#1F4A7A,#5B2EBF,#0ea5e9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:14px;color:#33507a;max-width:78ch;line-height:1.6}
+.hint{font-size:12px;color:#64748B;font-style:italic}
+.btn{border-radius:9999px;padding:10px 12px;font-weight:600;font-size:13px;border:1px solid #A8C6F0;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center;margin:0;background:#fff;color:#0f2040}
+.hero-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0 0}
+.btn-p1{background:#D6E8FF;border-color:#A8C6F0}.btn-p2{background:#D6F5E8;border-color:#A8D5BA}.btn-p3{background:#FFE4D6;border-color:#E8A090}.btn-p4{background:#E8DAFF;border-color:#C4B5FD}.btn-p5{background:#FFF5D6;border-color:#F3D27A}
+.btn:hover{filter:brightness(.97)}
+.chip{font-size:11.5px;font-weight:700;background:#0f2040;color:#cfe3ff;border-radius:9999px;padding:6px 12px;display:inline-block;margin:3px}
+.mono{font-family:ui-monospace,monospace;font-size:12px;background:#eef4ff;border:1px solid #bfdbfe;border-radius:6px;padding:1px 6px}
+.dk .mono{background:#12233f;color:#cfe3ff;border-color:#2b4a7a}
+.kind{font-size:10.5px;font-weight:700;border-radius:9999px;padding:3px 10px;border:1px solid #A8C6F0;white-space:nowrap}
+.k-PRI{background:#D6E8FF;border-color:#A8C6F0;color:#0f2040}.k-SEC{background:#E8DAFF;border-color:#C4B5FD;color:#3b2d6b}.k-FOR{background:#D6F5E8;border-color:#A8D5BA;color:#1E5631}
+.cond{font-size:10.5px;font-weight:700;border-radius:9999px;padding:3px 10px;border:1px solid #A8C6F0;background:#fff;white-space:nowrap}
+.c-EXACT{background:#D6E8FF}.c-CONTAINS{background:#FFE4D6}.c-DOMAIN{background:#D6F5E8}.c-DATE_RANGE{background:#FFF5D6}.c-URL_CONTAINS{background:#E8DAFF}.c-TOKEN_OVERLAP{background:#F0F7FF}
+.split{display:grid;grid-template-columns:1.05fr .95fr;gap:14px;margin:14px 0}
+.card{background:#fff;border-radius:20px;padding:20px;box-shadow:0 16px 44px rgba(10,25,60,.35)}
+.card.dk{background:linear-gradient(180deg,#0e1830,#0a1226);color:#e6efff;border:1px solid #ffffff22}
+.card.dk h2{color:#fff}.card h2{margin:4px 0 8px;font-size:20px}
+.card p,.card li{font-size:13.5px;line-height:1.65}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.controls input[type=search]{flex:1;min-width:220px;border:1px solid #A8C6F0;border-radius:9999px;padding:9px 14px;font-size:13px;font-family:inherit}
+.pillbtn{border-radius:9999px;padding:7px 13px;font-size:12px;font-weight:600;border:1px solid #A8C6F0;background:#fff;color:#0f2040;cursor:pointer}
+.pillbtn.on{background:#0f2040;color:#fff;border-color:#0f2040}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #E6EAF2;padding:7px 9px;text-align:left;vertical-align:top}th{background:#f0f7ff}
+.dk table th,.dk table td{border-color:#2b4a7a}.dk table th{background:#12233f}
+.nodegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:12px 0}
+.nodecard{background:#fff;border:1px solid #A8C6F0;border-radius:16px;padding:14px;cursor:pointer}
+.nodecard.sel{border-width:2px;border-color:#0f2040;box-shadow:0 8px 22px rgba(15,32,64,.18)}
+.nodecard h3{margin:2px 0 6px;font-size:14px;color:#0f2040}
+.nodecard .meta{font-size:11px;font-style:italic;color:#64748B}
+.diagram{background:#0a1428;border:1px solid #ffffff22;border-radius:20px;padding:18px;overflow-x:auto}
+.diagram svg{width:100%;height:auto;min-width:780px;display:block}
+.nd{cursor:pointer}.edge{stroke:#5b7ba6;stroke-width:1.4;fill:none;opacity:.85}.dim{opacity:.2}.lit{opacity:1}.lit rect{stroke:#fbbf24 !important;stroke-width:3 !important}
+.legend{font-size:12px;font-style:italic;color:#9db8d8;margin:8px 0 0}.legend b{color:#fff}
+@media(max-width:940px){.split{grid-template-columns:1fr}.hero h1{font-size:26px}.hero-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head><body><div class="bg"></div><div class="wrap">
+<div class="hero"><span class="chip">◉ PROJECT CONTINUUM · DATA MODEL</span>
+<h1>Every field. <span class="grad">Every reference.</span></h1>
+<p class="sub"><a href="./guide.html">← Back to Guide</a> · Source of truth: <span class="mono">data/seed/relationship_model.json v0.11</span> (12 nodes · 58 fields · 17 edges). Click a node card or a diagram box to filter its primary / secondary references and edges. Nothing invented — rendered from that JSON.</p>
+<div class="hero-actions"><a class="btn btn-p1" href="./guide.html">◉ Operator Guide</a><a class="btn btn-p2" href="./Project-Onion-Relationship-Model.html" target="_blank" rel="noopener">🕸 Relationship Map</a><a class="btn btn-p3" href="#nodes">▦ Nodes · 12</a><a class="btn btn-p4" href="#edges">⇄ Edges · 17</a><a class="btn btn-p5" href="#ids">✓ IDs + Rules</a></div></div>
+<div class="card" id="nodes" style="margin-top:14px"><h2>◉ Nodes — 12 · click a card to filter edges + diagram</h2>
+<p class="hint">Search filters live across node id / label / field name / example. “Primary” = PRIMARY_UNIQUE · “Refs” = SECONDARY_REF + FOREIGN. Counts come from the JSON above.</p>
+<div class="controls"><input type="search" id="q" placeholder="Filter nodes + fields — try project_ids, SoW, GDP ID, contacts…"><button class="pillbtn on" data-k="ALL">All references</button><button class="pillbtn" data-k="PRIMARY_UNIQUE">Primary only</button><button class="pillbtn" data-k="SECONDARY_REF">Secondary only</button><button class="pillbtn" data-k="FOREIGN">Foreign only</button><button class="pillbtn" id="clear">Show all nodes</button></div>
+<div class="nodegrid" id="nodegrid"></div></div>
+<div class="diagram" id="diagram" style="margin-top:14px"><div class="controls" id="phasebar" style="margin-top:0"></div><svg id="relsvg" viewBox="0 0 1000 620" role="img" aria-label="Data model diagram"></svg><p class="legend" id="legend"></p></div>
+<div class="split"><div class="card lt" id="nodedetail"><h2>◉ Node detail</h2><p class="hint">Select a node card or diagram box — full field list appears here with primary / secondary pills.</p><div id="ndetail"><p>Nothing selected yet — showing <span class="mono">project_card</span> by default after load.</p></div></div><div class="card dk" id="edgedetail"><h2>⚙ Edges for selection</h2><p class="hint" style="color:#9db8d8">Every edge touching the selected node, with its typed condition and field.</p><div id="edetail"><p>No selection yet.</p></div></div></div>
+<div class="card" id="edges" style="margin-top:14px"><h2>⇄ All 17 edges — primary / secondary references in motion</h2>
+<p class="hint">“From → To” uses node ids. “Field” is the exact JSON field text. Filter by typed condition — the enum is the rule, never free text.</p>
+<div class="controls" id="condbar"><button class="pillbtn on" data-c="ALL">All conditions</button><button class="pillbtn" data-c="EXACT">EXACT · 5</button><button class="pillbtn" data-c="CONTAINS">CONTAINS · 5</button><button class="pillbtn" data-c="URL_CONTAINS">URL_CONTAINS · 3</button><button class="pillbtn" data-c="TOKEN_OVERLAP">TOKEN_OVERLAP · 2</button><button class="pillbtn" data-c="DOMAIN">DOMAIN · 1</button><button class="pillbtn" data-c="DATE_RANGE">DATE_RANGE · 1</button></div>
+<div style="overflow-x:auto"><table><thead><tr><th>From → To</th><th>Condition</th><th>Field / reference used</th><th>Why (JSON description)</th></tr></thead><tbody id="edgebody"></tbody></table></div></div>
+<div class="split" id="ids"><div class="card lt"><h2>◉ IDs — immutable anchor vs mutable finance tag</h2>
+<ul><li><b>Project_ReferenceID</b> — <span class="mono">project_card · PRIMARY_UNIQUE</span> — immutable system anchor, auto-generated once per project card: <span class="mono">[Prefix]-[OppID]-[DDMMYY][Seconds]</span> (e.g. Apollo-O-008891-22092645). Never random hex. One card holds one-to-many IDs.</li>
+<li><b>ProjectID / project_ids[]</b> — <span class="mono">project_card · PRIMARY_UNIQUE</span> — mutable finance tag array (e.g. 99974052, 0000606071). Matching <b>must strip leading zeros</b> before compare (<span class="mono">0000606071 = 606071</span>).</li>
+<li><b>Card ID</b> — <span class="mono">raid_agg · primary</span> — <span class="mono">hash(sources + description_norm)</span>. Multiple RAID rows → multiple cards.</li>
+<li><b>Opportunity / GDP / Connected</b> — example Opp <span class="mono">O-008891</span>, GDP <span class="mono">8399 / 7189</span>, Salesforce <span class="mono">006Uj00000QOBkvIAH</span>. GDP dates are mutable via <span class="mono">gdp_dash → project_card [DATE_RANGE]</span>.</li></ul></div>
+<div class="card dk"><h2>⚙ Typed-filter enum — the only allowed matching</h2><p class="hint" style="color:#9db8d8">From <span class="mono">reusable_config_pattern.filter_keywords_typed</span>. No free-text parsing anywhere.</p><ul><li><span class="mono">EXACT</span> — Account Name, Project ID, Opportunity ID, GDP ID, Thread normalized</li><li><span class="mono">CONTAINS</span> — Project name tokens, SoW/PO/Contract numbers, RAID Type detection</li><li><span class="mono">DOMAIN</span> — Client email domains, attendee domains in VTT</li><li><span class="mono">DATE_RANGE</span> — Anchor start/end, GDP mutable dates, last_scanned_date delta</li><li><span class="mono">TOKEN_OVERLAP</span> — Project name split tokens vs email/Teams/chatter</li><li><span class="mono">URL_CONTAINS</span> — GDP /project-details/{id}, SharePoint URLs, Connected record ID</li></ul></div></div>
+<p class="hint" style="color:#8ea6cf;text-align:center">Project Onion · Data Model rendered from relationship_model.json v0.11 · Local-first · Privacy-first.</p>
+</div>
+<script>
+var NODES_A=[
+{id:"client_master",label:"Client Master",group:"master",sub:"Account Name picker first",x:400,y:20,c:"#D6E8FF",ph:"pick",primary:["Account Name"],fields:[["Account Name","PRIMARY_UNIQUE","Acme Corp / NovaTech Labs"],["Client Domains","SECONDARY_REF","acme.com, novatechlabs.com"]],notes:"Level-1 PRIMARY FILTER - dropdown - NOT editable."},
+{id:"project_card",label:"Project Card / Anchor",group:"anchor",sub:"one key to many refs",x:380,y:110,c:"#0f2040",dark:1,ph:"anchor",primary:["project_name (short anchor_id)","Oppurtunit_id","project_id"],fields:[["client_name","FOREIGN","Acme Corp"],["project_name","PRIMARY_UNIQUE","Agentic FullMigration"],["project_ids","PRIMARY_UNIQUE","99974052, 0000606071"],["opportunity_ids","SECONDARY_REF","OPP-8891, OPP-4421"],["connected_record_ids","SECONDARY_REF","006Uj00000QOBkvIAH"],["gdp_id","SECONDARY_REF","8399 / 0000002121"]],notes:"Anchor hub. One ReferenceID to many IDs."},
+{id:"sp_comm_plan",label:"SP: Collaboration Plan",group:"sharepoint",sub:"contacts from docx",x:20,y:210,c:"#D6E8FF",ph:"sp",primary:["SharePoint URL (docx)"],fields:[["Library = Communications","SECONDARY_REF","Communications"],["Usage = Collaboration Plan","SECONDARY_REF","Collaboration_Plan.docx"],["contacts[] (parsed)","SECONDARY_REF","Client + Internal from docx"]],notes:"User marks contacts relevant or not."},
+{id:"sp_risk_log",label:"SP: Risk Log (.xlsx)",group:"sharepoint",sub:"RAID rows to cards",x:200,y:210,c:"#D6E8FF",ph:"sp",primary:["SharePoint URL to .xlsx","Sheet names: RAID, RAID Log, Log, RISK Log"],fields:[["Date Raised","SECONDARY_REF","2026-03-14"],["RAID Type","SECONDARY_REF","Risk, Issue, Dependency, Action"],["Description","SECONDARY_REF","Actual issue summarised"],["State/Comments/Mitigation","SECONDARY_REF","multi-line updates"]],notes:"Row = one item. 3 templates."},
+{id:"sp_esc",label:"SP: ESC (.xlsm)",group:"sharepoint",sub:"Opp ID in filename",x:380,y:210,c:"#D6E8FF",ph:"sp",primary:["SharePoint URL to .xlsm"],fields:[["Opportunity ID in filename","SECONDARY_REF","O-5552629 in ESC filename"],["Project ID / Engagement","SECONDARY_REF","Mapped via Anchor"]],notes:"ESC filename carries Opp ID."},
+{id:"gdp_dash",label:"GDP Dashboard URL",group:"gdp",sub:"ID parsed from URL",x:560,y:210,c:"#FFF5D6",ph:"gdp",primary:["GDP ID parsed from URL"],fields:[["GDP URL","PRIMARY_UNIQUE","/dashboard/project-details/7189"],["GDP ID","PRIMARY_UNIQUE","8399 / 00009764"],["Project ID","SECONDARY_REF","668912"]],notes:"Parse GDP ID from URL path."}
+];
+var NODES_B=[
+{id:"gdp_excel",label:"GDP Weekly Excel",group:"gdp",sub:"delta per week",x:740,y:210,c:"#FFF5D6",ph:"gdp",primary:["Status Date + GDP ID"],fields:[["Engagement Name, Account Name, GDP ID, Project ID","PRIMARY_UNIQUE","Apollo-123, Acme Corp, 8399"],["Status Indicator, Start Date, End Date","SECONDARY_REF","Green, 01/02/2024"]],notes:"Weekly delta drives timeline."},
+{id:"emails",label:"Emails (Outlook)",group:"comm",sub:"MessageId + thread",x:20,y:330,c:"#E8DAFF",ph:"comm",primary:["MessageId + Thread normalized"],fields:[["Project ID / Opp ID / GDP ID","SECONDARY_REF","Tokens in subject/body"],["client email domain","SECONDARY_REF","Domain match vs Client Master"]],notes:"High noise. Exclude Re/Fw."},
+{id:"teams_chats",label:"Teams Chats",group:"comm",sub:"channel + message",x:200,y:330,c:"#FFE4D6",ph:"comm",primary:["Channel ID + Message ID"],fields:[["Dedicated channels","SECONDARY_REF","Pre-sales, Delivery, Closeout"],["Project keywords","SECONDARY_REF","ID, name tokens, Opp ID"]],notes:"Channel allowlist + keywords."},
+{id:"teams_vtt",label:"Teams Transcript",group:"comm",sub:"meeting + VTT",x:380,y:330,c:"#FFE4D6",ph:"comm",primary:["Meeting ID + VTT timestamp"],fields:[["VTT text","SECONDARY_REF","Transcript chunks"],["Attendees overlap","SECONDARY_REF","Email domains + contacts"]],notes:"Keywords + project ID + emails."}
+];
+var NODES_C=[
+{id:"connected",label:"Connected Chatter",group:"connected",sub:"Opp posts",x:560,y:330,c:"#D6E8FF",ph:"comm",primary:["Opportunity ID O-986754 + Chatter ID"],fields:[["Opportunity ID = all related","PRIMARY_UNIQUE","O-986754"],["Free text chatter","SECONDARY_REF","Posts on linked Opp record(s)"]],notes:"All posts on linked Opp are relevant."},
+{id:"raid_agg",label:"RAID Grouped Cards",group:"anchor",sub:"5 sources to cards",x:740,y:330,c:"#D6F5E8",ph:"agg",primary:["Card ID = hash(sources + description_norm)"],fields:[["Aggregated from 5 sources","SECONDARY_REF","SP + GDP + Emails + Teams + Connected"],["LLM assessed","SECONDARY_REF","Multiple cards if multiple items"],["Noise filter flag","SECONDARY_REF","Low GDP/SP, High Email/Teams"]],notes:"Freshness = refreshed at."}
+];
+var NODES=NODES_A.concat(NODES_B).concat(NODES_C);
+var EDGES_A=[
+["client_master","project_card","EXACT","Account Name to client_name","Primary dropdown filters cards. No edit."],
+["project_card","sp_comm_plan","URL_CONTAINS","sharepoint_urls[] docx URL","SP URLs configured on card to contacts."],
+["project_card","sp_risk_log","URL_CONTAINS","sharepoint_urls[] xlsx URL","RAID Log URL. Sheets RAID/Log/RISK Log."],
+["project_card","sp_esc","CONTAINS","sharepoint_urls[] + filename O-xxxxx","ESC filename holds Opp ID O-5552629."],
+["project_card","gdp_dash","URL_CONTAINS","gdp_id from GDP URL","Parse 7189/8399 from project-details URL."],
+["project_card","gdp_excel","EXACT","project_id + start/end dates","Engagement, GDP ID, Project ID mapping."],
+["project_card","emails","CONTAINS","IDs + domains + SoW/PO + dates","IDs, domains, contacts, keywords, dates."],
+["project_card","teams_vtt","DOMAIN","contacts + tokens + dates","Keywords, project ID, client emails."],
+["project_card","connected","EXACT","opportunity_ids[] + connected ids","Chatter posts on Opp O-986754."]
+];
+var EDGES_B=[
+["sp_risk_log","raid_agg","CONTAINS","Date Raised, RAID Type, Description","Primary RAID. One row = one item."],
+["gdp_excel","raid_agg","TOKEN_OVERLAP","Summary + Status + Phase","GDP Summary may hold risks. Low noise."],
+["emails","raid_agg","CONTAINS","Subject/body Risk/Issue tokens","High noise. PII screen. Skip Re/Fw."],
+["teams_chats","raid_agg","TOKEN_OVERLAP","Project keywords + channel","Allowlist + keywords."],
+["connected","raid_agg","EXACT","Opportunity ID context","All chatter on Opp ID."],
+["sp_comm_plan","project_card","EXACT","contacts[] from docx","Parsed contacts, user marks relevant."],
+["gdp_dash","project_card","DATE_RANGE","Start/End + same GDP multi Opp","Extension keeps GDP, adds Opp."],
+["project_card","teams_chats","CONTAINS","SoW + channel + IDs + domains","SoW + allowlist + IDs + domains + dates."]
+];
+var EDGES=EDGES_A.concat(EDGES_B);
+</script>
+<script>
+(function(){
+var grid=document.getElementById('nodegrid'),q=document.getElementById('q'),eb=document.getElementById('edgebody'),nd=document.getElementById('ndetail'),ed=document.getElementById('edetail');
+var kindF='ALL',condF='ALL',sel='project_card',search='';
+function kindPill(k){var c=k==='PRIMARY_UNIQUE'?'k-PRI':(k==='FOREIGN'?'k-FOR':'k-SEC');var t=k==='PRIMARY_UNIQUE'?'PRIMARY':(k==='FOREIGN'?'FOREIGN':'SECONDARY');return '<span class="kind '+c+'">'+t+'</span>';}
+function condPill(c){return '<span class="cond c-'+c+'">'+c+'</span>';}
+function matchN(n){if(!search)return true;var h=(n.id+' '+n.label+' '+n.group+' '+n.primary.join(' ')+' '+n.fields.map(function(f){return f[0]+' '+f[2];}).join(' ')).toLowerCase();return h.indexOf(search)>=0;}
+function matchF(f){if(kindF==='ALL')return true;return f[1]===kindF;}
+function renderNodes(){var html='';NODES.forEach(function(n){if(!matchN(n))return;var fs=n.fields.filter(matchF);var pills=n.fields.map(function(f){return kindPill(f[1]);}).join(' ');html+='<div class="nodecard'+(sel===n.id?' sel':'')+'" data-id="'+n.id+'"><h3>'+n.label+'</h3><div class="meta"><span class="mono">'+n.id+'</span> · '+n.group+' · '+n.fields.length+' refs</div><div style="margin:6px 0">'+pills+'</div><div class="meta">Primary: '+n.primary.join(' · ')+'</div><div class="meta">'+fs.length+' of '+n.fields.length+' refs shown</div></div>';});grid.innerHTML=html||'<p class="hint">No nodes match.</p>';var cards=grid.querySelectorAll('.nodecard');for(var i=0;i<cards.length;i++){cards[i].addEventListener('click',function(){select(this.getAttribute('data-id'));});}}
+function renderEdges(){var html='';EDGES.forEach(function(e){if(condF!=='ALL'&&e[2]!==condF)return;if(sel!=='all'&&e[0]!==sel&&e[1]!==sel)return;html+='<tr><td><span class="mono">'+e[0]+' → '+e[1]+'</span></td><td>'+condPill(e[2])+'</td><td>'+e[3]+'</td><td>'+e[4]+'</td></tr>';});eb.innerHTML=html||'<tr><td colspan="4">No edges for this filter.</td></tr>';}
+function renderDetail(){var n=null;for(var i=0;i<NODES.length;i++)if(NODES[i].id===sel)n=NODES[i];if(!n){nd.innerHTML='<p>Select a node.</p>';ed.innerHTML='<p>No selection.</p>';return;}var rows=n.fields.filter(matchF).map(function(f){return '<li>'+kindPill(f[1])+' <b>'+f[0]+'</b> — '+f[2]+'</li>';}).join('');nd.innerHTML='<h2>◉ '+n.label+'</h2><p><span class="mono">'+n.id+'</span> · '+n.sub+'</p><p class="hint">Primary identifiers: '+n.primary.join(' · ')+'</p><ul>'+rows+'</ul><p class="hint">'+n.notes+'</p>';var rel=EDGES.filter(function(e){return e[0]===sel||e[1]===sel;});ed.innerHTML=rel.map(function(e){return '<p>'+condPill(e[2])+' <span class="mono">'+e[0]+' → '+e[1]+'</span><br><span style="font-size:12px">'+e[3]+' — '+e[4]+'</span></p>';}).join('')||'<p>No edges.</p>';}
+function select(id){sel=id;renderNodes();renderEdges();renderDetail();if(window.drawHi)window.drawHi(id);}
+q.addEventListener('input',function(){search=String(q.value||'').toLowerCase();renderNodes();});
+var kbs=document.querySelectorAll('[data-k]');for(var i=0;i<kbs.length;i++){kbs[i].addEventListener('click',function(){kindF=this.getAttribute('data-k');for(var j=0;j<kbs.length;j++)kbs[j].classList.remove('on');this.classList.add('on');renderNodes();renderDetail();});}
+var cbs=document.querySelectorAll('#condbar .pillbtn');for(var k=0;k<cbs.length;k++){cbs[k].addEventListener('click',function(){condF=this.getAttribute('data-c');for(var j=0;j<cbs.length;j++)cbs[j].classList.remove('on');this.classList.add('on');renderEdges();});}
+document.getElementById('clear').addEventListener('click',function(){sel='all';search='';q.value='';renderNodes();renderEdges();nd.innerHTML='<p>Showing all nodes. Pick one to see detail.</p>';ed.innerHTML='<p>Showing all 17 edges below.</p>';if(window.drawHi)window.drawHi('all');});
+renderNodes();renderEdges();renderDetail();
+})();
+</script>
+<script>
+(function(){
+var svg=document.getElementById('relsvg'),bar=document.getElementById('phasebar'),leg=document.getElementById('legend');
+if(!svg)return;
+var NS='http://www.w3.org/2000/svg';
+function el(n,a){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);return e;}
+function ctr(id){for(var i=0;i<NODES.length;i++)if(NODES[i].id===id)return{x:NODES[i].x+80,y:NODES[i].y+30};return{x:0,y:0};}
+function phOf(id){for(var i=0;i<NODES.length;i++)if(NODES[i].id===id)return NODES[i].ph;return '';}
+var E2=[["client_master","project_card","EXACT"],["project_card","sp_comm_plan","URL"],["project_card","sp_risk_log","URL"],["project_card","sp_esc","CONTAINS"],["project_card","gdp_dash","URL"],["project_card","gdp_excel","EXACT"],["project_card","emails","CONTAINS"],["project_card","teams_vtt","DOMAIN"],["project_card","connected","EXACT"],["sp_risk_log","raid_agg","CONTAINS"],["gdp_excel","raid_agg","TOKENS"],["emails","raid_agg","CONTAINS"],["teams_chats","raid_agg","TOKENS"],["connected","raid_agg","EXACT"],["sp_comm_plan","project_card","EXACT"],["gdp_dash","project_card","DATES"],["project_card","teams_chats","CONTAINS"]];
+E2.forEach(function(e){var a=ctr(e[0]),b=ctr(e[1]);svg.appendChild(el('path',{d:'M'+a.x+' '+a.y+' C '+a.x+' '+(a.y+40)+', '+b.x+' '+(b.y-40)+', '+b.x+' '+b.y,'class':'edge','data-ph':phOf(e[0])+','+phOf(e[1])}));});
+NODES.forEach(function(n){
+var g=el('g',{'class':'nd','data-id':n.id,'data-ph':n.ph,transform:'translate('+n.x+','+n.y+')'});
+g.appendChild(el('rect',{width:160,height:60,rx:14,fill:n.dark?'#0f2040':n.c,stroke:'#ffffff44','stroke-width':1}));
+var t=el('text',{x:12,y:22,fill:n.dark?'#fff':'#0f2040','font-size':11,'font-weight':800});t.textContent=n.label;g.appendChild(t);
+var s=el('text',{x:12,y:40,fill:n.dark?'#9db8d8':'#33507a','font-size':9.5});s.textContent=n.sub;g.appendChild(s);
+var m=el('text',{x:12,y:53,fill:n.dark?'#7ea4d8':'#5b7ba6','font-size':8.5});m.textContent=n.id;g.appendChild(m);
+g.addEventListener('click',function(){var card=document.querySelector('.nodecard[data-id="'+n.id+'"]');if(card){card.click();}else if(window.drawHi){window.drawHi(n.id);}});
+svg.appendChild(g);
+});
+var PHASES=[["all","Show all"],["pick","1 Client"],["anchor","2 Anchor"],["sp","3a SharePoint"],["gdp","3b GDP"],["comm","3c Comms"],["agg","4 Grouped"]];
+PHASES.forEach(function(p){var b=document.createElement('button');b.textContent=p[1];b.className='pillbtn'+(p[0]==='all'?' on':'');b.onclick=function(){for(var i=0;i<bar.children.length;i++)bar.children[i].classList.remove('on');b.classList.add('on');drawHi(p[0]==='all'?'all':'ph:'+p[0]);};bar.appendChild(b);});
+window.drawHi=function(id){
+var nodes=svg.querySelectorAll('.nd'),edges=svg.querySelectorAll('.edge');
+var isPh=String(id||'').indexOf('ph:')===0;var ph=isPh?String(id).slice(3):null;
+nodes.forEach(function(g){var on=true;if(id==='all')on=true;else if(isPh)on=(g.getAttribute('data-ph')===ph);else on=(g.getAttribute('data-id')===id);g.classList.toggle('lit',on&&id!=='all');g.classList.toggle('dim',!on);});
+edges.forEach(function(p){var ps=(p.getAttribute('data-ph')||'').split(',');var on=true;if(id==='all')on=true;else if(isPh)on=(ps.indexOf(ph)>=0);else on=false;p.style.opacity=on?'0.9':'0.12';});
+var names={all:'all 12 nodes · 17 edges',pick:'Level 1 client picker',anchor:'Level 2 anchor',sp:'SharePoint',gdp:'GDP',comm:'Comms + connected',agg:'Grouped cards'};
+leg.innerHTML='Showing: <b>'+(isPh?(names[ph]||ph):(id==='all'?'all 12 nodes · 17 edges':id))+'</b> — click a box or card to filter.';
+};
+drawHi('project_card');
+})();
+</script>
+</body></html>

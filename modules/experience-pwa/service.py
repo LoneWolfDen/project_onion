@@ -16,7 +16,22 @@ class PWAHandler(SimpleHTTPRequestHandler):
             # /app/js/... -> /js/... ; handles ESM relative fetch under /app route
             rest = path_only[len("/app"):] or "/index.html"
             self.path = rest
-        return super().do_GET()
+        try:
+            return super().do_GET()
+        except (BrokenPipeError, ConnectionResetError):
+            # Browser cancelled a duplicate fetch (e.g. double-clicked doc link).
+            # Benign — suppress so the console stays clean.
+            return None
+    def copyfile(self, source, outputfile):
+        try:
+            return super().copyfile(source, outputfile)
+        except (BrokenPipeError, ConnectionResetError):
+            return None
+    def handle(self):
+        try:
+            return super().handle()
+        except (BrokenPipeError, ConnectionResetError):
+            return None
     def end_headers(self):
         # Cache-Control only. Do NOT add Content-Type here: SimpleHTTPRequestHandler
         # already sends exactly one via guess_type() (.js -> text/javascript which is
@@ -30,7 +45,6 @@ if __name__ == "__main__":
     idx_path = os.path.join(STATIC_DIR, "index.html")
     exists = os.path.exists(idx_path)
     size = os.path.getsize(idx_path) if exists else 0
-    print(f"Serving PWA v20 clean at http://localhost:8002/ and http://localhost:8002/app")
-    print(f"HDD good harness v0.18 clean + fixes: no Acme Corp, no self-ref notes, ALL Clients breadcrumb fix, Relationship link, Archive enabled, Ask filtering, Edit Save localStorage, PII Approve to save changes Private/Team Shared, single toggle, Edit stacked, PRJ ID single line, pastel simple")
+    print(f"Serving PWA at http://localhost:8002/ and http://localhost:8002/app")
     print(f"Static dir: {STATIC_DIR} - exists: {exists} - size: {size} bytes")
     HTTPServer(("0.0.0.0", 8002), PWAHandler).serve_forever()

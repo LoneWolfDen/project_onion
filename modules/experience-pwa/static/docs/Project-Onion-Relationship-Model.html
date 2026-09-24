@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Onion — Relationship Map</title>
+<style>
+:root{--blue:#D6E8FF;--mint:#D6F5E8;--peach:#FFE4D6;--lav:#E8DAFF;--yel:#FFF5D6}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:Inter,system-ui,sans-serif;margin:0;color:#1E293B;background:#070b16}
+.bg{position:fixed;inset:0;background:radial-gradient(800px 400px at 10% 0%,#274b7a,transparent),linear-gradient(180deg,#0a1122,#070b16)}
+.wrap{position:relative;max-width:1240px;margin:0 auto;padding:24px 18px 70px}
+.hero{background:linear-gradient(135deg,#f0f7ff,#f3ecff 55%,#fff6ec);border-radius:26px;padding:26px}
+.hero h1{font-size:32px;line-height:1.1;margin:10px 0;letter-spacing:-.02em;color:#0f2040}
+.grad{background:linear-gradient(90deg,#1F4A7A,#5B2EBF,#0ea5e9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:14px;color:#33507a;max-width:78ch;line-height:1.6}
+.btn{border-radius:9999px;padding:10px 12px;font-weight:600;font-size:13px;border:1px solid #A8C6F0;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center;margin:0;background:#fff;color:#0f2040}
+.hero-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0 0}
+.btn-p1{background:#D6E8FF;border-color:#A8C6F0}.btn-p2{background:#D6F5E8;border-color:#A8D5BA}.btn-p3{background:#FFE4D6;border-color:#E8A090}.btn-p4{background:#E8DAFF;border-color:#C4B5FD}.btn-p5{background:#FFF5D6;border-color:#F3D27A}
+.btn:hover{filter:brightness(.97)}
+.dark{background:#0f2040;color:#fff}.lite{background:#fff;color:#0f2040;border-color:#bfdbfe}
+.chip{font-size:11.5px;font-weight:700;background:#0f2040;color:#cfe3ff;border-radius:9999px;padding:6px 12px;display:inline-block;margin:3px}
+.mono{font-family:ui-monospace,monospace;font-size:12px;background:#eef4ff;border:1px solid #bfdbfe;border-radius:6px;padding:1px 6px}
+.dk .mono{background:#12233f;color:#cfe3ff;border-color:#2b4a7a}
+.split{display:grid;grid-template-columns:1.05fr .95fr;gap:14px;margin:14px 0}
+.card{background:#fff;border-radius:20px;padding:20px;box-shadow:0 16px 44px rgba(10,25,60,.35)}
+.card.dk{background:linear-gradient(180deg,#0e1830,#0a1226);color:#e6efff;border:1px solid #ffffff22}
+.card.dk h2{color:#fff}.card h2{margin:4px 0 8px;font-size:20px}
+.card p,.card li{font-size:13.5px;line-height:1.65}
+.try{background:#f2fdf6;border:2px solid #a7e3c7;border-radius:12px;padding:10px;font-size:13px;margin:8px 0}
+.diagram{background:#0a1428;border:1px solid #ffffff22;border-radius:20px;padding:18px;overflow-x:auto}
+.diagram svg{width:100%;height:auto;min-width:760px;display:block}
+.nd{cursor:pointer}
+.nd rect{transition:opacity .2s}
+.nd text{font-family:Inter,system-ui,sans-serif}
+.edge{stroke:#5b7ba6;stroke-width:1.4;fill:none;opacity:.85}
+.edgeLbl{font-size:9px;fill:#9db8d8;font-family:ui-monospace,monospace}
+.dim{opacity:.22}
+.lit{opacity:1}
+.lit rect{stroke:#fbbf24 !important;stroke-width:3 !important}
+.legend{font-size:12px;color:#9db8d8;margin:8px 0 0}
+.legend b{color:#fff}
+@media(max-width:940px){.split{grid-template-columns:1fr}.hero h1{font-size:26px}.hero-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head><body><div class="bg"></div><div class="wrap">
+<div class="hero"><span class="chip">◉ PROJECT CONTINUUM · RELATIONSHIP MAP</span>
+<h1>One anchor. <span class="grad">Many sources.</span></h1>
+<p class="sub"><a href="./guide.html">← Back to Guide</a> · Reference: <span class="mono">relationship_model.json v0.11</span> (12 nodes · 17 edges). Click any box in the diagram to see its detail below; click a phase button to highlight its path.</p>
+<div class="hero-actions"><a class="btn btn-p1" href="#diagram">▶ Explore the diagram</a><a class="btn btn-p2" href="./Project-Onion-Application-Flow.html" target="_blank" rel="noopener">🧭 Test Flow</a><a class="btn btn-p3" href="./guide.html">◉ Operator Guide</a><a class="btn btn-p4" href="./Project-Onion-Data-Model.html" target="_blank" rel="noopener">▦ Data Model</a><a class="btn btn-p5" href="#detail">✓ Node detail</a></div></div>
+<div class="diagram" id="diagram"><div id="phasebar"></div><svg id="relsvg" viewBox="0 0 1000 620" role="img" aria-label="Relationship diagram"></svg><p class="legend" id="legend"></p></div>
+
+</div></body></html>
+<div class="split" id="detail"><div class="card lt" id="dleft"><h2>◉ Select a box above</h2><p>Click any node in the diagram — its fields and example values appear here.</p><div class="try"><b>Try:</b> click <span class="mono">project_card</span> → see the one-to-many list. Click <span class="mono">raid_agg</span> → see the 5-source grouping.</div></div><div class="card dk" id="dright"><h2>⚙ Filters</h2><p>Click an edge label phase above, or a node, to see which typed filter fires here.</p><p id="edgeout">No selection yet.</p></div></div>
+<div class="split"><div class="card lt"><h2>◉ Levels in one glance</h2><p><b>Level 1 — Client:</b> picker first (Acme → Apollo only).<br><b>Level 2 — Project anchor:</b> one key → many IDs, URLs, channels, contacts, dates, SoW/PO codes.<br><b>Level 3 — Sources:</b> SharePoint, GDP, Email, Teams, meeting notes, connected posts → grouped cards.</p></div><div class="card dk"><h2>⚙ Matching + privacy</h2><p>Filters: exact, contains, domain, date-range, URL, token. Finance IDs ignore leading zeros. Shared shows for all; drafts show for the author only. Stored locally when offline.</p></div></div>
+<script>
+var NODES=[
+{id:"client_master",label:"Client Master",sub:"Account Name · picker first",x:400,y:20,c:"#D6E8FF",ph:"pick",fields:["Account Name (unique, not editable)","Client Domains: acme.com"],ex:"Acme Corp → Apollo only"},
+{id:"project_card",label:"Project Card / Anchor",sub:"one key → many refs",x:380,y:110,c:"#0f2040",dark:1,ph:"anchor",fields:["project_name (short anchor)","project_ids: 99974052, 0000606071","opportunity_ids: O-008891, O-5644421","connected_record_ids","gdp_id: 8399 / 7189","sharepoint_urls[] · teams_channels[]","contacts[] · start/end dates","SoW / PO codes"],ex:"Never split a card per ID"},
+{id:"sp_comm_plan",label:"SP: Collaboration Plan",sub:"contacts[] from docx",x:20,y:210,c:"#D6E8FF",ph:"sp",fields:["Library = Communications","contacts[] parsed"],ex:"User marks relevant / not"},
+{id:"sp_risk_log",label:"SP: Risk Log (.xlsx)",sub:"RAID rows → grouped cards",x:200,y:210,c:"#D6E8FF",ph:"sp",fields:["Date Raised · RAID Type","Description · Mitigation","Assigned To · Status"],ex:"One row = one item"},
+{id:"sp_esc",label:"SP: ESC (.xlsm)",sub:"Opp ID in filename",x:380,y:210,c:"#D6E8FF",ph:"sp",fields:["Opportunity ID in filename","Project ID / Engagement"],ex:"Filename carries Opp ID"},
+{id:"gdp_dash",label:"GDP Dashboard URL",sub:"ID parsed from URL",x:560,y:210,c:"#FFF5D6",ph:"gdp",fields:["GDP URL · GDP ID","Phase / Status","Start/End (mutable)"],ex:"/project-details/{id}"},
+{id:"gdp_excel",label:"GDP Weekly Excel",sub:"delta per week",x:740,y:210,c:"#FFF5D6",ph:"gdp",fields:["Engagement · GDP · Project","Status Date · Phase · Indicator","Start / End · Summary"],ex:"Timeline + freshness"},
+{id:"emails",label:"Emails (Outlook)",sub:"MessageId + thread",x:20,y:330,c:"#E8DAFF",ph:"comm",fields:["IDs in subject/body","client domains","SoW / PO codes","PII screened flag"],ex:"Re/Fw stripped"},
+{id:"teams_chats",label:"Teams Chats",sub:"channel + message",x:200,y:330,c:"#FFE4D6",ph:"comm",fields:["Dedicated channels","IDs + name tokens","client domains"],ex:"Allowlist only"},
+{id:"teams_vtt",label:"Teams Transcripts",sub:"VTT + attendees",x:380,y:330,c:"#FFE4D6",ph:"comm",fields:["VTT text","Attendees → contacts"],ex:"Overlap to contacts"},
+{id:"connected",label:"Connected Chatter",sub:"all posts on Opp",x:560,y:330,c:"#D6F5E8",ph:"comm",fields:["Opportunity ID context","Free-text posts"],ex:"All posts relevant"},
+{id:"raid_agg",label:"Grouped Cards",sub:"5 sources → one view",x:380,y:450,c:"#0f2040",dark:1,ph:"agg",fields:["Grouped from 5 sources","Sources linked (hash)","Noise flag · Freshness"],ex:"Assessed, not static"}
+];
+var EDGES=[
+["client_master","project_card","EXACT"],["project_card","sp_comm_plan","URL"],["project_card","sp_risk_log","URL"],["project_card","sp_esc","CONTAINS"],["project_card","gdp_dash","URL"],["project_card","gdp_excel","EXACT"],["project_card","emails","CONTAINS"],["project_card","teams_vtt","DOMAIN"],["project_card","connected","EXACT"],["sp_risk_log","raid_agg","CONTAINS"],["gdp_excel","raid_agg","TOKENS"],["emails","raid_agg","CONTAINS"],["teams_chats","raid_agg","TOKENS"],["connected","raid_agg","EXACT"],["sp_comm_plan","project_card","EXACT"],["gdp_dash","project_card","DATES"],["project_card","teams_chats","CONTAINS"]
+];
+var PHASES=[["all","Show all"],["pick","1 · Client"],["anchor","2 · Anchor"],["sp","3a · SharePoint"],["gdp","3b · GDP"],["comm","3c · Comms"],["agg","4 · Grouped"]];
+</script>
+<script>
+(function(){
+var svg=document.getElementById('relsvg'),bar=document.getElementById('phasebar'),leg=document.getElementById('legend');
+var NS='http://www.w3.org/2000/svg';
+function el(n,a){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);return e;}
+function ctr(id){for(var i=0;i<NODES.length;i++)if(NODES[i].id===id)return{x:NODES[i].x+80,y:NODES[i].y+30};return{x:0,y:0};}
+EDGES.forEach(function(e){var a=ctr(e[0]),b=ctr(e[1]);var p=el('path',{d:'M'+a.x+' '+a.y+' C '+a.x+' '+(a.y+40)+', '+b.x+' '+(b.y-40)+', '+b.x+' '+b.y,'class':'edge','data-ph':phOf(e[0])+','+phOf(e[1])});svg.appendChild(p);});
+function phOf(id){for(var i=0;i<NODES.length;i++)if(NODES[i].id===id)return NODES[i].ph;return'';}
+NODES.forEach(function(n){
+var g=el('g',{'class':'nd','data-id':n.id,'data-ph':n.ph,transform:'translate('+n.x+','+n.y+')'});
+g.appendChild(el('rect',{width:160,height:60,rx:14,fill:n.dark?'#0f2040':n.c,stroke:'#ffffff44','stroke-width':1}));
+var t=el('text',{x:12,y:22,fill:n.dark?'#fff':'#0f2040','font-size':11,'font-weight':800});t.textContent=n.label;g.appendChild(t);
+var s=el('text',{x:12,y:40,fill:n.dark?'#9db8d8':'#33507a','font-size':9.5});s.textContent=n.sub;g.appendChild(s);
+var m=el('text',{x:12,y:53,fill:n.dark?'#7ea4d8':'#5b7ba6','font-size':8.5,'font-family':'ui-monospace,monospace'});m.textContent=n.id;g.appendChild(m);
+g.addEventListener('click',function(){select(n.id);});
+svg.appendChild(g);
+});
+PHASES.forEach(function(p){var b=document.createElement('button');b.textContent=p[1];b.className='btn '+(p[0]==='all'?'dark':'lite');b.style.fontSize='12px';b.style.padding='7px 13px';b.onclick=function(){highlight(p[0]);};bar.appendChild(b);});
+function highlight(ph){
+var nodes=svg.querySelectorAll('.nd'),edges=svg.querySelectorAll('.edge');
+nodes.forEach(function(g){var on=(ph==='all'||g.getAttribute('data-ph')===ph||(ph==='anchor'&&g.getAttribute('data-id')==='project_card'));g.classList.toggle('lit',on);g.classList.toggle('dim',!on);});
+edges.forEach(function(p){var ps=(p.getAttribute('data-ph')||'').split(',');var on=(ph==='all'||ps.indexOf(ph)>=0);p.style.opacity=on?'0.9':'0.12';});
+var names={all:'all 12 nodes · 17 edges',pick:'Level 1 · client picker',anchor:'Level 2 · project anchor',sp:'SharePoint sources',gdp:'GDP sources',comm:'Comms + connected',agg:'Grouped cards'};
+leg.innerHTML='Showing: <b>'+(names[ph]||ph)+'</b> — other parts dimmed. Click a box for detail.';
+}
+function select(id){
+var n=null;NODES.forEach(function(x){if(x.id===id)n=x;});if(!n)return;
+svg.querySelectorAll('.nd').forEach(function(g){var on=(g.getAttribute('data-id')===id);g.classList.toggle('lit',on);g.classList.toggle('dim',!on);});
+var L=document.getElementById('dleft'),R=document.getElementById('edgeout');
+L.innerHTML='<h2>◉ '+n.label+'</h2><p><span class="mono">'+n.id+'</span> — '+n.sub+'</p><ul>'+n.fields.map(function(f){return'<li>'+f+'</li>';}).join('')+'</ul><div class="try"><b>Example:</b> '+n.ex+'</div>';
+var rel=EDGES.filter(function(e){return e[0]===id||e[1]===id;});
+R.innerHTML=rel.length?rel.map(function(e){return'<span class="mono">'+e[0]+' → '+e[1]+' ['+e[2]+']</span>';}).join('<br>'):'No edges.';
+document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+highlight('all');
+})();
+</script>

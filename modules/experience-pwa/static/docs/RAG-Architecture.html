@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Continuum — RAG Architecture (Secure and Grounded)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{font-family:Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:-0.01em}
+.node{transition:transform .18s ease,box-shadow .18s ease;cursor:pointer}
+.node:hover,.node.active{transform:translateY(-3px);box-shadow:0 16px 40px rgba(15,32,64,.18)}
+.node.active{outline:2px solid #0f2040;outline-offset:2px}
+.arrow{font-size:22px;color:#94a3b8;line-height:1;user-select:none}
+.badge-demo{font-size:10px;font-weight:800;color:#1d4ed8;background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:2px 6px;margin:0 2px;cursor:pointer}
+.badge-demo:hover{background:#bfdbfe}
+code.inline{font-family:ui-monospace,monospace;font-size:11px;background:#eef4ff;border:1px solid #bfdbfe;border-radius:6px;padding:1px 6px}
+.flow-line{height:3px;background:linear-gradient(90deg,#bfdbfe,#a7f3d0,#fde68a,#c4b5fd);border-radius:9999px}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+<div class="max-w-6xl mx-auto px-4 py-8">
+<div class="rounded-2xl p-6 border border-blue-200" style="background:linear-gradient(135deg,#f0f7ff,#f3ecff 55%,#fff6ec)">
+<div class="text-[11px] font-bold tracking-wide text-slate-500 uppercase">Project Continuum (Project Onion) - Stakeholder Explainer</div>
+<h1 class="text-3xl font-bold tracking-tight text-slate-900 mt-1">How the AI stays secure and grounded</h1>
+<p class="text-sm text-slate-600 mt-2 max-w-3xl">Retrieval-Augmented Generation (RAG) in 5 steps. Every answer is filtered by privacy, grounded in real cards, and cited. <span class="italic">Hover or tap any step for details.</span></p>
+<div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+<span class="px-2 py-1 rounded-full bg-white border">Offline-first - FailoverDB + mockSeed</span>
+<span class="px-2 py-1 rounded-full bg-white border">Privacy Matrix - activePersona</span>
+<span class="px-2 py-1 rounded-full bg-white border">Citations - clickable badges</span>
+</div>
+</div>
+<div class="mt-6 rounded-2xl bg-white border p-5">
+<div class="text-[12px] font-semibold text-slate-500 uppercase tracking-wide">RAG Pipeline - click a node</div>
+<div class="flow-line mt-2"></div>
+<div class="mt-4 flex flex-col lg:flex-row items-stretch gap-2">
+<div class="node flex-1 rounded-xl bg-blue-50 border border-blue-200 p-4" data-tip="tip1" tabindex="0">
+<div class="text-[11px] font-bold text-blue-600">STEP 1 - USER QUERY</div>
+<div class="font-bold text-[15px] mt-1">Ask Assistant</div>
+<div class="text-[12px] text-slate-600 mt-1">Question typed in AppRight.js search box with privacy mode.</div>
+</div>
+<div class="arrow self-center hidden lg:block">→</div>
+<div class="node flex-1 rounded-xl bg-emerald-50 border border-emerald-200 p-4" data-tip="tip2" tabindex="0">
+<div class="text-[11px] font-bold text-emerald-700">STEP 2 - PRIVACY FILTER</div>
+<div class="font-bold text-[15px] mt-1">App.js + AiClient.js</div>
+<div class="text-[12px] text-slate-600 mt-1">scopeCardsByPrivacy keeps only cards your persona may see.</div>
+</div>
+<div class="arrow self-center hidden lg:block">→</div>
+<div class="node flex-1 rounded-xl bg-amber-50 border border-amber-200 p-4" data-tip="tip3" tabindex="0">
+<div class="text-[11px] font-bold text-amber-700">STEP 3 - GROUNDING</div>
+<div class="font-bold text-[15px] mt-1">Card Injection</div>
+<div class="text-[12px] text-slate-600 mt-1">Top 12 cards injected as CARD ID blocks.</div>
+</div>
+<div class="arrow self-center hidden lg:block">→</div>
+<div class="node flex-1 rounded-xl bg-violet-50 border border-violet-200 p-4" data-tip="tip4" tabindex="0">
+<div class="text-[11px] font-bold text-violet-700">STEP 4 - SYNTHESIS</div>
+<div class="font-bold text-[15px] mt-1">Elite + Witty</div>
+<div class="text-[12px] text-slate-600 mt-1">Answers only from cards. Unknown? Witty fallback.</div>
+</div>
+<div class="arrow self-center hidden lg:block">→</div>
+<div class="node flex-1 rounded-xl bg-slate-100 border border-slate-300 p-4" data-tip="tip5" tabindex="0">
+<div class="text-[11px] font-bold text-slate-600">STEP 5 - CITATIONS</div>
+<div class="font-bold text-[15px] mt-1">Clickable Badges</div>
+<div class="text-[12px] text-slate-600 mt-1">[Card id] becomes a badge jumping to source.</div>
+</div>
+</div>
+<div id="tipPanel" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-[13px]">
+<div class="font-bold" id="tipTitle">Select a step above</div>
+<div class="text-slate-600 mt-1" id="tipBody">Each stage enforces one guarantee: privacy, grounding, attribution.</div>
+</div>
+</div>
+<div class="mt-4 grid md:grid-cols-2 gap-3 text-[13px]">
+<div class="rounded-xl bg-[#f0f7ff] border border-[#bfdbfe] p-4">
+<div class="font-bold">Assistant answer (demo)</div>
+<p class="mt-2">Work is halted because PO-88921 funding is depleted <button class="badge-demo" onclick="showTip('tip5')">[a4f2]</button>. Awaiting sign-off.</p>
+<div class="mt-2 flex gap-1"><span class="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-[10px]">RAID Log Excel</span><span class="px-2 py-0.5 rounded-full bg-blue-100 border border-blue-200 text-[10px]">Outlook Mail</span></div>
+<div class="mt-1 text-[11px] italic text-slate-500">[Scope: Team Shared Knowledge]</div>
+</div>
+<div class="rounded-xl bg-amber-50 border border-amber-200 p-4">
+<div class="font-bold">Out-of-scope question (demo)</div>
+<p class="mt-2 italic">While I'd love to weigh in on that, my security clearance only covers our active project data...</p>
+<div class="mt-2 text-[12px] text-slate-600">Model refuses to hallucinate; answers only from scoped CARD ID blocks.</div>
+</div>
+</div>
+<div class="mt-4 grid md:grid-cols-3 gap-3 text-[12px]">
+<div class="rounded-xl bg-white border p-4"><div class="font-bold">Privacy-first</div><p class="text-slate-600 mt-1">Private nodes never leak. activePersona + mode filter before LLM sees data.</p></div>
+<div class="rounded-xl bg-white border p-4"><div class="font-bold">Offline-first</div><p class="text-slate-600 mt-1">FailoverDB.js + mockSeed.js keep Docker/Nginx static deploys bulletproof.</p></div>
+<div class="rounded-xl bg-white border p-4"><div class="font-bold">Fluent UI parity</div><p class="text-slate-600 mt-1">Soft pastels, rounded-xl / rounded-full, tight tracking.</p></div>
+</div>
+<div class="mt-4 text-[11px] text-slate-400 italic text-center">Project Continuum - RAG-Architecture.html - static, no build step</div>
+
+<script>
+var TIPS={
+tip1:['Step 1 - User Query','Question asked in AppRight.js. Raw question + privacy mode + activePersona passed to askSmartAssistant(). Nothing sent to LLM yet.'],
+tip2:['Step 2 - Privacy Matrix Filter','scopeCardsByPrivacy enforces: My Notes = author match only; Team Shared = shared only; Both = shared + own notes. LLM never sees other personas private notes.'],
+tip3:['Step 3 - Prompt Grounding','Top 12 cards injected as CARD ID blocks: --- CARD ID --- / Title / Content. Stable IDs to cite, ~6000 char cap.'],
+tip4:['Step 4 - LLM Synthesis','Elite professional with subtle wit. Cite inline as [Card id]. If unanswerable: witty disclaimer, never hallucinate. Offline mock mirrors both rules.'],
+tip5:['Step 5 - Citation Parsing','renderCitedAnswer regex /[Card id]/ renders blue badges (last 4 chars). Click calls onView(id) to scroll to source card.']};
+function showTip(k){var t=TIPS[k];if(!t)return;document.getElementById('tipTitle').textContent=t[0];document.getElementById('tipBody').textContent=t[1];var ns=document.querySelectorAll('.node');for(var i=0;i<ns.length;i++){if(ns[i].getAttribute('data-tip')===k){ns[i].classList.add('active')}else{ns[i].classList.remove('active')}}}
+var nodes=document.querySelectorAll('.node');for(var i=0;i<nodes.length;i++){(function(n){var k=n.getAttribute('data-tip');n.addEventListener('click',function(){showTip(k)});n.addEventListener('mouseenter',function(){showTip(k)});n.addEventListener('focus',function(){showTip(k)})})(nodes[i])}
+showTip('tip2');
+</script>
+
+</div>
+</body>
+</html>

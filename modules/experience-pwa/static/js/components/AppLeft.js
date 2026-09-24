@@ -17,7 +17,7 @@ export function AppLeft(p) {
           <div className="mt-1 text-[11px] italic text-[#94A3B8]">${p.fmt(x.created_at)}</div>
         </button>`)}
       </div>
-      <div className="mt-auto pt-4 border-t border-[#E6EAF2]"><div><button className="text-[12px] underline underline-offset-2 text-[#1F4A7A] hover:text-[#1E293B] cursor-pointer">Handover Pack [Generate]</button></div>
+      <div className="mt-auto pt-4 border-t border-[#E6EAF2]"><div><button onClick=${p.onOpenHandover} className="text-[12px] underline underline-offset-2 text-[#1F4A7A] hover:text-[#1E293B] cursor-pointer">Handover Pack [Generate]</button></div>
         <div className="mt-2"><button onClick=${p.onClientArtefacts} className="text-[12px] underline underline-offset-2 text-[#1F4A7A] hover:text-[#1E293B] cursor-pointer">Client 360 [View]</button></div></div>
 
     </div>

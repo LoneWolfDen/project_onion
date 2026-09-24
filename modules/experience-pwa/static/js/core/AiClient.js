@@ -169,19 +169,33 @@ function mockQaFallback(question, scopedCards, privacyMode, activePersona) {
     return { answer: 'No scoped sources are available in the current privacy scope' + (persona ? ' for ' + persona : '') + '. Switch scope or ingest more cards to enable synthesis.', sources: [] };
   }
   const scopedSources = (Array.isArray(scopedCards) ? scopedCards : []).slice(0, 3).map((c) => String((c && (c.source || c.title || c.id)) || 'Timeline'));
+  const citeFor = (c) => (c && c.id) ? ' [Card ' + String(c.id) + ']' : '';
+  const wittyFallback = 'While I\'d love to weigh in on that, my security clearance only covers our active project data — try asking about a scoped card, tag, or milestone.';
   const hit = /why|delayed|delay|blocked|block/i.test(q) || /\bpo\b|po-\d+/i.test(q);
   if (hit && mode === 'My Notes') {
-    return { answer: 'The Apollo migration is currently delayed pending AWS gateway VNet peering approval from Client Infosec.' + (persona ? ' (scoped to ' + persona + '\'s My Notes)' : ''), sources: scopedSources.length ? scopedSources : ['Scoped My Notes'] };
+    const topMy = scopedCards[0] || null;
+    return { answer: 'The Apollo migration is currently delayed pending AWS gateway VNet peering approval from Client Infosec.' + citeFor(topMy) + (persona ? ' (scoped to ' + persona + '\'s My Notes)' : ''), sources: scopedSources.length ? scopedSources : ['Scoped My Notes'] };
   }
   if (hit) {
-    return { answer: 'Work is halted because PO-88921 funding Infosec consultants is depleted. However, Lead Dev Raj identified a legacy on-prem gateway workaround that can bypass the block immediately pending Delivery Manager sign-off.', sources: scopedSources.length ? scopedSources : ['Timeline'] };
+    const topHit = scopedCards[0] || null;
+    return { answer: 'Work is halted because PO-88921 funding Infosec consultants is depleted.' + citeFor(topHit) + ' However, Lead Dev Raj identified a legacy on-prem gateway workaround that can bypass the block immediately pending Delivery Manager sign-off.', sources: scopedSources.length ? scopedSources : ['Timeline'] };
+  }
+  // Witty fallback when the question does not match scoped evidence (offline parity with LLM RULE 2).
+  const looksOutOfScope = q.trim().length > 0 && !scopedCards.some((c) => {
+    const hay = String((c && (c.title || '')) + ' ' + (c && (c.synthesizedText || c.content || c.detail || ''))).toLowerCase();
+    const toks = q.split(/[^a-z0-9]+/).filter((t) => t && t.length > 3);
+    return toks.some((t) => hay.indexOf(t) !== -1);
+  });
+  if (looksOutOfScope) {
+    const topWitty = scopedCards[0] || null;
+    return { answer: wittyFallback + (topWitty && topWitty.id ? ' Closest scoped reference is available here:' + citeFor(topWitty) : ''), sources: scopedSources };
   }
   const top = (Array.isArray(scopedCards) && scopedCards.length ? scopedCards[0] : null) || null;
   if (!top) return { answer: 'No scoped sources are available in the current privacy scope' + (persona ? ' for ' + persona : '') + '. Switch scope or ingest more cards to enable synthesis.', sources: [] };
   const title = String(top.title || top.id || 'Untitled card');
   const source = String(top.source || top.type || 'Timeline');
   const body = String(top.synthesizedText || top.content || top.detail || '').slice(0, 220);
-  return { answer: 'Based on ' + String(scopedCards.length) + ' scoped source(s), the most relevant is "' + title + '" from ' + source + (body ? ': ' + body : '.'), sources: [source] };
+  return { answer: 'Based on ' + String(scopedCards.length) + ' scoped source(s), the most relevant is "' + title + '" from ' + source + (body ? ': ' + body : '.') + citeFor(top), sources: [source] };
 }
 export async function askSmartAssistant(question, contextCards, privacyMode, activePersona) {
   const q = String(question || '');
@@ -195,8 +209,15 @@ export async function askSmartAssistant(question, contextCards, privacyMode, act
     author: (c && c.author) || '',
     content: String((c && (c.synthesizedText || c.content || c.detail)) || '').slice(0, 800),
   }));
+  // Grounded CARD-block stringification for prompt injection (citation-ready).
+  // --- CARD ID: ${card.id} ---
+  // Title: ${card.title}
+  // Content: ${card.content || card.synthesizedText}
   let ctx = '[]';
-  try { ctx = JSON.stringify(lite, null, 2).slice(0, 6000); } catch (e) {}
+  try {
+    const blocks = scoped.slice(0, 12).map((card) => '--- CARD ID: ' + String((card && card.id) || '') + ' ---\nTitle: ' + String((card && card.title) || '') + '\nContent: ' + String((card && (card.content || card.synthesizedText || card.detail)) || '').slice(0, 800));
+    ctx = (blocks.join('\n\n') || '[]').slice(0, 6000);
+  } catch (e) { try { ctx = JSON.stringify(lite, null, 2).slice(0, 6000); } catch (e2) {} }
   let apiKey = null; let model = DEFAULT_MODEL;
   try { apiKey = localStorage.getItem('OPENROUTER_API_KEY') || ''; model = localStorage.getItem('OPENROUTER_MODEL') || DEFAULT_MODEL; } catch (e) {}
   if (apiKey && String(apiKey).trim()) {
@@ -205,7 +226,7 @@ export async function askSmartAssistant(question, contextCards, privacyMode, act
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + String(apiKey).trim(), 'HTTP-Referer': (typeof location !== 'undefined' && location.href) || 'http://localhost', 'X-Title': 'Project Continuum Smart Assistant' },
         body: JSON.stringify({ model, messages: [
-          { role: 'system', content: 'You are a Project Delivery Copilot. Synthesize a concise 2-3 sentence answer citing source names, strictly limited to information present in the provided context cards. Return ONLY valid JSON with keys: answer (string), sources (array of source-name strings). Privacy scope: ' + mode + (persona ? ' (active persona: ' + persona + ')' : '') + '.' },
+          { role: 'system', content: 'You are an elite, highly professional enterprise AI assistant with a subtle touch of wit. You answer questions using ONLY the provided context cards.\nRULE 1 (Citations): You MUST cite your sources inline. When using facts from a card, append [Card {id}] at the end of the sentence. Example: \'The deployment is blocked [Card 123].\'\nRULE 2 (Fallback): If the user asks a question not answerable by the context, respond with a polite, witty professional disclaimer (e.g., \'While I\'d love to weigh in on that, my security clearance only covers our active project data...\'). DO NOT hallucinate external facts.\nReturn ONLY valid JSON with keys: answer (string), sources (array of source-name strings). Privacy scope: ' + mode + (persona ? ' (active persona: ' + persona + ')' : '') + '.' },
           { role: 'user', content: 'Question: ' + q + '\nPrivacy scope: ' + mode + (persona ? '\nActive persona: ' + persona : '') + '\nContext cards:\n' + ctx },
         ] }),
       });

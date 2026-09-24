@@ -3,6 +3,7 @@ import { OnionDB, readLocal, writeLocal } from '../core/FailoverDB.js';
 import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ProjectModal } from './ProjectModal.js';
+import { HandoverModal } from './HandoverModal.js';
 import { AppLeft } from './AppLeft.js';
 import { AppCenter } from './AppCenter.js';
 import { AppRight } from './AppRight.js';
@@ -66,6 +67,7 @@ export function App() {
   const [assistantSources, setAssistantSources] = useState([]);
   const [editOpen, setEditOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
+  const [isHandoverOpen, setHandoverOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideSrc, setGuideSrc] = useState('/docs/guide.html');
@@ -269,14 +271,27 @@ export function App() {
   }} />` : null;
   const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: v.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', author: activePersona || 'Brené', refs: [], updates: [] }); if (reset) reset(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); await (window.OnionDB || OnionDB).updateNotePrivacy(note.id, next); };
-  const onAskAssistant = async (overridePrivacy) => {
-    const pMode = String(overridePrivacy || privacy || 'Both');
-    const qNow = String(ask || '').trim();
+  const onAskAssistant = async (questionOrPrivacy, scopedCards, privacyMode, persona) => {
+    // Forward-compatible handler: supports legacy onAsk() / onAsk(privacyOverride)
+    // and grounded onAsk(question, scopedCards, privacyMode, activePersona) from AppRight.
+    let qNow = '';
+    let pMode = String(privacy || 'Both');
+    let scopedNow = null;
+    let personaNow = String(activePersona || '');
+    if (typeof scopedCards !== 'undefined' || typeof privacyMode !== 'undefined' || typeof persona !== 'undefined') {
+      qNow = String((typeof questionOrPrivacy !== 'undefined' ? questionOrPrivacy : ask) || '').trim() || String(ask || '').trim();
+      if (typeof privacyMode !== 'undefined' && privacyMode) pMode = String(privacyMode);
+      scopedNow = Array.isArray(scopedCards) ? scopedCards : scopedBaseFor(pMode);
+      if (typeof persona !== 'undefined' && persona) personaNow = String(persona);
+    } else {
+      pMode = String(questionOrPrivacy || privacy || 'Both');
+      qNow = String(ask || '').trim();
+      scopedNow = scopedBaseFor(pMode);
+    }
     if (!qNow) return;
-    const scopedNow = scopedBaseFor(pMode);
     setAssistantLoading(true);
     try {
-      const res = await askSmartAssistant(qNow, scopedNow, pMode);
+      const res = await askSmartAssistant(qNow, scopedNow, pMode, personaNow);
       setAssistantAnswer(String((res && res.answer) || ''));
       setAssistantSources(Array.isArray(res && res.sources) ? res.sources.map(String) : []);
     } catch (e) {
@@ -289,7 +304,7 @@ export function App() {
     if (String(ask || '').trim() && assistantAnswer) {
       const scopedNext = scopedBaseFor(v);
       setAssistantLoading(true);
-      askSmartAssistant(String(ask).trim(), scopedNext, v).then((res) => {
+      askSmartAssistant(String(ask).trim(), scopedNext, v, String(activePersona || '')).then((res) => {
         setAssistantAnswer(String((res && res.answer) || ''));
         setAssistantSources(Array.isArray(res && res.sources) ? res.sources.map(String) : []);
       }).catch(() => {}).finally(() => setAssistantLoading(false));
@@ -341,12 +356,13 @@ export function App() {
       </div>
     </div>
     <div className="flex flex-col lg:flex-row">
-      <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} onClientArtefacts=${() => setMode('client360')} projects=${projects} fmt=${fmtDate} onPick=${(r) => setProject(r)} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
+      <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} onOpenHandover=${() => setHandoverOpen(true)} onClientArtefacts=${() => setMode('client360')} projects=${projects} fmt=${fmtDate} onPick=${(r) => setProject(r)} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
       <${AppCenter} mode=${mode} c360=${c360} activePersona=${activePersona} onBack=${() => setMode('project')} onPickProject=${(r) => setProject(r)} allProjects=${db.projects} timeline=${db.timeline} notes=${db.notes} domains=${domains} keywords=${keywords} active=${active} fmt=${fmtDate} onEdit=${openEdit} onDetails=${() => setDetailsOpen((v) => !v)} detailsOpen=${detailsOpen} editSlot=${editSlot} timelineSlot=${timelineSlot} archived=${archived} />
-      <${AppRight} privacy=${privacy} setPrivacy=${onPrivacyChange} ask=${ask} setAsk=${onAskClear} hits=${hits} onView=${onViewHit} keywords=${keywords} contextCards=${contextCards} onClientArtefacts=${() => setMode('client360')} onAsk=${onAskAssistant} assistantAnswer=${assistantAnswer} assistantLoading=${assistantLoading} assistantSources=${assistantSources} scopedCount=${contextCards.length} />
+      <${AppRight} privacy=${privacy} setPrivacy=${onPrivacyChange} ask=${ask} setAsk=${onAskClear} hits=${hits} onView=${onViewHit} keywords=${keywords} contextCards=${contextCards} activePersona=${activePersona} onClientArtefacts=${() => setMode('client360')} onAsk=${onAskAssistant} assistantAnswer=${assistantAnswer} assistantLoading=${assistantLoading} assistantSources=${assistantSources} scopedCount=${contextCards.length} />
     </div>
     <div className="px-4 py-2 text-[10px] italic text-[#9ca3af] border-t bg-white flex flex-wrap gap-3"><span>Project Onion v0.18.0 clean</span></div>
     ${regSlot}
+    <${HandoverModal} isOpen=${isHandoverOpen} onClose=${() => setHandoverOpen(false)} activePersona=${activePersona} activeRef=${active ? active.Project_ReferenceID : null} onPickProject=${(r) => setProject(r)} onViewCard=${onViewHit} />
     ${guideOpen ? html`<div className="fixed inset-0 z-50" style=${{ background: 'rgba(15,23,42,0.35)' }} onClick=${() => setGuideOpen(false)}>
       <aside onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} aria-label="Project Onion Guide panel" style=${{ position: 'fixed', top: 0, right: 0, height: '100vh', width: '36vw', minWidth: '420px', maxWidth: '620px', background: 'linear-gradient(180deg,#F0F7FF 0%,#F3ECFF 55%,#FFF9F0 100%)', borderLeft: '1px solid #A8C6F0', boxShadow: '-8px 0 24px rgba(31,74,122,.16)', display: 'flex', flexDirection: 'column', zIndex: 51 }}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#A8C6F0]"><div className="font-semibold text-[14px] italic" style=${{ textAlign: 'left', color: '#0f2040' }}>Project Onion - Guide</div><div className="ml-auto flex items-center gap-2"><a href=${guideSrc} target="_blank" rel="noopener" title="Open in New Tab" className="px-3 py-1 rounded-full bg-white border border-[#A8C6F0] text-[12px]">↗</a><button onClick=${() => setGuideOpen(false)} title="Close" className="px-3 py-1 rounded-full bg-white border border-[#A8C6F0] text-[12px]">✕</button></div></div>

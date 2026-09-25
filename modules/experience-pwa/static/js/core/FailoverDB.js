@@ -1,5 +1,25 @@
 // js/core/FailoverDB.js part1 — Failover Repository Pattern (mandatory).
 import { MOCK_SEED } from '../data/mockSeed.js';
+// Vector mirror facade (Dual-Mode: offline-first, fire-and-forget).
+// Dynamic import avoids a hard ESM cycle (VectorSync never imports FailoverDB).
+let _vectorMirror = null;
+function vectorMirror() {
+  if (_vectorMirror) return _vectorMirror;
+  _vectorMirror = import('./VectorSync.js').then((m) => (m && m.mirrorToVector) || null).catch(() => null);
+  return _vectorMirror;
+}
+function fireVectorMirror(op, cardOrId) {
+  try {
+    Promise.resolve(vectorMirror()).then((fn) => {
+      if (typeof fn === 'function') { try { fn(op, cardOrId); } catch (e) {} }
+    }).catch(() => {});
+  } catch (e) {}
+}
+function stampVectorPending(rec) {
+  // Separate from syncStatus so existing Sync Now / pending_upload gates keep working.
+  try { if (rec && typeof rec === 'object' && !rec.vectorSyncStatus) rec.vectorSyncStatus = 'pending'; } catch (e) {}
+  return rec;
+}
 const STORAGE_KEY = 'onion_db_state';
 const API_BASES = ['http://localhost:8000', 'http://localhost:8001'];
 function tagPending(entity) {
@@ -106,11 +126,16 @@ class FailoverDB {
     if (!Array.isArray(s.notes)) s.notes = [];
     const rec = tagPending({ id: 'n-local-' + Date.now(), created_at: new Date().toISOString(), ...note });
     try { rec.syncStatus = 'pending_upload'; } catch (e) {}
+    stampVectorPending(rec);
     s.notes.push(rec);
     writeLocal(s);
+    // Dynamic ingestion: mirror create to Vector Service (queued offline).
+    fireVectorMirror('upsert', rec);
     return rec;
   }
   // Mock Sync Toggle: flip all pending_upload -> synced for offline/online UI testing.
+  // NOTE: vector queue is drained separately via VectorSync.flushVectorQueue()
+  // so Force Sync never fakes a vector upload.
   async forceSync() {
     const s = readLocal();
     let n = 0;
@@ -148,8 +173,80 @@ class FailoverDB {
     // Pure-offline: immediate local write via readLocal()/writeLocal(), zero network fetch.
     const s = readLocal();
     const n = (s.notes || []).find((x) => x.id === id);
-    if (n) { n.privacy = privacy; n.syncStatus = 'pending_upload'; writeLocal(s); }
+    if (n) { n.privacy = privacy; n.syncStatus = 'pending_upload'; stampVectorPending(n); writeLocal(s); fireVectorMirror('upsert', n); }
+    // Privacy toggle on a timeline card also re-ingests (is_private flip).
+    try {
+      const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
+      if (t && !n) { t.privacy = privacy; t.syncStatus = 'pending_upload'; stampVectorPending(t); writeLocal(s); fireVectorMirror('upsert', t); return t; }
+      else if (t && n) { /* note already mirrored */ }
+    } catch (e) {}
     return n || { id, privacy };
+  }
+  async updateCardPrivacy(id, privacy) {
+    // Generic privacy toggle for timeline OR notes (TimelineCard flip path).
+    const s = readLocal();
+    let touched = null;
+    try {
+      const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
+      if (t) { t.privacy = privacy; t.syncStatus = 'pending_upload'; stampVectorPending(t); touched = t; }
+      const n2 = (s.notes || []).find((x) => x && String(x.id) === String(id));
+      if (n2) { n2.privacy = privacy; n2.syncStatus = 'pending_upload'; stampVectorPending(n2); touched = touched || n2; }
+      if (touched) { writeLocal(s); fireVectorMirror('upsert', touched); }
+    } catch (e) {}
+    return touched || { id, privacy };
+  }
+  async updateCard(id, patch) {
+    // Generic content edit for timeline OR notes (completes CRUD cycle).
+    // Failover Repository Pattern: local-first write, then fire-and-forget
+    // vector upsert (POST /ingest) via queue. Never blocks local write.
+    const s = readLocal();
+    let touched = null;
+    try {
+      const clean = (patch && typeof patch === 'object') ? { ...patch } : {};
+      // Guard rails: never allow id/project-anchor rewrites via card edit.
+      delete clean.id;
+      delete clean.Project_ReferenceID;
+      delete clean.projectId;
+      delete clean.project_name;
+      const nowIso = new Date().toISOString();
+      const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
+      if (t) { Object.assign(t, clean); t.updated_at = nowIso; t.syncStatus = 'pending_upload'; stampVectorPending(t); ensureTimelineNodes(t); touched = t; }
+      const n2 = (s.notes || []).find((x) => x && String(x.id) === String(id));
+      if (n2) { Object.assign(n2, clean); n2.updated_at = nowIso; n2.syncStatus = 'pending_upload'; stampVectorPending(n2); touched = touched || n2; }
+      if (touched) { writeLocal(s); fireVectorMirror('upsert', touched); }
+    } catch (e) {}
+    return touched || { id, ...(patch || {}) };
+  }
+  async deleteCard(id) {
+    // Local-first delete + vector propagation (queued offline). Returns true if found.
+    const s = readLocal();
+    let found = false;
+    try {
+      ['timeline', 'notes'].forEach((k) => {
+        const list = s[k] || [];
+        const i = list.findIndex((x) => x && String(x.id) === String(id));
+        if (i >= 0) { list.splice(i, 1); found = true; }
+      });
+      if (found) writeLocal(s);
+    } catch (e) {}
+    fireVectorMirror('delete', { id: String(id) });
+    return found;
+  }
+  async syncCardToVector(id) {
+    // Manual "Sync Now" for a single card: push current local state to vector.
+    // Local syncStatus flip is handled by callers; here we only mirror + flush.
+    const s = readLocal();
+    let touched = null;
+    try {
+      touched = (s.timeline || []).find((x) => x && String(x.id) === String(id))
+        || (s.notes || []).find((x) => x && String(x.id) === String(id)) || null;
+    } catch (e) {}
+    try {
+      const vs = await import('./VectorSync.js');
+      if (touched && vs && vs.mirrorToVector) await vs.mirrorToVector('upsert', touched);
+      if (vs && vs.flushVectorQueue) return await vs.flushVectorQueue();
+    } catch (e) {}
+    return { flushed: 0, pending: 0 };
   }
   // --- Data Park (Step 1 Harvester) — Failover Repository Pattern (PURE OFFLINE MODE) ---
   // Hackathon demo: NEVER attempt fetch('http://localhost:8000/harvest') here.
@@ -167,6 +264,10 @@ class FailoverDB {
       timestamp: (payload && payload.timestamp) || 'Just now',
       content: (payload && (payload.content || payload.detail)) || '',
       piiStatus: (payload && payload.piiStatus) || 'Clean',
+      // PRIVACY FIX (Task 2): persist caller-selected privacy on the staged row
+      // so onProcess -> review queue -> onApproveAll can inherit it. Default
+      // Fail Closed to Team Shared.
+      privacy: (payload && typeof payload.privacy === 'string' && payload.privacy.trim()) ? payload.privacy.trim() : 'Team Shared',
       syncStatus: 'pending_processing',
       created_at: new Date().toISOString(),
     };
@@ -175,6 +276,8 @@ class FailoverDB {
     if (!Array.isArray(s.timeline)) s.timeline = [];
     s.timeline.unshift(rec);
     writeLocal(s);
+    // Harvest approval creates the real timeline card below via saveHarvestedCard;
+    // staging itself is NOT vector-mirrored (avoids indexing raw unapproved drops).
     return rec;
   }
   async listPendingProcessing() {
@@ -188,21 +291,26 @@ class FailoverDB {
       synthesizedText: (aiResult && aiResult.synthesizedText) || '',
       tags: (aiResult && aiResult.tags) || [],
       impactScore: (aiResult && typeof aiResult.impactScore === 'number') ? aiResult.impactScore : 0.7,
+      // Smart Append survival (Failover-safe): if legacy exact-match already found
+      // a target, keep it so approve appends instead of creating a duplicate card.
+      smartAppend: (aiResult && aiResult.smartAppend) || undefined,
       // Rich UI persistence: keep horizontal timeline, merge banners, and
-      // structured grids visible after reload. Default privacy Fail Closed
-      // to 'Team Shared' when the AI result carries no explicit value.
+      // structured grids visible after reload. Preserve caller-selected privacy
+      // (Harvester review-queue "Private (Only Me)" toggle) — only default to
+      // 'Team Shared' when neither the AI result nor the staged item carries one.
       mergeHint: (aiResult && aiResult.mergeHint) || '',
       structured: (aiResult && aiResult.structured && typeof aiResult.structured === 'object') ? aiResult.structured : {},
-      privacy: (aiResult && aiResult.privacy) ? aiResult.privacy : 'Team Shared',
+      privacy: (aiResult && typeof aiResult.privacy === 'string' && aiResult.privacy.trim()) ? aiResult.privacy.trim() : 'Team Shared',
       syncStatus: 'pending_upload',
       processed_at: new Date().toISOString(),
     };
     if (patch.title === undefined) delete patch.title;
+    if (patch.smartAppend === undefined) delete patch.smartAppend;
     // Pure offline: bypass PATCH /harvest/:id fetch (CORS risk).
     // Write directly to local storage via readLocal()/writeLocal().
     const s = readLocal();
     const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
-    if (t) { Object.assign(t, patch); t.syncStatus = 'pending_upload'; ensureTimelineNodes(t); writeLocal(s); }
+    if (t) { Object.assign(t, patch); t.syncStatus = 'pending_upload'; stampVectorPending(t); ensureTimelineNodes(t); writeLocal(s); fireVectorMirror('upsert', t); }
     return t || { id, ...patch };
   }
   // Harvester Smart Append — pure-offline entity-resolution commit.
@@ -253,6 +361,21 @@ class FailoverDB {
     });
     target.updated_at = nowIso;
     target.syncStatus = 'pending_upload';
+    // FAIL-CLOSED PRIVACY (Task 2): a private staged node appended to ANY card
+    // contaminates the whole parent — upgrade immediately so the footer flips
+    // from "Team Shared" to "Private" and the vector upsert lands as
+    // is_private=True (store.is_private_card reads privacy string). One-way:
+    // never downgrade an already-private parent. Also stamp node-level
+    // is_private so vector doc text carries the signal on re-ingest.
+    try {
+      const nodePriv = String((meta && meta.privacy) || 'My Notes (Private)');
+      const isPrivNode = /private/i.test(nodePriv) || /my notes/i.test(nodePriv);
+      if (isPrivNode) {
+        target.privacy = 'Private';
+        try { target.is_private = true; target.isPrivate = true; } catch (e2) {}
+      }
+    } catch (e) {}
+    stampVectorPending(target);
     ensureTimelineNodes(target);
     // Remove the consumed staged (pending_processing) item so no duplicate standalone card remains.
     const stagedId = meta && meta.stagedId;
@@ -261,6 +384,8 @@ class FailoverDB {
       if (si >= 0) tlList.splice(si, 1);
     }
     writeLocal(s);
+    // Appends change card content/privacy surface — mirror edit to vector.
+    fireVectorMirror('upsert', target);
     return target;
   }
   async resetToSeedData() {

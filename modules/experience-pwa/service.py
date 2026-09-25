@@ -2,6 +2,11 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 import os
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 STATIC_DIR = os.path.abspath(STATIC_DIR)
+# Root-level SW only (correct scope for PWA install at /).
+# Canonical file: modules/experience-pwa/sw.js — service.py serves its BYTES
+# at /sw.js (see ROOT_SW branch). The old static/sw.js copy was REMOVED per
+# Task 1 (no dual copies; single source of truth at module root).
+ROOT_SW = os.path.abspath(os.path.join(os.path.dirname(__file__), "sw.js"))
 class PWAHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
@@ -12,6 +17,37 @@ class PWAHandler(SimpleHTTPRequestHandler):
         path_only = self.path.split('?', 1)[0]
         if path_only in ["/", "/app", "/app/"]:
             self.path = "/index.html"
+        elif path_only in ["/sw.js", "/service-worker.js"]:
+            # Root-scope SW (canonical file: modules/experience-pwa/sw.js).
+            # Serve bytes directly with scope at / — no redirect (a redirect
+            # would change the registration scope and break Background Sync).
+            try:
+                with open(ROOT_SW, "rb") as f:
+                    body = f.read()
+            except OSError:
+                self.send_error(404, "sw.js not found")
+                return
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/javascript")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
+        elif path_only.startswith("/static/docs/"):
+            # Nginx/prod builds mount docs under /static/docs/ — dev server
+            # serves STATIC_DIR directly so strip the prefix for compat.
+            self.path = path_only[len("/static"):] or "/index.html"
+        elif path_only.startswith("/static/"):
+            # Generic /static/* alias (prod parity: /static/js/... -> /js/...).
+            self.path = path_only[len("/static"):] or "/index.html"
+        elif path_only.startswith("/docs/"):
+            # Legacy alias: /docs/* -> /static/docs/* file layout is docs/*.
+            # Keep working for old bookmarks/guide links.
+            self.path = path_only
         elif path_only.startswith("/app/"):
             # /app/js/... -> /js/... ; handles ESM relative fetch under /app route
             rest = path_only[len("/app"):] or "/index.html"

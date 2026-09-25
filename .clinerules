@@ -1,0 +1,109 @@
+# Project Onion - Cline System Rules & Core Architecture Context
+# Target Environment: Production-Ready with Air-Gapped/Offline Resilient Fallbacks
+
+system_identity:
+  role: "Principal Enterprise Full-Stack Architect"
+  focus: "Ensuring code modifications strictly maintain production standards while preserving zero-install offline fallback mechanics."
+
+architectural_constraints:
+  - rule: "DO NOT invent new Python dependencies or write unsegmented backend framework loops unless explicitly asked."
+  - rule: "All frontend modules at `modules/experience-pwa/static/index.html` must follow a strict Failover Repository Pattern."
+  - rule: "Every data mutation must check for cloud API health first. If a connection fails (e.g., port blocked/offline), it must seamlessly fall back to local browser storage (IndexedDB/LocalStorage) with a `syncStatus: 'pending_upload'` flag."
+  - rule: "The user's environment is highly secure. Do not write scripts that assume node modules, external compilers, or docker frameworks are locally installable for live execution."
+  - rule: "DUAL-MODE FACADE (AI & DATA): The PWA must support a seamless Dual-Mode architecture. Pure client-side `FailoverDB` (localStorage) and mock AI MUST be maintained as an unbreakable, air-gapped fallback. Any external backend services (like FastAPI/ChromaDB or live OpenRouter calls) must be implemented behind an abstraction layer (Facade pattern) in `AiClient.js` or `App.js`."
+  - rule: "UI AGNOSTICISM: UI components (`AppRight.js`, `TimelineCard.js`, etc.) must remain 100% agnostic to the data source. They should render exactly the same whether the data came from an offline local dictionary or a live vector database. Never remove offline fallback logic."
+
+data_and_naming_standards:
+  - active_enterprise_targets:
+      - client: "Acme Corp"
+        project: "Apollo-123"
+        opportunity_id: "O-008891"
+        keywords: ["furlough", "PO", "overrun"]
+      - client: "NovaTech Labs"
+        project: "NovaTech-42"
+        opportunity_id: "O-5644421"
+        keywords: ["payroll", "milestone"]
+  - legacy_purge_targets:
+      - block_list: ["GE Aero", "GEAERO-DIP-DISCOVERY"]
+      - action: "If legacy targets are detected in any configuration or seed file, cleanly rewrite or remove them to maintain data-integrity."
+  - id_disambiguation_rule:
+      Project_ReferenceID: "The immutable System Anchor ID. Auto-generated once upon project creation. Format: [ProjectName_Prefix]-[Opportunity_ID]-[DDMMYY][Seconds] (e.g., Apollo-O-008891-22092645). NEVER use random hex codes. Used strictly for internal system database keys."
+      ProjectID: "The mutable Financial/Resource Tag (usually from GDP or SAP). Array of numerical strings. Can contain leading zeros. Filtering and matching logic MUST strip leading zeros before comparison (e.g., '00000987987' strictly equals '987987')."
+
+module_interfacing_strategy:
+  - design_principle: "The app relies heavily on zero-install edge harvesting."
+  - components:
+      - "Browser Bookmarklet Scraper: Captures DOM data from Salesforce/PeopleSoft and maps entities cleanly."
+      - "SheetJS Parser: Client-side drag-and-drop ingestion of RAID logs and weekly excel documents."
+      - "AWS PII Simulation: Every local data payload must pass through a modular client-side regex screening class (mirroring AWS Presidio/Comprehend) before entering local or organization database memory state."
+
+application_business_logic_and_data_flow:
+  source_of_truth: "data/seed/relationship_model.json v0.11 generated_at 2026-09-20T12:15:00.000Z + docs/RELATIONSHIP_MODEL.md. Column schemas inside relationship_model.json are absolute source of truth."
+  data_hierarchy_levels:
+    level_1_client_master_dropdown:
+      node_id: "client_master"
+      label: "Client Master"
+      source: "data/seed/clients.json"
+      unique_field: "Account Name"
+      editable: false
+      behavior: "First Level PRIMARY FILTER - non-editable dropdown. Filters Project Cards via edge client_master->project_card Account Name->client_name EXACT. Ex: Acme Corp / NovaTech Labs. Secondary ref Client Domains ex: acme.com used for DOMAIN filtering."
+    level_2_project_card_anchor_hub:
+      node_id: "project_card"
+      label: "Project Card / Anchor"
+      behavior: "Second level Anchor Hub. Anchor_id = short project_name only. Already filtered by client dropdown. Holds all refs. Single Project_ReferenceID maps one-to-many."
+      primary_unique_keys: ["project_name (short anchor_id)", "project_ids", "Project_ReferenceID", "Oppurtunit_id/project_id"]
+      one_to_many_fields: ["project_ids ex 99974052, 0000606071", "opportunity_ids ex OPP-8891 OPP-4421 O-xxxxx", "connected_record_ids ex 006Uj00000QOBkvIAH", "gdp_id ex 8399/7189", "sharepoint_urls[] Risk_Log.xlsx Collaboration Plan ESC Value Framework", "teams_channels[] Pre-sales Delivery URLs", "contacts[] from collaboration docx + scan", "start_date/end_date ex 01/02/2024-01/09/2027 mutable via GDP", "keywords SoW PO Contract ex SoW-2024-001 PO-88921", "SoW Number via admin :8005 PUT /node/project_card"]
+      generation_rule: "Project_ReferenceID is system auto-generated when user adds new project under Account Name. Stable key when Project Card has multiple Project IDs, Opp IDs, connected_record_ids, GDP IDs."
+    level_3_harvester_edge_sources:
+      description: "Harvester Edge Sources feed RAID Aggregated Cards. Every edge declares condition + field + description. No free text."
+      sources: ["sp_comm_plan: Collaboration_Plan.docx in Communications -> contacts[] parsed user marks relevant/not", "sp_risk_log: Risk Log .xlsx sheets RAID/RAID Log/Log/RISK Log row=one item mitigation multi-line 3 templates", "sp_esc: ESC .xlsm filename contains O-5552629 provides Opp ID + SoW ref", "gdp_dash: GDP URL /dashboard/project-details/{id} parse GDP ID ex 7189/8399 supports multi Opp per GDP", "gdp_excel: Weekly Excel Delta by Status Date + GDP ID Engagement/Account/GDP/Project GDD GDM Phase Status", "emails: Outlook MessageId + Thread normalized Re/Fw stripped client domain contacts SoW/PO PII flag", "teams_chats: Channel ID + Message ID dedicated channels Pre-sales Delivery Closeout", "teams_vtt: Meeting ID + VTT timestamp text attendees->contacts overlap", "connected: Chatter Opp O-986754 + Chatter ID free text all posts on Opp are relevant", "raid_agg: Aggregated Cards Card ID=hash(sources+description_norm) from 5 sources SP+GDP+Emails+Teams+Connected LLM assessed Freshness=refreshed at"]
+  structural_rules_strict:
+    rule_1_unique_identification_one_to_many: "Single Project Card MUST handle one-to-many. One Project_ReferenceID -> multiple project_ids, opportunity_ids, gdp_ids, connected_record_ids (Salesforce Record IDs) without breaking. NEVER split card per ID. On Extension/Expansion same GDP new Opp O-908078 append arrays on same anchor; update mutable start/end via gdp_dash->project_card DATE_RANGE. Resolution: Account Name EXACT -> Project_ReferenceID EXACT -> project_ids EXACT -> opportunity_ids EXACT -> gdp_id EXACT/URL_CONTAINS -> connected URL_CONTAINS -> sharepoint URL_CONTAINS -> teams EXACT allowlist."
+    rule_2_harvester_scope_typed_filters_only: "Harvester checking Edge Sources (Email Teams Excel logs Bookmarklet GDP Connected SharePoint) MUST strictly use typed filters matching project keywords/domains. Free-text parsing FORBIDDEN to minimize noise. Allowed enum ONLY: EXACT CONTAINS DOMAIN DATE_RANGE URL_CONTAINS TOKEN_OVERLAP per reusable_config_pattern. EXACT=[Account Name Project ID Opp ID GDP ID Thread normalized Channel allowlist Source lineage Dedup hash]; CONTAINS=[Project name tokens SoW/PO/Contract RAID Type via header mapping Opp ID from ESC filename]; DOMAIN=[client email domains From/To attendee domains in VTT]; DATE_RANGE=[Anchor start/end GDP mutable dates last_scanned_date delta Weekly Status Date]; TOKEN_OVERLAP=[Project name split tokens vs email/Teams/chatter]; URL_CONTAINS=[GDP /project-details/{id} SharePoint file URLs Connected record ID]. Bookmarklet maps DOM cleanly to anchor fields only. SheetJS maps Template1/2/3 columns authoritative. Teams requires SoW + channel allowlist + Project IDs + domains + keywords + dates via PUT /edge CONTAINS. Noise: Outlook Graph filter aggressively exclude Re/Fw limit sources."
+    rule_3_privacy_gate_pii_screening: "All incoming scraped/parsed data MUST pass client-side PII regex screening class simulating AWS Comprehend/Presidio to strip noise before timeline view / RAID agg / local or org DB memory. Screen BEFORE timeline localStorage/IndexedDB syncStatus pending_upload raid_agg contacts promotion. Keep names/emails Project Opp GDP SoW/PO numbers. Strip personal likes/hotel/coffee ex Jane likes coffee filtered. Flags: emails.PII screened flag raid_agg Noise filter Low for GDP/SP High for Email/Teams/Chatter. Zero-install modular regex no new backend deps offline-resilient."
+    rule_4_no_invented_metrics_strict_schema_adherence: "FORBID invention of unmapped fields or fake GDP significance formulas. User said no formula. relationship_model.json nodes.fields + reusable_config_pattern + anti_hallucination.rules are absolute truth. DATA_DICTIONARY source of truth only user columns. Template1/2/3 authoritative for SP Risk Log. GDP Excel only Delta per week for timeline + freshness. RAID agg LLM assessed not static multiple cards if multiple items sources linked multi-row hash Card ID=hash(sources+description_norm). Keep decision log docs/DECISION_LOG.md GLOBAL_BRAIN.md context not invention."
+  enforcement:
+    - "Failover Repository Pattern at modules/experience-pwa/static/index.html mandatory; every mutation checks cloud API health then IndexedDB/LocalStorage syncStatus pending_upload."
+    - "If legacy GE Aero / GEAERO-DIP-DISCOVERY detected purge per data_and_naming_standards."
+    - "Do not alter seeds or code until authorized; this context governs all future implementation."
+
+level_3_harvested_payload_contract:
+  - rule: "All client-side harvesting tools (Bookmarklet Scraper, SheetJS Excel Parser) must output a unified JSON object format when writing to our local storage repository."
+  - structural_schema:
+      id: "String (hash or uuid generated at edge)"
+      projectId: "String matching canonical active target IDs (apollo-123 or novatech-42)"
+      type: "String Enum ('Email' | 'Excel' | 'Scrape' | 'Chat')"
+      title: "String (clean structural headline summarizing the event)"
+      source: "String (e.g., 'Salesforce DOM', 'RAID Log Excel', 'Outlook Mail')"
+      timestamp: "String (relative human-readable time, e.g., 'Just now')"
+      content: "String (the extracted text body, completely screened by our local PII regex gate)"
+      piiStatus: "String Enum ('Clean' | 'Redacted_Review')"
+      syncStatus: "String Enum ('pending_upload' | 'synced')"
+  - execution_gate: "Never allow an edge utility to invent root-level parameters outside this unified contract schema."
+
+mandatory_communication_and_escalation_gate:
+  - core_directive: "SILENT ACTION ON UNEXPECTED VARIATIONS IS ABSOLUTELY FORBIDDEN."
+  - operational_rules:
+      - rule: "If you detect any data fields, architectural patterns, orphan references, or project files that were NOT explicitly mentioned in the active user prompt, you MUST NOT touch, modify, or add them silently."
+      - rule: "Instead, you must immediately halt code generation, flag the unexpected discovery to the user in a dedicated '⚠️ Architectural Discovery' warning section, explain the business logic implications, and wait for explicit human authorization before proceeding."
+      - rule: "This rule establishes a strict two-way verification pipeline to prevent layout drift, token waste, and code corruption."
+
+core_business_philosophy_and_flows:
+  - product_name: "Project Continuum (Project Onion)"
+  - problem_solved: "Systems hold what was decided; Continuum captures the why and the human context behind it."
+  - operational_mandate: "Fail Closed. By default, every newly generated Knowledge Card or Status Card is classified as 'Team Shared' to organically build organizational intelligence."
+  - user_review_and_edit_lifecycle: "Before final submission, the PWA interface must present the harvested information to the user in an editable form. The user can review, modify the text, or append supplementary files and artifacts."
+  - automatic_save_on_toggle: "If a user changes a card's visibility toggle from 'Team Shared' to 'My Notes (Private)', the system must trigger an automatic save operation instantly, caching the payload directly to the browser's secure local space."
+  - dual_track_ingestion: "Production Core maps to native APIs (e.g., Outlook Graph API), while Resilient Edge Fallbacks deploy client-side spreadsheet parsers and a DOM scraping bookmarklet when system APIs are blocked or restricted."
+  - the_llm_refinery_lifting: "The LLM engine must analyze scattered fragments from multiple system targets (Emails, Teams transcripts, GDP Status, RAID sheets), establish relevance using identifier dates (+/- 30 days), and synthesize them into cohesive 'Knowledge Cards' displaying a calculated Model Confidence % based on the quantity and consistency of cross-referenced source evidence."
+
+bookmarklet_automation_constraints:
+  - user_interaction_rule: "The bookmarklet runs on live active browser screens (Salesforce, GDP Portal). Because pages utilize dynamic lazy-loading tabs, the bookmarklet script must execute automated click routines to expand all collapsed text elements, hidden sub-views, and 'Load More' trays before performing the raw DOM extraction pass."
+  - payload_delivery_mechanism: "To bypass cross-origin browser security, the scraped and cleaned payload must be automatically packed into a valid JSON object matching our strict 9-field schema, stringified, and cleanly injected into the user's system clipboard. The PWA interface will feature an intuitive 'Paste Harvested Data' drop-zone."
+
+// PROJECT ONION - HARNESS & GUARDRAILS
+1. STRICT ISOLATION: Never modify files outside of the explicitly requested scope.
+2. OFFLINE-FIRST (AIR-GAPPED): Rely strictly on `FailoverDB.js` (localStorage) and `mockSeed.js`. Do not introduce backend fetch dependencies for state management. This ensures bulletproof Docker/Nginx static deployments.
+3. UI/UX GUIDANCE: Maintain M365 Fluent UI parity. Use soft pastels (blue/gray/amber/green backgrounds), rounded corners (rounded-xl, rounded-full), and tight tracking.
+4. PRIVACY MATRIX: Always respect the `activePersona` and Privacy mode filtering. Private nodes must never leak to non-authors.
+

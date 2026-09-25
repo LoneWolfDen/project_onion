@@ -70,7 +70,7 @@ export function App() {
   const [isHandoverOpen, setHandoverOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
-  const [guideSrc, setGuideSrc] = useState('/docs/guide.html');
+  const [guideSrc, setGuideSrc] = useState('/static/docs/guide.html');
   const [staged, setStaged] = useState([]);
   const [hStatus, setHStatus] = useState('');
   const [clip, setClip] = useState('');
@@ -134,11 +134,18 @@ export function App() {
       try {
         const isNote = (s.notes || []).some((nn) => nn && String(nn.id) === String(cardId));
         if (isNote && touched && OnionDB && OnionDB.saveNote) { await OnionDB.saveNote(Object.assign({}, touched, { piiStatus: 'Approved' })); }
+        // Timeline approve edits content surface — mirror to vector (queued offline).
+        if (!isNote && touched && OnionDB && OnionDB.syncCardToVector) { try { await OnionDB.syncCardToVector(cardId); } catch (e2) {} }
       } catch (e) {}
     } catch (e) {}
   };
   const handleSyncCard = async (cardId) => {
     try {
+      // Dynamic ingestion: push current local card state to Vector Service
+      // first (queued offline via VectorSync), THEN mark local synced.
+      try {
+        if (window.OnionDB && window.OnionDB.syncCardToVector) await window.OnionDB.syncCardToVector(cardId);
+      } catch (e) {}
       const s = readLocal();
       let touched = null;
       let isNoteCard = false;
@@ -270,7 +277,9 @@ export function App() {
     setRegOpen(false);
   }} />` : null;
   const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: v.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', author: activePersona || 'Brené', refs: [], updates: [] }); if (reset) reset(''); };
-  const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); await (window.OnionDB || OnionDB).updateNotePrivacy(note.id, next); };
+  const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); try { const api = (window.OnionDB || OnionDB); if (api.updateCardPrivacy) { await api.updateCardPrivacy(note.id, next); return; } await api.updateNotePrivacy(note.id, next); } catch (e) {} };
+  const onDeleteCard = async (id) => { if (!id) return; try { const api = (window.OnionDB || OnionDB); if (api && api.deleteCard) await api.deleteCard(String(id)); } catch (e) {} };
+  const onEditCard = async (id, patch) => { if (!id) return; try { const api = (window.OnionDB || OnionDB); if (api && api.updateCard) await api.updateCard(String(id), patch || {}); } catch (e) {} };
   const onAskAssistant = async (questionOrPrivacy, scopedCards, privacyMode, persona) => {
     // Forward-compatible handler: supports legacy onAsk() / onAsk(privacyOverride)
     // and grounded onAsk(question, scopedCards, privacyMode, activePersona) from AppRight.
@@ -335,7 +344,7 @@ export function App() {
   const contextCards = scopedBaseFor(privacy);
   const personaTimeline = scopeByPrivacyMode(db.timeline || [], privacy);
   const personaNotes = scopeByPrivacyMode(db.notes || [], privacy);
-  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} onSync=${handleSyncCard} />` : null;
+  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} onSync=${handleSyncCard} onDelete=${onDeleteCard} onEdit=${onEditCard} />` : null;
   const askRaw = String(ask || '').trim();
   const hits = (askRaw ? contextCards.filter((t) => matchesAssistantQuery(t, askRaw)) : contextCards).slice(0, 3);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
@@ -366,7 +375,7 @@ export function App() {
     ${guideOpen ? html`<div className="fixed inset-0 z-50" style=${{ background: 'rgba(15,23,42,0.35)' }} onClick=${() => setGuideOpen(false)}>
       <aside onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} aria-label="Project Onion Guide panel" style=${{ position: 'fixed', top: 0, right: 0, height: '100vh', width: '36vw', minWidth: '420px', maxWidth: '620px', background: 'linear-gradient(180deg,#F0F7FF 0%,#F3ECFF 55%,#FFF9F0 100%)', borderLeft: '1px solid #A8C6F0', boxShadow: '-8px 0 24px rgba(31,74,122,.16)', display: 'flex', flexDirection: 'column', zIndex: 51 }}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#A8C6F0]"><div className="font-semibold text-[14px] italic" style=${{ textAlign: 'left', color: '#0f2040' }}>Project Onion - Guide</div><div className="ml-auto flex items-center gap-2"><a href=${guideSrc} target="_blank" rel="noopener" title="Open in New Tab" className="px-3 py-1 rounded-full bg-white border border-[#A8C6F0] text-[12px]">↗</a><button onClick=${() => setGuideOpen(false)} title="Close" className="px-3 py-1 rounded-full bg-white border border-[#A8C6F0] text-[12px]">✕</button></div></div>
-        <div className="flex items-center gap-2 px-4 py-2" style=${{ background: 'rgba(255,255,255,.65)' }}><button onClick=${() => setGuideSrc('/docs/guide.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/docs/guide.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>◉ Guide</button><button onClick=${() => setGuideSrc('/docs/Project-Onion-Relationship-Model.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/docs/Project-Onion-Relationship-Model.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>🕸 Relationship</button><button onClick=${() => setGuideSrc('/docs/Project-Onion-Data-Model.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/docs/Project-Onion-Data-Model.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>▦ Data Model</button><button onClick=${() => setGuideSrc('/docs/Project-Onion-Application-Flow.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/docs/Project-Onion-Application-Flow.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>🧭 Test Flow</button></div>
+        <div className="flex items-center gap-2 px-4 py-2" style=${{ background: 'rgba(255,255,255,.65)' }}><button onClick=${() => setGuideSrc('/static/docs/guide.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/guide.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>◉ Guide</button><button onClick=${() => setGuideSrc('/static/docs/Project-Onion-Relationship-Model.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/Project-Onion-Relationship-Model.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>🕸 Relationship</button><button onClick=${() => setGuideSrc('/static/docs/Project-Onion-Data-Model.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/Project-Onion-Data-Model.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>▦ Data Model</button><button onClick=${() => setGuideSrc('/static/docs/RAG-Architecture.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/RAG-Architecture.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>🧭 Test Flow</button></div>
         <iframe src=${guideSrc} title="Project Onion Guide" style=${{ flex: 1, width: '100%', border: '0', background: '#fff' }}></iframe>
       </aside>
     </div>` : null}

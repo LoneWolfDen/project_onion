@@ -10,8 +10,23 @@ import { processWithAI } from '../core/AiClient.js';
 const html = window.htm.bind(window.React.createElement);
 export function toPayload(o, persona) {
   const p = (typeof persona === 'string' && persona) || (o && (o.author || o.contributor)) || 'Brené';
-  return { id: o.id, projectId: o.projectId, type: o.type, title: o.title, source: o.source, timestamp: o.timestamp || 'Just now', content: o.content, piiStatus: o.piiStatus || 'Clean', syncStatus: 'pending_upload', author: o.author || p, contributor: o.contributor || p };
+  // Privacy passthrough (Fail Closed default): callers that carry a user-selected
+  // privacy (e.g. Harvester review queue) must survive to FailoverDB.
+  return { id: o.id, projectId: o.projectId, type: o.type, title: o.title, source: o.source, timestamp: o.timestamp || 'Just now', content: o.content, piiStatus: o.piiStatus || 'Clean', syncStatus: 'pending_upload', author: o.author || p, contributor: o.contributor || p, privacy: o.privacy || 'Team Shared' };
 }
+// Canonical privacy normalizer (Fail Closed): every private alias collapses to
+// 'My Notes (Private)' so TimelineCard pills, scopeByPrivacyMode, is_private_card
+// and the review-queue toggle all agree. Unknown/empty => 'Team Shared'.
+export function normalizePrivacy(p) {
+  const t = String(p == null ? '' : p).trim().toLowerCase();
+  if (!t) return 'Team Shared';
+  if (t === 'team shared') return 'Team Shared';
+  if (t.indexOf('private') >= 0 || t === 'my notes' || t === 'my_notes' || t === 'my-notes' || t === 'mynotes' || t === 'only me' || t === 'private (only me)') return 'My Notes (Private)';
+  return 'Team Shared';
+}
+// Shared helper for tests: seed-style privacy default used by stage + approve.
+// Only hard 'private' aliases map to Private; everything else Fail Closed shared.
+export function privacyForPayload(p) { return normalizePrivacy(p); }
 function dbApi() {
   try { if (typeof window !== 'undefined' && window.OnionDB) return window.OnionDB; } catch (e) {}
   return null;
@@ -230,6 +245,20 @@ export function HarvesterPanel(props) {
         const ai = await processWithAI(text, payload.type || 'Scrape');
         const clipStagedTitle = payload.title || (text || '').slice(0, 80) || 'Bookmarklet scrape';
         const clipSmartAppend = buildSmartAppendFor(text + ' ' + clipStagedTitle, clipStagedTitle, ai, text);
+        // (Task 3 Dual-Mode) vector semantic fallback for clipboard path.
+        let clipSmart = clipSmartAppend || null;
+        try {
+          if (!clipSmart) {
+            const vs = await import('../core/VectorSync.js');
+            if (vs && vs.querySimilarCards) {
+              const r = await vs.querySimilarCards(text + ' ' + clipStagedTitle, (project && project.project_name) || '', props.activePersona || '');
+              if (r && r.match && r.match.id) {
+                const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance) : 0.6;
+                clipSmart = { targetCardId: String(r.match.id), targetCardTitle: String(r.match.title || r.match.id || ''), matchScore: score, matchReasons: (r.match.reasons || []).slice(), matchEngine: 'vector', matchDistance: r.match.distance, stagedRawNode: { kind: 'RAW', text: String(text || '').slice(0, 500) }, stagedAiNode: { kind: 'AI', text: String((ai && ai.synthesizedText) || '').slice(0, 500) } };
+              }
+            }
+          }
+        } catch (e) {}
         out.push({
           sourceId: payload.id,
           projectId: payload.projectId || canonicalProjectId,
@@ -246,8 +275,9 @@ export function HarvesterPanel(props) {
           impactScore: (ai && typeof ai.impactScore === 'number') ? ai.impactScore : 0.7,
           mergeHint: (ai && ai.mergeHint) || '',
           structured: (ai && ai.structured && typeof ai.structured === 'object') ? ai.structured : {},
-          privacy: clipSmartAppend ? 'My Notes (Private)' : ((ai && ai.privacy) ? ai.privacy : 'Team Shared'),
-          smartAppend: clipSmartAppend,
+          // PRIVACY FIX: clipboard path — preserve payload/ai privacy (no forced default).
+          privacy: normalizePrivacy(clipSmart ? 'My Notes (Private)' : (payload.privacy || (ai && ai.privacy) || 'Team Shared')),
+          smartAppend: clipSmart,
           author: payload.author || props.activePersona || 'Brené',
           contributor: payload.contributor || props.activePersona || 'Brené',
         });
@@ -302,6 +332,9 @@ export function HarvesterPanel(props) {
       let pending = [];
       try { pending = api && api.listPendingProcessing ? await api.listPendingProcessing() : []; } catch (e) { pending = []; }
       let mine = (pending || []).filter((t) => !project || t.project_name === project.project_name || t.projectId === canonicalProjectId);
+      // PRIVACY FIX: pending rows created before FailoverDB.markProcessed carried
+      // privacy may still hold a stale value — refresh from the staged item's
+      // explicit privacy (setReviewPrivacyAndSave wrote it pre-process).
       // FIX: never leave review queue empty — if filter removed everything (projectId mismatch),
       // fall back to ANY pending, then to staged prop, then to rawText so the review box always populates.
       if (!mine.length && (pending || []).length) mine = pending.slice();
@@ -315,12 +348,36 @@ export function HarvesterPanel(props) {
         const text = item.content || item.detail || item.title || '';
         const ai = await processWithAI(text, item.type || kind);
         const stagedTitle = item.title || (text || '').slice(0, 80) || ((item.type || kind) + ' fragment');
-        // --- Harvester Smart Append (Entity Resolution, pure-offline heuristic) ---
-        // Evaluate existing Status Cards for contextual overlap (ref IDs, identical
-        // entities/topics). Match -> stage an UPDATE to the matched card (append as
-        // horizontal RAW/AI nodes on its timeline strip, private/pending review).
+        // --- Harvester Smart Append (Entity Resolution, Dual-Mode) ---
+        // Step 1: legacy pure-offline exact-match (ref IDs + topic tokens).
+        // Step 2 (NEW): vector semantic overlap via POST :8006/ask behind the
+        // Dual-Mode Facade — catches paraphrased/near-duplicate cards that share
+        // no exact tokens. Offline/unreachable => resolve null, legacy stays boss.
+        // Match -> stage an UPDATE to the matched card (append as horizontal
+        // RAW/AI nodes on its timeline strip, private/pending review).
         // No match -> stage as a new card in the review queue as usual.
-        const smartAppend = buildSmartAppendFor(text + ' ' + stagedTitle, stagedTitle, ai, text);
+        let smartAppend = buildSmartAppendFor(text + ' ' + stagedTitle, stagedTitle, ai, text);
+        try {
+          if (!smartAppend) {
+            const vs = await import('../core/VectorSync.js');
+            if (vs && vs.querySimilarCards) {
+              const r = await vs.querySimilarCards(text + ' ' + stagedTitle, (project && project.project_name) || '', props.activePersona || '');
+              if (r && r.match && r.match.id) {
+                const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance) : 0.6;
+                smartAppend = {
+                  targetCardId: String(r.match.id),
+                  targetCardTitle: String(r.match.title || r.match.id || ''),
+                  matchScore: score,
+                  matchReasons: (r.match.reasons || []).slice(),
+                  matchEngine: 'vector',
+                  matchDistance: r.match.distance,
+                  stagedRawNode: { kind: 'RAW', text: String(text || '').slice(0, 500) },
+                  stagedAiNode: { kind: 'AI', text: String((ai && ai.synthesizedText) || '').slice(0, 500) },
+                };
+              }
+            }
+          }
+        } catch (e) {}
         // Contributor Parser Review: stage AI output for human review/edit
         // instead of directly committing via markProcessed.
         out.push({
@@ -339,7 +396,11 @@ export function HarvesterPanel(props) {
           impactScore: (ai && typeof ai.impactScore === 'number') ? ai.impactScore : 0.7,
           mergeHint: (ai && ai.mergeHint) || '',
           structured: (ai && ai.structured && typeof ai.structured === 'object') ? ai.structured : {},
-          privacy: smartAppend ? 'My Notes (Private)' : ((ai && ai.privacy) ? ai.privacy : 'Team Shared'),
+          // PRIVACY FIX (Task 2): never clobber the staged item's explicit
+          // privacy (user's "Private (Only Me)" toggle in the review queue).
+          // Smart-Append targets stay private/pending-review on the target card;
+          // new standalone cards inherit staged privacy, default Team Shared.
+          privacy: normalizePrivacy(smartAppend ? 'My Notes (Private)' : (item.privacy || (ai && ai.privacy) || 'Team Shared')),
           smartAppend: smartAppend,
           author: item.author || props.activePersona || 'Brené',
           contributor: item.contributor || props.activePersona || 'Brené',
@@ -359,22 +420,34 @@ export function HarvesterPanel(props) {
     setParsedReviewQueue((prev) => (Array.isArray(prev) ? prev : []).filter((_, i) => i !== idx));
     setParkMsg('Discarded noisy card from review queue.');
   };
+  // STALE-STATE FIX (Task 2 root cause): React setState is async — if the user
+  // hits "Private (Only Me)" then "Approve" in the same tick, the queue snapshot
+  // read inside onApproveAll may still hold 'Team Shared'. privacyRefMirror is a
+  // synchronous ref written by setReviewPrivacyAndSave and merged over the queue
+  // at approve time so the explicit toggle can NEVER be lost before FailoverDB.
+  const privacyRefMirror = window.React.useRef ? window.React.useRef({}) : { current: {} };
   const setReviewPrivacyAndSave = (idx, nextPrivacy) => {
     // Automatic save on toggle: Fail Closed default is Team Shared; flipping
     // to My Notes (Private) caches instantly to browser local space so the
     // reviewed payload is never lost before Approve. Final persistence to
     // FailoverDB happens in onApproveAll (offline-safe via Failover Repository).
+    const norm = normalizePrivacy(nextPrivacy);
     const cur = Array.isArray(parsedReviewQueue) ? parsedReviewQueue.slice() : [];
-    const next = cur.map((c, i) => (i === idx ? Object.assign({}, c, { privacy: nextPrivacy }) : c));
+    const next = cur.map((c, i) => (i === idx ? Object.assign({}, c, { privacy: norm }) : c));
     setParsedReviewQueue(next);
     try {
       const saved = next[idx];
       if (saved) {
+        try {
+          const key = 'onion_review_privacy_' + String(saved.sourceId || ('idx-' + idx));
+          try { localStorage.setItem(key, norm); } catch (e1) {}
+          if (privacyRefMirror && privacyRefMirror.current) privacyRefMirror.current[key] = norm;
+        } catch (e0) {}
         try { localStorage.setItem('onion_review_draft_' + String(saved.sourceId || idx), JSON.stringify(saved)); } catch (e2) {}
         try { localStorage.setItem('onion_review_queue', JSON.stringify(next)); } catch (e3) {}
       }
     } catch (e) {}
-    setParkMsg(nextPrivacy === 'My Notes (Private)' ? 'Saved to My Notes (Private) — local draft updated.' : 'Visibility set to Team Shared — local draft updated.');
+    setParkMsg(norm === 'My Notes (Private)' ? 'Saved to My Notes (Private) — local draft updated.' : 'Visibility set to Team Shared — local draft updated.');
   };
   const onApproveAll = async () => {
     if (approving) return;
@@ -385,7 +458,21 @@ export function HarvesterPanel(props) {
     try {
       const api = dbApi();
       let done = 0; let appended = 0;
+      // STALE-STATE FIX: merge sync sources (ref mirror + localStorage) over the
+      // React queue snapshot so a "Private" toggle immediately before Approve
+      // can never be lost to an unflushed setState.
+      const refCur = ((privacyRefMirror && privacyRefMirror.current) || {});
       for (const card of queue) {
+        let effPrivacy = card ? card.privacy : '';
+        try {
+          const key = 'onion_review_privacy_' + String((card && card.sourceId) || '');
+          if (refCur[key]) effPrivacy = refCur[key];
+          else {
+            const ls = localStorage.getItem(key);
+            if (ls) effPrivacy = ls;
+          }
+        } catch (e0) {}
+        effPrivacy = normalizePrivacy(effPrivacy || 'Team Shared');
         // Smart Append path: do NOT create a new standalone card. Stage an update
         // to the existing matched card by appending RAW/AI nodes on its timeline
         // strip (marked private/pending review) via pure-offline FailoverDB.
@@ -410,9 +497,17 @@ export function HarvesterPanel(props) {
           impactScore: card.impactScore,
           mergeHint: card.mergeHint,
           structured: card.structured,
-          privacy: card.privacy || 'Team Shared',
+          // Task 2: effective privacy (ref/localStorage-merged, normalized) —
+          // the queue snapshot alone may be stale after a rapid toggle+approve.
+          privacy: effPrivacy,
         };
         if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
+        // Cleanup per-card privacy mirror keys (approve is terminal).
+        try {
+          const k = 'onion_review_privacy_' + String(card.sourceId || '');
+          try { localStorage.removeItem(k); } catch (e1) {}
+          try { if (refCur[k]) delete refCur[k]; } catch (e2) {}
+        } catch (e3) {}
         done++;
       }
       setParsedReviewQueue([]);

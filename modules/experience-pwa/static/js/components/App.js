@@ -112,19 +112,46 @@ export function App() {
       const s = readLocal();
       let touched = null;
       const scrubPrivateNodes = (t) => {
-        if (!t || !Array.isArray(t.nodes)) return;
-        t.nodes = t.nodes.map((n) => {
-          if (!n || typeof n !== 'object') return n;
-          const c = Object.assign({}, n);
-          try { delete c.private; delete c.pending; } catch (e) {}
-          try {
-            if (typeof c.text === 'string' && /private/i.test(c.text)) c.text = c.text.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
-            if (typeof c.label === 'string' && /private/i.test(c.label)) c.label = c.label.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
-          } catch (e) {}
-          try { if (c.appendPrivacy) c.appendPrivacy = 'Team Shared'; } catch (e) {}
-          try { if (c.stagedAppend) c.stagedAppend = false; } catch (e) {}
-          return c;
-        });
+        if (!t || typeof t !== 'object') return;
+        // TASK FIX: Force unlock parent to Team Shared upon approval.
+        t.privacy = 'Team Shared';
+        try { t.is_private = false; t.isPrivate = false; } catch (e) {}
+        
+        let newestAiText = '';
+        let newestTitle = '';
+
+        if (Array.isArray(t.nodes)) {
+          t.nodes = t.nodes.map((n) => {
+            if (!n || typeof n !== 'object') return n;
+            const c = Object.assign({}, n);
+            // TASK FIX: auto-promote latest staged AI content to parent surface
+            if (c.kind === 'AI' && c.stagedAppend) {
+              newestAiText = c.text;
+            }
+            try { delete c.private; delete c.pending; } catch (e) {}
+            try {
+              if (typeof c.text === 'string' && /private/i.test(c.text)) c.text = c.text.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
+              if (typeof c.label === 'string' && /private/i.test(c.label)) c.label = c.label.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
+            } catch (e) {}
+            try { if (c.appendPrivacy) c.appendPrivacy = 'Team Shared'; } catch (e) {}
+            // TASK FIX: remove stagedAppend: true flag to merge into permanent fixture.
+            try { if (c.stagedAppend) c.stagedAppend = false; } catch (e) {}
+            return c;
+          });
+        }
+
+        // TASK FIX: Extract title/text from newest append metadata before clearing
+        if (Array.isArray(t.pendingAppends) && t.pendingAppends.length > 0) {
+          const last = t.pendingAppends[t.pendingAppends.length - 1];
+          if (last && last.title) newestTitle = last.title;
+        }
+
+        // Apply promotions to the main card surface
+        if (newestAiText) t.synthesizedText = newestAiText;
+        if (newestTitle) t.title = newestTitle;
+        t.updated_at = new Date().toISOString();
+
+        // TASK FIX: Clear the Queue (empty pendingAppends).
         try { if (Array.isArray(t.pendingAppends)) t.pendingAppends = []; } catch (e) {}
         try { if (Array.isArray(t.timeline)) t.timeline = t.timeline.map((x) => (x && typeof x === 'object') ? Object.assign({}, x, { stagedAppend: false }) : x); } catch (e) {}
       };
@@ -332,7 +359,17 @@ export function App() {
   // - Both (Default): Team Shared PLUS My Notes where card.author === activePersona (never others' private notes)
   const isTeamSharedCard = (t) => String((t && t.privacy) || 'Team Shared') === 'Team Shared';
   const isMyNotesCard = (t) => { const v = String((t && t.privacy) || ''); return v === 'My Notes' || v === 'Private' || v === 'My Notes (Private)'; };
-  const isAuthorMatch = (t) => String((t && t.author) || '') === String(activePersona || '');
+  const isAuthorMatch = (t) => {
+    const me = String(activePersona || '').trim().toLowerCase();
+    if (!me) return false;
+    const author = String((t && (t.author || t.contributor)) || '').trim().toLowerCase();
+    if (author === me) return true;
+    const nodes = Array.isArray(t && t.nodes) ? t.nodes : [];
+    if (nodes.some((n) => String((n && (n.author || n.contributor)) || '').trim().toLowerCase() === me)) return true;
+    const appends = Array.isArray(t && t.pendingAppends) ? t.pendingAppends : [];
+    if (appends.some((a) => String((a && (a.author || a.contributor)) || '').trim().toLowerCase() === me)) return true;
+    return false;
+  };
   const scopeByPrivacyMode = (arr, pMode) => (Array.isArray(arr) ? arr : []).filter((t) => {
     const mode = String(pMode || privacy || 'Both');
     if (mode === 'My Notes') return isMyNotesCard(t) && isAuthorMatch(t);

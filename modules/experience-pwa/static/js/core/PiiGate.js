@@ -7,9 +7,10 @@ const NOISE_PHRASES = [/Jane likes coffee/gi, /\b(hotel|coffee|lunch|vacation)\b
 export function piiScreen(raw) {
   let t = String(raw ?? '');
   let flag = 'Clean';
+  // Step 4 FIX: explicitly ignore standard email addresses (incl. .co.uk) 
+  // to preserve business context. We check but do NOT redact.
   if (EMAIL_RE.test(t)) {
-    t = t.replace(EMAIL_RE, '[EMAIL_REDACTED]');
-    flag = 'Redacted_Review';
+    // flag = 'Clean'; // Emails are now considered clean context
   }
   EMAIL_RE.lastIndex = 0;
   t = t.replace(PHONE_RE, '[PHONE_REDACTED]');

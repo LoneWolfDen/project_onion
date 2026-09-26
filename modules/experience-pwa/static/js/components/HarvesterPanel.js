@@ -107,7 +107,7 @@ export function findSmartAppendMatch(stagedText, stagedTitle) {
     if (score > bestScore && (!genericOnly ? (refOverlap.length > 0 || titleHit || tokOverlap >= 2) : (titleHit || tokOverlap >= 2))) { bestScore = score; best = c; bestReasons = reasons; }
   }
   if (!best) return null;
-  return { card: best, score: bestScore, reasons: bestReasons };
+  return { card: best, score: bestScore, reasons: bestReasons, privacy: best.privacy || 'Team Shared' };
 }
 export function buildSmartAppendFor(fullText, stagedTitle, ai, fallbackText) {
   try {
@@ -116,11 +116,12 @@ export function buildSmartAppendFor(fullText, stagedTitle, ai, fallbackText) {
       return {
         targetCardId: String(hit.card.id),
         targetCardTitle: String(hit.card.title || hit.card.id),
+        targetCardPrivacy: hit.privacy || 'Team Shared',
         matchScore: hit.score,
         matchReasons: Array.isArray(hit.reasons) ? hit.reasons : [],
         stagedRawNode: { kind: 'RAW', text: String(fallbackText || fullText || '').slice(0, 500) },
         stagedAiNode: { kind: 'AI', text: String((ai && ai.synthesizedText) || '').slice(0, 500) },
-        appendPrivacy: 'My Notes (Private)',
+        appendPrivacy: hit.privacy === 'Team Shared' ? 'Team Shared' : 'My Notes (Private)',
         appendSyncStatus: 'pending_review',
       };
     }
@@ -359,14 +360,16 @@ export function HarvesterPanel(props) {
         let smartAppend = buildSmartAppendFor(text + ' ' + stagedTitle, stagedTitle, ai, text);
         try {
           if (!smartAppend) {
+            // Task 1: ChromaDB semantic search via VectorSync Facade
             const vs = await import('../core/VectorSync.js');
             if (vs && vs.querySimilarCards) {
-              const r = await vs.querySimilarCards(text + ' ' + stagedTitle, (project && project.project_name) || '', props.activePersona || '');
+              const r = await vs.querySimilarCards(text + ' ' + stagedTitle, (project && project.project_name) || '', props.activePersona || 'Brené');
               if (r && r.match && r.match.id) {
                 const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance) : 0.6;
                 smartAppend = {
                   targetCardId: String(r.match.id),
                   targetCardTitle: String(r.match.title || r.match.id || ''),
+                  targetCardPrivacy: r.match.privacy || 'Team Shared',
                   matchScore: score,
                   matchReasons: (r.match.reasons || []).slice(),
                   matchEngine: 'vector',
@@ -378,6 +381,11 @@ export function HarvesterPanel(props) {
             }
           }
         } catch (e) {}
+        const targetIsShared = smartAppend && String(smartAppend.targetCardPrivacy || '').trim().toLowerCase() === 'team shared';
+        const basePriv = smartAppend ? 'My Notes (Private)' : (item.privacy || (ai && ai.privacy) || 'Team Shared');
+        const finalPriv = targetIsShared ? 'Team Shared' : normalizePrivacy(basePriv);
+        // Task 1: Ensure activePersona is credited as author
+        const currentAuthor = item.author || props.activePersona || 'Brené';
         // Contributor Parser Review: stage AI output for human review/edit
         // instead of directly committing via markProcessed.
         out.push({
@@ -385,25 +393,21 @@ export function HarvesterPanel(props) {
           projectId: item.projectId || canonicalProjectId,
           project_name: item.project_name || (project && project.project_name) || '',
           Project_ReferenceID: item.Project_ReferenceID || (project && project.Project_ReferenceID) || '',
-          type: item.type || kind,
-          source: item.source || 'Data Park Dropzone',
-          timestamp: item.timestamp || 'Just now',
-          content: item.content || item.detail || '',
-          piiStatus: item.piiStatus || 'Clean',
+          type: item.type || (ai && ai.type) || kind,
+          source: item.source || (ai && ai.source) || 'Harvester',
+          timestamp: item.timestamp || (ai && ai.timestamp) || 'Just now',
+          content: text,
+          piiStatus: (ai && ai.piiStatus) || item.piiStatus || 'Clean',
           title: stagedTitle,
           synthesizedText: (ai && ai.synthesizedText) || '',
           tags: (ai && ai.tags) || [],
           impactScore: (ai && typeof ai.impactScore === 'number') ? ai.impactScore : 0.7,
           mergeHint: (ai && ai.mergeHint) || '',
           structured: (ai && ai.structured && typeof ai.structured === 'object') ? ai.structured : {},
-          // PRIVACY FIX (Task 2): never clobber the staged item's explicit
-          // privacy (user's "Private (Only Me)" toggle in the review queue).
-          // Smart-Append targets stay private/pending-review on the target card;
-          // new standalone cards inherit staged privacy, default Team Shared.
-          privacy: normalizePrivacy(smartAppend ? 'My Notes (Private)' : (item.privacy || (ai && ai.privacy) || 'Team Shared')),
+          privacy: finalPriv,
           smartAppend: smartAppend,
-          author: item.author || props.activePersona || 'Brené',
-          contributor: item.contributor || props.activePersona || 'Brené',
+          author: currentAuthor,
+          contributor: currentAuthor,
         });
       }
       setParsedReviewQueue(out);
@@ -473,41 +477,52 @@ export function HarvesterPanel(props) {
           }
         } catch (e0) {}
         effPrivacy = normalizePrivacy(effPrivacy || 'Team Shared');
-        // Smart Append path: do NOT create a new standalone card. Stage an update
-        // to the existing matched card by appending RAW/AI nodes on its timeline
-        // strip (marked private/pending review) via pure-offline FailoverDB.
-        if (card && card.smartAppend && card.smartAppend.targetCardId) {
-          let ok = false;
+        // Smart Append check
+        const isAppendMatch = !!(card && card.smartAppend && card.smartAppend.targetCardId);
+        
+        if (isAppendMatch) {
+          // --- Branch A: Smart Append (Update existing card) ---
+          let appendSuccess = false;
           if (api && api.smartAppendToCard) {
-            const updated = await api.smartAppendToCard(
-              card.smartAppend.targetCardId,
-              { kind: 'RAW', text: String(card.content || card.synthesizedText || card.title || '') },
-              { kind: 'AI', text: String(card.synthesizedText || card.content || card.title || '') },
-              { title: card.title, source: card.source, reasons: card.smartAppend.matchReasons, score: card.smartAppend.matchScore, stagedId: card.sourceId, author: card.author, contributor: card.contributor }
-            );
-            ok = !!updated;
+            try {
+              const updated = await api.smartAppendToCard(
+                card.smartAppend.targetCardId,
+                { kind: 'RAW', text: String(card.content || card.synthesizedText || card.title || ''), author: card.author, at: card.timestamp },
+                { kind: 'AI', text: String(card.synthesizedText || card.content || card.title || ''), author: 'Onion AI', at: card.timestamp },
+                { title: card.title, synthesizedText: card.synthesizedText, source: card.source, reasons: card.smartAppend.matchReasons, score: card.smartAppend.matchScore, stagedId: card.sourceId, author: card.author, contributor: card.contributor, privacy: effPrivacy }
+              );
+              if (updated && updated.id) appendSuccess = true;
+            } catch (errAppend) { console.error('Smart Append failed:', errAppend); }
           }
-          if (ok) { appended++; done++; continue; }
-          // Fall through to normal new-card path if append target is missing.
+          if (appendSuccess) {
+            appended++;
+          } else {
+            // If append logic failed, fallback to new card to prevent data loss
+            const aiResult = { title: card.title, synthesizedText: card.synthesizedText, tags: card.tags, impactScore: card.impactScore, privacy: effPrivacy, author: card.author };
+            if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
+          }
+        } else {
+          // --- Branch B: Normal Path (New card creation) ---
+          const aiResult = {
+            title: card.title,
+            synthesizedText: card.synthesizedText,
+            tags: card.tags,
+            impactScore: card.impactScore,
+            mergeHint: card.mergeHint,
+            structured: card.structured,
+            privacy: effPrivacy,
+            author: card.author,
+            contributor: card.contributor
+          };
+          if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
         }
-        const aiResult = {
-          title: card.title,
-          synthesizedText: card.synthesizedText,
-          tags: card.tags,
-          impactScore: card.impactScore,
-          mergeHint: card.mergeHint,
-          structured: card.structured,
-          // Task 2: effective privacy (ref/localStorage-merged, normalized) —
-          // the queue snapshot alone may be stale after a rapid toggle+approve.
-          privacy: effPrivacy,
-        };
-        if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
-        // Cleanup per-card privacy mirror keys (approve is terminal).
+
+        // Terminal cleanup for this item (works for both branches)
         try {
           const k = 'onion_review_privacy_' + String(card.sourceId || '');
-          try { localStorage.removeItem(k); } catch (e1) {}
-          try { if (refCur[k]) delete refCur[k]; } catch (e2) {}
-        } catch (e3) {}
+          localStorage.removeItem(k);
+          if (refCur[k]) delete refCur[k];
+        } catch (e) {}
         done++;
       }
       setParsedReviewQueue([]);
@@ -589,7 +604,7 @@ export function HarvesterPanel(props) {
               <div style=${{ fontSize: '10px', fontWeight: 700, marginTop: '6px', color: '#4c1d95' }}>Synthesized text</div>
               <textarea rows="3" value=${c.synthesizedText} onInput=${(e) => updateReviewCard(idx, { synthesizedText: e.target.value })} style=${{ width: '100%', marginTop: '2px', background: '#f9fafb', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}></textarea>
               <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                <button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'My Notes (Private)')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'My Notes (Private)' ? '#111827' : '#fff', color: c.privacy === 'My Notes (Private)' ? '#fff' : '#111827', border: '1px solid #111827' }}>🔒 Private (Only Me)</button>
+                ${(c.smartAppend && String(c.smartAppend.targetCardPrivacy || '').trim().toLowerCase() === 'team shared') ? null : html`<button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'My Notes (Private)')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'My Notes (Private)' ? '#111827' : '#fff', color: c.privacy === 'My Notes (Private)' ? '#fff' : '#111827', border: '1px solid #111827' }}>🔒 Private (Only Me)</button>`}
                 <button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'Team Shared')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'Team Shared' ? '#111827' : '#fff', color: c.privacy === 'Team Shared' ? '#fff' : '#111827', border: '1px solid #111827' }}>👥 Team Shared</button>
               </div>
             </div>`)}

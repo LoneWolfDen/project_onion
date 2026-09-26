@@ -193,16 +193,24 @@ export function AppCenter(p) {
     setNoteSaving(false);
   };
   const cNotes = (p.notes || []).filter((n) => n && (n.Project_ReferenceID === active.Project_ReferenceID || n.project_name === active.project_name || n.projectId === active.project_name));
-  const isPrivateNote = (d) => { const v = String((d && d.privacy) || ''); return v === 'Private' || v === 'My Notes' || v === 'My Notes (Private)'; };
-  const privateNotes = cNotes.filter(isPrivateNote);
-  const teamNotes = cNotes.filter((d) => !isPrivateNote(d));
+  // Task 1 — strict local privacy gate for Notes UI (mirrors TimelineCard):
+  // private (any alias) visible to author only, fail-closed on blank author.
+  const isPrivateNote = (d) => { const v = String((d && d.privacy) || '').toLowerCase(); return v.indexOf('private') >= 0 || v === 'my notes' || v === 'my_notes' || v === 'my-notes' || v === 'mynotes'; };
+  const canSeeNote = (d) => {
+    if (!isPrivateNote(d)) return true;
+    const owner = String((d && (d.author || d.contributor)) || '');
+    return owner !== '' && owner === String(p.activePersona || '');
+  };
+  const visibleNotes = cNotes.filter(canSeeNote);
+  const privateNotes = visibleNotes.filter(isPrivateNote);
+  const teamNotes = visibleNotes.filter((d) => !isPrivateNote(d));
   const onForceSync = async () => { try { const api = (typeof window !== 'undefined' && window.OnionDB) || null; if (api && api.forceSync) { const r = await api.forceSync(); setNoteMsg('Force Sync: ' + (r.synced || 0) + ' item(s) marked synced'); } } catch (e) {} };
   const onEditNote = (d) => { try { setNoteDraft(String(d.original || d.title || d.content || '')); } catch (e) {} };
   // Task 3 helper: vector sync icon (NOT local syncStatus).
   const vecSynced = (d) => String((d && d.vectorSyncStatus) || '') === 'synced';
   const noteRow = (d) => htmlC`<button key=${String(d.id || d.title)} onClick=${() => onEditNote(d)} title=${'Click to edit: ' + String(d.original || d.title || d.content || '')} className="w-full text-left py-1.5 border-b border-[#E6EAF2]"><div className="flex items-center gap-1 text-[12px] text-[#1E293B] truncate" style=${{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span className="flex-1 min-w-0 truncate">${d.original || d.title || d.content || ''}</span><span className="shrink-0 text-[#94A3B8]" title=${'vector:' + String((d && d.vectorSyncStatus) || 'n/a') + ' local:' + String((d && d.syncStatus) || 'synced')}>${vecSynced(d) ? '✅' : '☁️'}</span></div></button>`;
-  // Task 3: pending vector count from LIVE props (re-rendered via onion:db-update).
-  const pendingVec = (Array.isArray(cNotes) ? cNotes : []).filter((x) => x && x.vectorSyncStatus === 'pending').length;
+  // Task 3: pending vector count from LIVE visible props (re-rendered via onion:db-update).
+  const pendingVec = (Array.isArray(visibleNotes) ? visibleNotes : []).filter((x) => x && x.vectorSyncStatus === 'pending').length;
   const privateCols = privateNotes.length ? privateNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No private notes.</div>`];
   const teamCols = teamNotes.length ? teamNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No team notes.</div>`];
   const yourNotes = htmlC`<div className="mt-4 rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-[13px]">YOUR NOTES</h3><span className="flex items-center gap-2"><button onClick=${onForceSync} title="Flip pending_upload to synced for offline/online UI test" className="text-[10px] underline text-[#1F4A7A]">Force Sync ☁️ (${pendingVec} pending)</button></span></div><div className="mt-3 flex gap-2 flex-wrap items-center"><span title=${'Viewing as ' + (p.activePersona || 'User')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold shrink-0" style=${{ width: '32px', height: '32px', fontSize: '13px' }}>${String(p.activePersona || 'U')[0]}</span><input value=${noteDraft} onInput=${(e) => setNoteDraft(e.target.value)} placeholder="Add a note..." className="flex-1 min-w-[180px] bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" /><button onClick=${() => submitNote('Private')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-white border border-[#111827] text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#fff', color: '#111827', border: '1px solid #111827' }}>🔒 Add as Private (Only Me)</button><button onClick=${() => submitNote('Team Shared')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-black text-white text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#111827', color: '#fff', border: '1px solid #111827' }}>👥 Add as Team Shared</button></div>${noteMsg ? htmlC`<div className="mt-2 text-[11px] italic text-[#64748B]">${noteMsg}</div>` : null}<div className="mt-3 flex flex-row gap-4"><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1E293B]">Private Notes (${privateNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${privateCols}</div></div><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1F4A7A]">Team Shared Notes (${teamNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${teamCols}</div></div></div></div>`;

@@ -32,33 +32,53 @@ function clone(o) { return JSON.parse(JSON.stringify(o)); }
 export function ensureTimelineNodes(card) {
   try {
     if (!card || typeof card !== 'object') return card;
-    if (!Array.isArray(card.nodes) || card.nodes.length < 2) {
+    if (!Array.isArray(card.nodes)) card.nodes = [];
+    if (card.nodes.length === 0) {
       const rawText = String(card.content || card.detail || card.synthesizedText || card.title || '');
       const aiText = String(card.synthesizedText || card.content || card.detail || card.title || '');
-      card.nodes = [{ kind: 'RAW', text: rawText }, { kind: 'AI', text: aiText }];
-    } else {
-      const kinds = card.nodes.map((n) => n && n.kind);
-      if (kinds.indexOf('RAW') < 0) card.nodes.unshift({ kind: 'RAW', text: String(card.content || card.detail || '') });
-      if (kinds.indexOf('AI') < 0) card.nodes.push({ kind: 'AI', text: String(card.synthesizedText || card.content || '') });
+      card.nodes = [
+        { kind: 'RAW', text: rawText, author: card.author || 'System', at: card.created_at || card.timestamp },
+        { kind: 'AI', text: aiText, author: 'Onion AI', at: card.created_at || card.timestamp }
+      ];
     }
   } catch (e) {}
   return card;
 }
 export function seedState() { const s = clone(MOCK_SEED); try { (s.timeline || []).forEach(ensureTimelineNodes); } catch (e) {} return s; }
 export function readLocal() {
+  // PERSISTENCE FIX (wipe bug): strictly preserve existing localStorage data.
+  // Seed from mockSeed ONLY when the storage key is completely absent/empty.
+  // Never overwrite existing user data on load; corrupt payloads return an
+  // in-memory shell WITHOUT writing, so a reload can never wipe the vault.
+  let raw = null;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
+  if (raw == null || raw === '') {
+    const seed = seedState();
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(seed)); } catch (e) {}
+    return seed;
+  }
+  let parsed = null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const seed = seedState();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
-      return seed;
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.projects)) parsed.projects = seedState().projects;
-    if (!Array.isArray(parsed.timeline)) parsed.timeline = [];
-    if (!Array.isArray(parsed.notes)) parsed.notes = [];
-    if (!Array.isArray(parsed.archived)) parsed.archived = [];
-    if (!Array.isArray(parsed.clients)) parsed.clients = seedState().clients;
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    // Corrupt JSON: do NOT overwrite storage (previous code seeded here = wipe).
+    // Return a safe in-memory shell; storage stays untouched for recovery.
+    return { clients: [], projects: [], timeline: [], notes: [], archived: [] };
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    // Valid JSON but not a state object (e.g. "null", number): same rule —
+    // never wipe storage on a read path.
+    return { clients: [], projects: [], timeline: [], notes: [], archived: [] };
+  }
+    // Backfill ONLY missing (null/undefined) sub-keys. Existing arrays —
+    // including intentionally-empty [] — are never overwritten.
+    let seededCache = null;
+    const seedField = (k) => { try { if (!seededCache) seededCache = seedState(); return clone(seededCache[k]); } catch (e) { return []; } };
+    if (parsed.projects == null) parsed.projects = seedField('projects');
+    if (parsed.timeline == null) parsed.timeline = [];
+    if (parsed.notes == null) parsed.notes = [];
+    if (parsed.archived == null) parsed.archived = [];
+    if (parsed.clients == null) parsed.clients = seedField('clients');
     try { (parsed.timeline || []).forEach(ensureTimelineNodes); } catch (e) {}
     // Heal orphaned 'processed' statuses (pre-fix markProcessed rows) back to
     // 'pending_upload' so Phase-4 Sync gate (Sync Now CTA) renders correctly.
@@ -88,11 +108,6 @@ export function readLocal() {
       if (t1 || t2) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {} }
     } catch (e) {}
     return parsed;
-  } catch (err) {
-    const s2 = seedState();
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s2)); } catch (e) {}
-    return s2;
-  }
 }
 export function writeLocal(state) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (err) {}
@@ -315,8 +330,11 @@ class FailoverDB {
   }
   // Harvester Smart Append — pure-offline entity-resolution commit.
   // Appends reviewer-approved RAW/AI nodes to an EXISTING matched Status Card's
-  // horizontal timeline strip (no new standalone card). Staged update is marked
-  // private/pending review. Removes the now-consumed staged item. Zero network fetch.
+  // horizontal timeline strip (no new standalone card). Privacy contract:
+  // meta.privacy decides contamination — Team Shared appends leave the parent
+  // shared (visible to all); Private appends upgrade one-way to Private.
+  // Missing meta.privacy fails OPEN to shared so public merges can never hide
+  // the parent card from the feed (previous default-to-Private did exactly that).
   async smartAppendToCard(targetCardId, stagedRawNode, stagedAiNode, meta) {
     // Pure-offline: immediate local state via readLocal()/writeLocal(), zero network fetch.
     const s = readLocal();
@@ -332,6 +350,12 @@ class FailoverDB {
     // and strip them for other personas. Fall back to target author / 'User'.
     const metaAuthor = (meta && (meta.author || meta.contributor)) || target.author || target.contributor || 'User';
     const metaContrib = (meta && (meta.contributor || meta.author)) || target.contributor || target.author || metaAuthor;
+    // ONE-WAY PUBLIC DOOR: If the target parent is already Team Shared, 
+    // the append MUST be public. Contamination (upgrading parent to Private)
+    // is FORBIDDEN for Team Shared parents.
+    const parentIsShared = String(target.privacy || 'Team Shared') === 'Team Shared';
+    const effPrivacy = parentIsShared ? 'Team Shared' : ((meta && meta.privacy) || 'Team Shared');
+
     const pushNode = (n) => {
       if (!n || (!n.text && !n.kind)) return;
       target.nodes.push({
@@ -340,7 +364,7 @@ class FailoverDB {
         author: String((n && (n.author || n.contributor)) || metaAuthor || 'User'),
         contributor: String((n && (n.contributor || n.author)) || metaContrib || 'User'),
         stagedAppend: true,
-        appendPrivacy: 'My Notes (Private)',
+        appendPrivacy: effPrivacy,
         appendSyncStatus: 'pending_review',
         appended_at: nowIso,
       });
@@ -350,7 +374,7 @@ class FailoverDB {
     if (!Array.isArray(target.pendingAppends)) target.pendingAppends = [];
     target.pendingAppends.push({
       at: nowIso,
-      privacy: 'My Notes (Private)',
+      privacy: effPrivacy,
       syncStatus: 'pending_review',
       author: String(metaAuthor || 'User'),
       contributor: String(metaContrib || metaAuthor || 'User'),
@@ -361,20 +385,23 @@ class FailoverDB {
     });
     target.updated_at = nowIso;
     target.syncStatus = 'pending_upload';
-    // FAIL-CLOSED PRIVACY (Task 2): a private staged node appended to ANY card
-    // contaminates the whole parent — upgrade immediately so the footer flips
-    // from "Team Shared" to "Private" and the vector upsert lands as
-    // is_private=True (store.is_private_card reads privacy string). One-way:
-    // never downgrade an already-private parent. Also stamp node-level
-    // is_private so vector doc text carries the signal on re-ingest.
-    try {
-      const nodePriv = String((meta && meta.privacy) || 'My Notes (Private)');
-      const isPrivNode = /private/i.test(nodePriv) || /my notes/i.test(nodePriv);
-      if (isPrivNode) {
-        target.privacy = 'Private';
-        try { target.is_private = true; target.isPrivate = true; } catch (e2) {}
-      }
-    } catch (e) {}
+    
+    // Task Fix: Update parent card surface with latest reviewed content
+    if (meta && meta.title) target.title = meta.title;
+    if (meta && meta.synthesizedText) target.synthesizedText = meta.synthesizedText;
+
+    // Contamination logic: Only upgrade to Private if parent was NOT already shared
+    // AND the append itself is private.
+    if (!parentIsShared) {
+      try {
+        const v = String(effPrivacy).trim().toLowerCase();
+        const isPrivNode = v.indexOf('private') >= 0 || v === 'my notes' || v === 'my_notes' || v === 'my-notes' || v === 'mynotes' || v === 'only me';
+        if (isPrivNode) {
+          target.privacy = 'Private';
+          try { target.is_private = true; target.isPrivate = true; } catch (e2) {}
+        }
+      } catch (e) {}
+    }
     stampVectorPending(target);
     ensureTimelineNodes(target);
     // Remove the consumed staged (pending_processing) item so no duplicate standalone card remains.
@@ -408,7 +435,12 @@ export async function resetToSeedData() {
 }
 export const OnionDB = new FailoverDB();
 try {
-  if (!localStorage.getItem(STORAGE_KEY)) localStorage.setItem(STORAGE_KEY, JSON.stringify(seedState()));
+  // PERSISTENCE FIX: seed ONLY when the key is completely absent/empty.
+  // Previous `if (!getItem(...))` also seeded on corrupt-but-present data;
+  // readLocal() now owns that decision (returns a shell without wiping).
+  // This boot block stays append-only: never overwrite existing storage here.
+  const bootRaw = localStorage.getItem(STORAGE_KEY);
+  if (bootRaw == null || bootRaw === '') localStorage.setItem(STORAGE_KEY, JSON.stringify(seedState()));
   window.OnionDB = OnionDB;
 } catch (err) {}
 export default OnionDB;

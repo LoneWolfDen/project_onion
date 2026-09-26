@@ -156,3 +156,6 @@ env/
 Thumbs.db
 .env
 *.local
+modules/vector-service/chroma_data/
+*.sqlite3
+*.bin

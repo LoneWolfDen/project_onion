@@ -168,17 +168,26 @@ export async function flushVectorQueue() {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return { flushed: 0, pending: q.length, offline: true };
   let flushed = 0;
   const remaining = [];
+  const flushedIds = [];
   for (const entry of q) {
     try {
       if (entry.op === 'delete') await postDelete(entry.id);
       else await postIngest(entry.card || toVectorPayload({ id: entry.id }));
       flushed++;
+      // Track the card identity actually posted so markQueueMirrored flips
+      // exactly these (never the whole vault).
+      try {
+        const fid = String((entry.card && entry.card.id) || entry.id || '');
+        if (fid) flushedIds.push(fid);
+      } catch (e0) {}
     } catch (e) {
       remaining.push({ ...entry, attempts: (entry.attempts || 0) + 1, error: String((e && e.message) || e).slice(0, 200) });
     }
   }
   writeQueue(remaining);
-  try { markQueueMirrored(flushed); } catch (e) {}
+  // Only mark when something actually flushed — never blanket-flip on a
+  // failed/offline drain (that would fake ✅ on still-queued items).
+  try { if (flushed > 0) markQueueMirrored(flushedIds.length ? flushedIds : flushed); } catch (e) {}
   return { flushed, pending: remaining.length };
 }
 export function mirrorToVector(op, cardOrId) {
@@ -191,6 +200,13 @@ export function mirrorToVector(op, cardOrId) {
       try {
         if (op === 'delete') await postDelete((cardOrId && cardOrId.id) || cardOrId);
         else await postIngest(toVectorPayload(cardOrId));
+        // Task 3 — direct (non-queued) success must ALSO flip vectorSyncStatus
+        // + dispatch, else the header sticks on "(1 pending) ☁️" until the next
+        // queue drain. Queue path already covers this via flushVectorQueue.
+        try {
+          const did = String((cardOrId && cardOrId.id) || cardOrId || '');
+          if (did) markQueueMirrored([did]);
+        } catch (e2) {}
         return { queued: false, ok: true };
       } catch (e) {
         queueVectorOp(op, cardOrId);
@@ -205,23 +221,29 @@ export function mirrorToVector(op, cardOrId) {
   }
 }
 function markQueueMirrored(n) {
-  if (!n) return;
+  // Task 3 — flip vectorSyncStatus:'synced' ONLY for ids actually posted.
+  // n = array of flushed ids (preferred) — never blanket-flip the vault.
+  // Legacy numeric form (direct-mirror fallback): treated as NO-OP unless ids
+  // are known, to avoid faking ✅ on still-queued items after a failed drain.
   try {
+    const ids = Array.isArray(n) ? n.map(String).filter(Boolean) : null;
+    if (!ids || !ids.length) return;
     const KEY = 'onion_db_state';
     const raw = localStorage.getItem(KEY);
     if (!raw) return;
     const s = JSON.parse(raw);
     let touched = false;
-    ['timeline', 'notes'].forEach((k) => {
+    (['timeline', 'notes']).forEach((k) => {
       (s[k] || []).forEach((it) => {
-        if (it && it.vectorSyncStatus === 'pending') { it.vectorSyncStatus = 'synced'; touched = true; }
+        if (!it) return;
+        if (ids.indexOf(String(it.id)) < 0) return;
+        it.vectorSyncStatus = 'synced';
+        touched = true;
       });
     });
     if (touched) {
       localStorage.setItem(KEY, JSON.stringify(s));
-      // Task 3: Notes/Timeline UI subscribes to onion:db-update — without this
-      // dispatch the cloud icon stays stuck on ☁️ after a background flush.
-      try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { source: 'vector-sync', at: new Date().toISOString() } })); } catch (e) {}
+      try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { source: 'vector-sync', at: new Date().toISOString(), ids: ids || [] } })); } catch (e) {}
     }
   } catch (e) {}
 }

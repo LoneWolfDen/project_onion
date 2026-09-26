@@ -48,6 +48,12 @@ class PWAHandler(SimpleHTTPRequestHandler):
             # Legacy alias: /docs/* -> /static/docs/* file layout is docs/*.
             # Keep working for old bookmarks/guide links.
             self.path = path_only
+        # 3. Favicon - was causing 404 and white page looked like "not loading"
+        elif path_only in ("/favicon.ico", "/favicon.png", "/apple-touch-icon.png"):
+            # serve if exists, else 204 No Content - no 404 noise
+            fav_path = os.path.join(STATIC_DIR, path_only.lstrip("/"))
+            if os.path.exists(fav_path):
+                self.path = path_only
         elif path_only.startswith("/app/"):
             # /app/js/... -> /js/... ; handles ESM relative fetch under /app route
             rest = path_only[len("/app"):] or "/index.html"

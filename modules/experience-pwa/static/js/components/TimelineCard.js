@@ -53,7 +53,7 @@ function miniTimelineFor(m) {
     kind: String((t && t.kind) || 'EV').toUpperCase(),
     label: String((t && t.label) || (t && t.kind) || ''),
     fullText: String((t && (t.text || t.content || t.detail || t.label)) || ''),
-    author: String((t && (t.author || t.contributor)) || m.author || m.contributor || 'Unknown'),
+    author: String((t && (t.author || t.contributor)) || m.author || m.contributor || 'System'),
     at: String((t && (t.at || t.timestamp || t.created_at)) || m.timestamp || 'Just now'),
     stagedAppend: !!(t && t.stagedAppend),
   }));
@@ -61,7 +61,7 @@ function miniTimelineFor(m) {
     kind: String((n && n.kind) || 'EV').toUpperCase(),
     label: String((n && n.text) || (n && n.kind) || '').slice(0, 28) || String((n && n.kind) || ''),
     fullText: String((n && n.text) || ''),
-    author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'Unknown'),
+    author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'System'),
     at: String((n && (n.at || n.appended_at || n.timestamp)) || m.timestamp || 'Just now'),
     stagedAppend: !!(n && n.stagedAppend),
   }));
@@ -414,7 +414,7 @@ export function TimelineCard(props) {
         <div className="flex items-center gap-2 text-[10px] italic text-[#94A3B8] flex-wrap">
           <span className="font-bold text-[#1E293B] not-italic flex items-center gap-1.5 bg-[#f8fafc] px-2 py-0.5 rounded-full border border-[#E6EAF2]">
             <span className="w-4 h-4 rounded-full bg-[#1F4A7A] text-white flex items-center justify-center text-[8px] font-bold shadow-sm">${initials || 'U'}</span>
-            <span className="truncate max-w-[100px]">${author || 'Unknown Author'}</span>
+            <span class="truncate max-w-[100px]">${author || 'System'}</span>
           </span>
           <span>•</span>
           <span className="font-medium">${isPrivate ? '🔒 Private' : '👥 Team Shared'}</span>

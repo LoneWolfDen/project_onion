@@ -159,3 +159,7 @@ Thumbs.db
 modules/vector-service/chroma_data/
 *.sqlite3
 *.bin
+modules/vector-service/chroma_data/
+modules/vector-service/chroma_data/
+modules/vector-service/chroma_data/
+**/chroma_data/

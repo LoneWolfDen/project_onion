@@ -10,36 +10,42 @@
   <script src="./js/vendor/react-dom.production.min.js"></script>
   <script src="./js/vendor/htm.umd.js"></script>
   <script src="./js/vendor/xlsx.full.min.js"></script>
-</head>
-<script>
-(async () => {
-  const params = new URLSearchParams(location.search);
-  const shouldSync = params.has('sync') || localStorage.getItem('enableBackgroundSync') === 'true';
-  if (!shouldSync) return;
-  try {
-    // DYNAMIC - read active project, not hard-coded apollo-123
-    const activeProject = localStorage.getItem('activeProject') ||
-                          localStorage.getItem('onion_active_project') ||
-                          JSON.parse(localStorage.getItem('onion_projects')||'[]')[0]?.Project_ReferenceID ||
-                          '';
-    const res = await fetch('http://localhost:8006/list', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({query:'', project: activeProject, activePersona: localStorage.getItem('activePersona')||'Brené', privacyMode:'Both'})
-    });
-    const data = await res.json();
-    if (!data || data.count === 0) {
-      console.log('[Sync] Vector empty, keeping Local - project:', activeProject);
-      return;
+  <script>
+  // One-time Local refresh from Vector - defensive wildcard if no project
+  (async () => {
+    const params = new URLSearchParams(location.search);
+    const shouldSync = params.has('sync') || localStorage.getItem('enableBackgroundSync') === 'true';
+    if (!shouldSync) return;
+    try {
+      let activeRef = '';
+      try {
+        const db = JSON.parse(localStorage.getItem('onion_db_state') || '{}');
+        // Your real structure: db.projects[5-6] with Project_ReferenceID
+        activeRef = db.projects?.[0]?.Project_ReferenceID || db.projects?.[0]?.project_name || '';
+        if (!activeRef) activeRef = db.timeline?.[0]?.Project_ReferenceID || '';
+      } catch(e) {}
+      console.log('[Sync] Resolved activeRef:', activeRef || '(wildcard - all projects)');
+
+      const res = await fetch('http://localhost:8006/list', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({query:'', project: activeRef, activePersona:'Brené', privacyMode:'Both'})
+      });
+      const data = await res.json();
+      if (!data || data.count === 0) {
+        console.log('[Sync] Vector empty, keeping Local');
+        return;
+      }
+      console.log(`[Sync] Vector has ${data.count} cards for project ${activeRef}, marking synced`);
+      localStorage.setItem('lastVectorSyncAt', new Date().toISOString());
+      localStorage.removeItem('enableBackgroundSync');
+    } catch(e) {
+      console.warn('[Sync] Vector not reachable, keeping offline Local', e);
     }
-    console.log(`[Sync] Vector has ${data.count} cards for project ${activeProject}, marking synced`);
-    localStorage.setItem('lastVectorSyncAt', new Date().toISOString());
-    localStorage.removeItem('enableBackgroundSync');
-  } catch(e) {
-    console.warn('[Sync] Vector not reachable, keeping offline Local', e);
-  }
-})();
-</script>
+  })();
+  </script>
+
+</head>
 <body>
   <div id="root"><p style="padding:16px;font-family:sans-serif;">Loading Project Continuum ESM…</p></div>
   <script type="module" src="./js/main.js?v=handoverfix1"></script>

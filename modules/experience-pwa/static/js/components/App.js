@@ -106,66 +106,71 @@ export function App() {
       if (proj && proj.client_name) { setClient(proj.client_name); setC360(proj.client_name); }
     } catch (e) {}
   };
-  const handleApproveCard = async (cardId) => {
-    setApproved((prev) => { const n = new Set(prev); n.add(cardId); return n; });
+  const handleApproveCard = (cardId) => {
+    let s;
     try {
-      const s = readLocal();
-      let touched = null;
-      const scrubPrivateNodes = (t) => {
-        if (!t || typeof t !== 'object') return;
-        // TASK FIX: Force unlock parent to Team Shared upon approval.
-        t.privacy = 'Team Shared';
-        try { t.is_private = false; t.isPrivate = false; } catch (e) {}
-        
-        let newestAiText = '';
-        let newestTitle = '';
+      s = readLocal();
+    } catch(e) { return; }
+    
+    const card = (s.timeline||[]).find(t=>t && String(t.id)===String(cardId)) || (s.notes||[]).find(n=>n && String(n.id)===String(cardId));
+    if (!card) return; // abort - no partial save
 
-        if (Array.isArray(t.nodes)) {
-          t.nodes = t.nodes.map((n) => {
-            if (!n || typeof n !== 'object') return n;
-            const c = Object.assign({}, n);
-            // TASK FIX: auto-promote latest staged AI content to parent surface
-            if (c.kind === 'AI' && c.stagedAppend) {
-              newestAiText = c.text;
-            }
-            try { delete c.private; delete c.pending; } catch (e) {}
-            try {
-              if (typeof c.text === 'string' && /private/i.test(c.text)) c.text = c.text.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
-              if (typeof c.label === 'string' && /private/i.test(c.label)) c.label = c.label.replace(/private/gi, '').replace(/\s{2,}/g, ' ').trim();
-            } catch (e) {}
-            try { if (c.appendPrivacy) c.appendPrivacy = 'Team Shared'; } catch (e) {}
-            // TASK FIX: remove stagedAppend: true flag to merge into permanent fixture.
-            try { if (c.stagedAppend) c.stagedAppend = false; } catch (e) {}
-            return c;
-          });
-        }
+    // capture pending title BEFORE clear (secondary enrichment per MASTER)
+    let pendingTitle = '';
+    try {
+      if (Array.isArray(card.pendingAppends) && card.pendingAppends.length>0) {
+        const last = card.pendingAppends[card.pendingAppends.length-1];
+        if (last && last.title) pendingTitle = last.title;
+      }
+    } catch(e) {}
 
-        // TASK FIX: Extract title/text from newest append metadata before clearing
-        if (Array.isArray(t.pendingAppends) && t.pendingAppends.length > 0) {
-          const last = t.pendingAppends[t.pendingAppends.length - 1];
-          if (last && last.title) newestTitle = last.title;
-        }
+    // STEP 1: scrub stagedAppend flags - never delete nodes
+    if (Array.isArray(card.nodes)) {
+      card.nodes.forEach(n => { if (n && n.stagedAppend === true) n.stagedAppend = false; });
+    }
 
-        // Apply promotions to the main card surface
-        if (newestAiText) t.synthesizedText = newestAiText;
-        if (newestTitle) t.title = newestTitle;
-        t.updated_at = new Date().toISOString();
+    // STEP 2: clear pendingAppends
+    card.pendingAppends = [];
 
-        // TASK FIX: Clear the Queue (empty pendingAppends).
-        try { if (Array.isArray(t.pendingAppends)) t.pendingAppends = []; } catch (e) {}
-        try { if (Array.isArray(t.timeline)) t.timeline = t.timeline.map((x) => (x && typeof x === 'object') ? Object.assign({}, x, { stagedAppend: false }) : x); } catch (e) {}
-      };
-      (s.timeline || []).forEach((t) => { if (t && String(t.id) === String(cardId)) { t.piiStatus = 'Approved'; scrubPrivateNodes(t); if (!t.syncStatus) t.syncStatus = 'pending_upload'; touched = t; } });
-      (s.notes || []).forEach((nn) => { if (nn && String(nn.id) === String(cardId)) { nn.piiStatus = 'Approved'; scrubPrivateNodes(nn); touched = touched || nn; } });
+    // STEP 3: EXACT pattern required by MASTER
+    const latestAi = Array.isArray(card.nodes) ? [...card.nodes].reverse().find(n => n && n.kind === 'AI') : null;
+    if (latestAi) {
+      card.synthesizedText = latestAi.text;
+      card.content = latestAi.text;
+      card.detail = latestAi.text; // Trap 2 fix
+    }
+    if (pendingTitle) {
+      card.title = pendingTitle;
+    }
+
+    // STEP 4: force Team Shared
+    card.privacy = 'Team Shared';
+    card.is_private = false;
+    card.isPrivate = false;
+    card.updated_at = new Date().toISOString();
+    try { card.piiStatus = 'Approved'; } catch(e) {}
+
+    // STEP 5: single synchronous commit - NO await between 1-4 and write
+    try {
       writeLocal(s);
-      try {
-        const isNote = (s.notes || []).some((nn) => nn && String(nn.id) === String(cardId));
-        if (isNote && touched && OnionDB && OnionDB.saveNote) { await OnionDB.saveNote(Object.assign({}, touched, { piiStatus: 'Approved' })); }
-        // Timeline approve edits content surface — mirror to vector (queued offline).
-        if (!isNote && touched && OnionDB && OnionDB.syncCardToVector) { try { await OnionDB.syncCardToVector(cardId); } catch (e2) {} }
-      } catch (e) {}
-    } catch (e) {}
+    } catch(err) {
+      return;
+    }
+
+    // fire-and-forget after commit
+    try {
+      setApproved(prev => { const n = new Set(prev); n.add(cardId); return n; });
+    } catch(e) {}
+    try {
+      if (typeof OnionDB !== 'undefined' && OnionDB && OnionDB.syncCardToVector) {
+        OnionDB.syncCardToVector(cardId).catch(()=>{});
+      }
+      localStorage.setItem('lastVectorSyncAt', new Date().toISOString());
+    } catch(e) {}
   };
+  window.handleApproveCard = handleApproveCard;
+
+
   const handleSyncCard = async (cardId) => {
     try {
       // Dynamic ingestion: push current local card state to Vector Service

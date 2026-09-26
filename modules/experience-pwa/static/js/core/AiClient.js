@@ -65,23 +65,39 @@ export function privacyMatchesCard(cardOrPrivacy, mode, activePersona) {
   return isTeamShared || (isMyNotes && String(cardAuthor || '') === persona);
 }
 
-export async function processWithAI(text, type) {
-  const input = String(text || '');
-  const kind = String(type || 'general');
-  const enrichWithAggregation = (base) => {
-    const out = Object.assign({}, base);
-    if (!out.mergeHint) {
-      const l = String(input || '').toLowerCase();
-      out.mergeHint = (/po|invoice|risk|raid|overrun|delay|block/.test(l))
-        ? 'Similar to existing RAID log — details overlap'
-        : 'Aggregated from ' + kind + ' + RAID log — requires human validation';
+function getProvider() {
+  try { return localStorage.getItem('LLM_PROVIDER') || 'openrouter'; } catch (e) { return 'openrouter'; }
+}
+
+// Shared JSON-parse logic for both OpenRouter and Anthropic raw text responses.
+// Try strict JSON first, then extract {...} block, then fall back to raw text.
+function parseAiJson(raw, input, kind) {
+  try {
+    const parsed = JSON.parse(String(raw).trim());
+    return {
+      synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
+      tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
+      impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
+      mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
+      structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
+    };
+  } catch (e) {
+    const m = String(raw).match(/\{[\s\S]*\}/);
+    if (m) {
+      const parsed = JSON.parse(m[0]);
+      return {
+        synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
+        tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
+        impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
+        mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
+        structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
+      };
     }
-    if (!out.structured || typeof out.structured !== 'object') {
-      out.structured = { Milestone: 'Sprint 1', Amount: '$45k', Status: 'Blocked' };
-    }
-    if (out.privacy == null) out.privacy = 'Team Shared';
-    return out;
-  };
+    return { synthesizedText: String(raw).slice(0, 2000) || mockResult(input, kind).synthesizedText, tags: ['#Auto_Tagged'], impactScore: 0.7 };
+  }
+}
+
+async function callOpenRouter(input, kind, enrichWithAggregation) {
   let apiKey = null;
   let model = DEFAULT_MODEL;
   try {
@@ -120,36 +136,70 @@ export async function processWithAI(text, type) {
     if (!res.ok) throw new Error('OpenRouter HTTP ' + res.status);
     const data = await res.json();
     const raw = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
-    // Try strict JSON first, then extract {...} block.
-    try {
-      const parsed = JSON.parse(String(raw).trim());
-      return enrichWithAggregation({
-        synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
-        tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
-        impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
-        mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
-        structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
-      });
-    } catch (e) {
-      const m = String(raw).match(/\{[\s\S]*\}/);
-      if (m) {
-        const parsed = JSON.parse(m[0]);
-        return enrichWithAggregation({
-          synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
-          tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
-          impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
-          mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
-          structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
-        });
-      }
-      return enrichWithAggregation({ synthesizedText: String(raw).slice(0, 2000) || mockResult(input, kind).synthesizedText, tags: ['#Auto_Tagged'], impactScore: 0.7 });
-    }
+    return enrichWithAggregation(parseAiJson(raw, input, kind));
   } catch (err) {
     await new Promise((r) => setTimeout(r, 1200));
     const fb = mockResult(input, kind);
     fb.tags = (fb.tags || []).concat(['#Mock_Fallback']);
     return fb;
   }
+}
+
+async function callAnthropic(input, kind, enrichWithAggregation) {
+  try {
+    const prompt =
+      'You are an enterprise data parser for Project Continuum. ' +
+      'Given raw harvested text, return ONLY valid JSON with keys: ' +
+      'synthesizedText (string, concise executive summary preserving Project/Opp/GDP/SoW/PO identifiers), ' +
+      'tags (array of hashtag strings), impactScore (number 0.0 to 1.0, <0.5 = routine chatter). ' +
+      'No markdown, no extra keys.\n\n[' + kind + '] ' + input;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': (localStorage.getItem('ANTHROPIC_API_KEY') || ''),
+        'anthropic-version': '2023-06-01',
+        //'dangerously-allow-browser': 'true',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!res.ok) throw new Error('Anthropic HTTP ' + res.status);
+    const data = await res.json();
+    const raw = (data && Array.isArray(data.content) && data.content[0] && data.content[0].text) || '';
+    return enrichWithAggregation(parseAiJson(raw, input, kind));
+  } catch (err) {
+    // Anthropic failed (network/HTTP/parse) — retry via the existing OpenRouter
+    // path before ever falling all the way through to the mock safety net.
+    return callOpenRouter(input, kind, enrichWithAggregation);
+  }
+}
+
+export async function processWithAI(text, type) {
+  const input = String(text || '');
+  const kind = String(type || 'general');
+  const enrichWithAggregation = (base) => {
+    const out = Object.assign({}, base);
+    if (!out.mergeHint) {
+      const l = String(input || '').toLowerCase();
+      out.mergeHint = (/po|invoice|risk|raid|overrun|delay|block/.test(l))
+        ? 'Similar to existing RAID log — details overlap'
+        : 'Aggregated from ' + kind + ' + RAID log — requires human validation';
+    }
+    if (!out.structured || typeof out.structured !== 'object') {
+      out.structured = { Milestone: 'Sprint 1', Amount: '$45k', Status: 'Blocked' };
+    }
+    if (out.privacy == null) out.privacy = 'Team Shared';
+    return out;
+  };
+  if (getProvider() === 'anthropic') {
+    return callAnthropic(input, kind, enrichWithAggregation);
+  }
+  return callOpenRouter(input, kind, enrichWithAggregation);
 }
 function scopeCardsByPrivacy(cards, privacyMode, activePersona) {
   const arr = Array.isArray(cards) ? cards : [];

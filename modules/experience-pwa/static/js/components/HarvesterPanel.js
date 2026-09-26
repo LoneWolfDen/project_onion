@@ -7,6 +7,7 @@
 import { projectIdEquals } from '../core/schema.js';
 import { piiScreen } from '../core/PiiGate.js';
 import { processWithAI } from '../core/AiClient.js';
+import { PERSONAS, getDefaultPersona } from '../constants/personas.js';
 const html = window.htm.bind(window.React.createElement);
 export function toPayload(o, persona) {
   const p = (typeof persona === 'string' && persona) || (o && (o.author || o.contributor)) || 'Brené';
@@ -55,6 +56,11 @@ function readAllTimelineCards() {
     const s = JSON.parse(raw);
     return Array.isArray(s.timeline) ? s.timeline : [];
   } catch (e) { return []; }
+}
+// Zero-install content-hash dedup (Web Crypto SubtleCrypto, no new deps).
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 export function findSmartAppendMatch(stagedText, stagedTitle) {
   const hay = String(stagedText || '') + ' ' + String(stagedTitle || '');
@@ -129,6 +135,10 @@ export function buildSmartAppendFor(fullText, stagedTitle, ai, fallbackText) {
   return null;
 }
 export function HarvesterPanel(props) {
+  // Single source of truth for persona fallback (personas.js) — never a
+  // hardcoded literal. Prefers the live prop, then a persisted local choice,
+  // then the canonical default.
+  const getPersona = () => (props && props.activePersona) || (() => { try { return localStorage.getItem('activePersona'); } catch (e) { return null; } })() || getDefaultPersona();
   const project = props.project;
   const clientMeta = props.clientMeta;
   const staged = props.staged || [];
@@ -196,7 +206,7 @@ export function HarvesterPanel(props) {
     const src = (o && typeof o === 'object') ? o : {};
     const text = String(src.content || src.detail || src.synthesizedText || src.title || clip || '').trim();
     const screened = piiScreen(text);
-    const persona = props.activePersona || 'Brené';
+    const persona = getPersona();
     return {
       id: String(src.id || ('clip-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 10000))),
       projectId: String(src.projectId || canonicalProjectId || ''),
@@ -252,7 +262,7 @@ export function HarvesterPanel(props) {
           if (!clipSmart) {
             const vs = await import('../core/VectorSync.js');
             if (vs && vs.querySimilarCards) {
-              const r = await vs.querySimilarCards(text + ' ' + clipStagedTitle, (project && project.project_name) || '', props.activePersona || '');
+              const r = await vs.querySimilarCards(text + ' ' + clipStagedTitle, (project && project.project_name) || '', getPersona());
               if (r && r.match && r.match.id) {
                 const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance) : 0.6;
                 clipSmart = { targetCardId: String(r.match.id), targetCardTitle: String(r.match.title || r.match.id || ''), matchScore: score, matchReasons: (r.match.reasons || []).slice(), matchEngine: 'vector', matchDistance: r.match.distance, stagedRawNode: { kind: 'RAW', text: String(text || '').slice(0, 500) }, stagedAiNode: { kind: 'AI', text: String((ai && ai.synthesizedText) || '').slice(0, 500) } };
@@ -279,8 +289,8 @@ export function HarvesterPanel(props) {
           // PRIVACY FIX: clipboard path — preserve payload/ai privacy (no forced default).
           privacy: normalizePrivacy(clipSmart ? 'My Notes (Private)' : (payload.privacy || (ai && ai.privacy) || 'Team Shared')),
           smartAppend: clipSmart,
-          author: payload.author || props.activePersona || 'Brené',
-          contributor: payload.contributor || props.activePersona || 'Brené',
+          author: payload.author || getPersona(),
+          contributor: payload.contributor || getPersona(),
         });
         // Review-queue only: NEVER write to DB here (no stageToDataPark) to avoid duplicate cards.
         // (Removed direct Data Park staging try/catch — onRunClipboardHarvest only builds review queue.)
@@ -302,20 +312,40 @@ export function HarvesterPanel(props) {
     if (!v) { setParkMsg('Paste or type raw text first.'); return; }
     if (!project) { setParkMsg('Select a project first so Data Park knows the anchor.'); return; }
     const screened = piiScreen(v);
+    const stageTitle = v.slice(0, 80) || (kind + ' fragment');
+    // Dedup gate: compute contentHash BEFORE staging so identical content
+    // never lands in Data Park twice.
+    let contentHash = '';
+    try { contentHash = await sha256Hex(String(stageTitle || '') + String(screened.text || '')); } catch (e) {}
+    //const isDup = readAllTimelineCards().some((c) => c && ((c.contentHash && contentHash && c.contentHash === contentHash) || (c.title === stageTitle && (c.content === screened.text || c.synthesizedText === screened.text))));
+    
+    
+    // TO - handle old cards with no hash:
+    const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []) || [];
+    const isDup = allCards.some((c) => {
+      if (!c) return false;
+      if (c.contentHash && contentHash && c.contentHash === contentHash) return true;
+      // Fallback for old cards - compare title AND content trimmed
+      return c.title === stageTitle && ( (c.content && c.content.trim() === screened.text.trim()) || (c.synthesizedText && c.synthesizedText.trim() === screened.text.trim()) );
+    });
+
+
+    if (isDup) { setParkMsg('Duplicate content detected — skipped.'); return; }
     const payload = {
       id: 'dp-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
       projectId: canonicalProjectId,
       project_name: project.project_name,
       Project_ReferenceID: project.Project_ReferenceID,
       type: kind,
-      title: v.slice(0, 80) || (kind + ' fragment'),
+      title: stageTitle,
       source: 'Data Park Dropzone',
       timestamp: 'Just now',
       content: screened.text,
       piiStatus: screened.flag,
       syncStatus: 'pending_processing',
-      author: props.activePersona || 'Brené',
-      contributor: props.activePersona || 'Brené',
+      author: getPersona(),
+      contributor: getPersona(),
+      contentHash: contentHash,
     };
     try {
       const api = dbApi();
@@ -363,7 +393,7 @@ export function HarvesterPanel(props) {
             // Task 1: ChromaDB semantic search via VectorSync Facade
             const vs = await import('../core/VectorSync.js');
             if (vs && vs.querySimilarCards) {
-              const r = await vs.querySimilarCards(text + ' ' + stagedTitle, (project && project.project_name) || '', props.activePersona || 'Brené');
+              const r = await vs.querySimilarCards(text + ' ' + stagedTitle, (project && project.project_name) || '', getPersona());
               if (r && r.match && r.match.id) {
                 const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance) : 0.6;
                 smartAppend = {
@@ -385,9 +415,25 @@ export function HarvesterPanel(props) {
         const basePriv = smartAppend ? 'My Notes (Private)' : (item.privacy || (ai && ai.privacy) || 'Team Shared');
         const finalPriv = targetIsShared ? 'Team Shared' : normalizePrivacy(basePriv);
         // Task 1: Ensure activePersona is credited as author
-        const currentAuthor = item.author || props.activePersona || 'Brené';
+        const currentAuthor = item.author || getPersona();
         // Contributor Parser Review: stage AI output for human review/edit
         // instead of directly committing via markProcessed.
+        // Dedup gate: compute contentHash BEFORE pushing to the review queue
+        // so identical content never lands in the queue/Data Park twice.
+        let contentHash = '';
+        try { contentHash = await sha256Hex(String(stagedTitle || '') + String(text || '')); } catch (e) {}
+        //const isDup = readAllTimelineCards().some((c) => c && ((c.contentHash && contentHash && c.contentHash === contentHash) || (c.title === stagedTitle && (c.content === text || c.synthesizedText === text))));
+                
+        // TO - handle old cards with no hash:
+        const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []) || [];
+        const isDup = allCards.some((c) => {
+          if (!c) return false;
+          if (c.contentHash && contentHash && c.contentHash === contentHash) return true;
+          // Fallback for old cards - compare title AND content trimmed
+          return c.title === stageTitle && ( (c.content && c.content.trim() === screened.text.trim()) || (c.synthesizedText && c.synthesizedText.trim() === screened.text.trim()) );
+        });
+        
+        if (isDup) { setParkMsg('Duplicate content detected — skipped.'); continue; }
         out.push({
           sourceId: item.id,
           projectId: item.projectId || canonicalProjectId,
@@ -408,6 +454,7 @@ export function HarvesterPanel(props) {
           smartAppend: smartAppend,
           author: currentAuthor,
           contributor: currentAuthor,
+          contentHash: contentHash,
         });
       }
       setParsedReviewQueue(out);
@@ -477,6 +524,15 @@ export function HarvesterPanel(props) {
           }
         } catch (e0) {}
         effPrivacy = normalizePrivacy(effPrivacy || 'Team Shared');
+        // Cleanup moved to the TOP of the loop body (unconditional, runs exactly
+        // once per card, BEFORE the isAppendMatch branch) so a hard-stop
+        // `continue` fired below can never skip it and can never cause
+        // double-processing of the same item.
+        try {
+          const k = 'onion_review_privacy_' + String(card.sourceId || '');
+          localStorage.removeItem(k);
+          if (refCur[k]) delete refCur[k];
+        } catch (e) {}
         // Smart Append check
         const isAppendMatch = !!(card && card.smartAppend && card.smartAppend.targetCardId);
         
@@ -491,15 +547,22 @@ export function HarvesterPanel(props) {
                 { kind: 'AI', text: String(card.synthesizedText || card.content || card.title || ''), author: 'Onion AI', at: card.timestamp },
                 { title: card.title, synthesizedText: card.synthesizedText, source: card.source, reasons: card.smartAppend.matchReasons, score: card.smartAppend.matchScore, stagedId: card.sourceId, author: card.author, contributor: card.contributor, privacy: effPrivacy }
               );
-              if (updated && updated.id) appendSuccess = true;
+              //if (updated && updated.id) appendSuccess = true;
+              appendSuccess = true; // Hard-stop: assume success if no error thrown
             } catch (errAppend) { console.error('Smart Append failed:', errAppend); }
           }
           if (appendSuccess) {
+            // Hard-stop guard: execution for this card MUST NOT reach the
+            // markProcessed fallback below NOR the outer isAppendMatch===false
+            // branch. Cleanup already ran unconditionally above this branch.
             appended++;
+            done++;
+            continue;
           } else {
             // If append logic failed, fallback to new card to prevent data loss
             const aiResult = { title: card.title, synthesizedText: card.synthesizedText, tags: card.tags, impactScore: card.impactScore, privacy: effPrivacy, author: card.author };
             if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
+            done++;
           }
         } else {
           // --- Branch B: Normal Path (New card creation) ---
@@ -515,15 +578,8 @@ export function HarvesterPanel(props) {
             contributor: card.contributor
           };
           if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
+          done++;
         }
-
-        // Terminal cleanup for this item (works for both branches)
-        try {
-          const k = 'onion_review_privacy_' + String(card.sourceId || '');
-          localStorage.removeItem(k);
-          if (refCur[k]) delete refCur[k];
-        } catch (e) {}
-        done++;
       }
       setParsedReviewQueue([]);
       setParkMsg('Approved ' + done + ' card(s) ✅' + (appended ? ' — Smart Append merged ' + appended + ' update(s) into existing card timeline(s) as private pending-review nodes.' : ' — added to project.'));

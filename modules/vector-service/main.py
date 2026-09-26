@@ -107,6 +107,17 @@ async def delete_card_post(payload: DeletePayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting card: {str(e)}")
 
+@app.post("/list")
+async def list_cards(request: AskRequest):
+    """Offline-first support: raw project card listing (no embedding query).
+    Used by the PWA's guarded one-time sync (index.html) to check whether
+    Chroma has data before ever overwriting FailoverDB local state."""
+    try:
+        cards = vector_store.list_cards(project=request.project)
+        return {"count": len(cards), "cards": cards, "engine": "chromadb"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing cards: {str(e)}")
+
 @app.post("/ask")
 async def ask_question(request: AskRequest):
     """Query the vector store with semantic search"""

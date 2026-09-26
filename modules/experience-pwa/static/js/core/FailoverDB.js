@@ -285,6 +285,7 @@ class FailoverDB {
       privacy: (payload && typeof payload.privacy === 'string' && payload.privacy.trim()) ? payload.privacy.trim() : 'Team Shared',
       syncStatus: 'pending_processing',
       created_at: new Date().toISOString(),
+      contentHash: (payload && payload.contentHash) || '',
     };
     // Pure offline: write directly to local storage, no network fetch.
     const s = readLocal();

@@ -143,7 +143,11 @@ export async function querySimilarCards(text, project, activePersona, topK) {
       if (!retrieved.length) return { match: null, engine: 'chromadb' };
       const top = retrieved[0] || {};
       const dist = Number(top.distance);
-      if (!Number.isFinite(dist) || dist > 1.2) return { match: null, engine: 'chromadb' };
+      // Literal similarity gate (WP: routing must use similarity >= 0.85, not
+      // the legacy dist > 1.2 Chroma-distance check). Map cosine distance
+      // (0 = identical, 2 = maximally distant) to a 0..1 similarity score.
+      const similarity = Math.max(0, Math.min(1, 1 - (dist / 2)));
+      if (!Number.isFinite(dist) || similarity < 0.85) return { match: null, engine: 'chromadb' };
       let title = String(top.id || '');
       try {
         const doc = String(top.document || '');

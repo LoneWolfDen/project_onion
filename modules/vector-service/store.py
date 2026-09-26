@@ -1,8 +1,11 @@
 import os
+import logging
 import chromadb
 from chromadb.config import Settings
 from typing import Dict, List, Any
 import hashlib
+
+logger = logging.getLogger(__name__)
 
 
 def is_private_card(card: Dict[str, Any]) -> bool:
@@ -46,9 +49,14 @@ class VectorStore:
         source = card.get("source", "")
         document_text = f"Title: {title}\nContent: {content}\nProvenance: {source}"
         # Fail Closed privacy mapping — "Private" => is_private True.
+        # Project_ReferenceID is the real, never-empty key — no hard-coded
+        # client/project fallback; warn (don't hard-code) if still missing.
+        project = card.get("project") or card.get("Project_ReferenceID") or card.get("project_name") or ""
+        if not project:
+            logger.warning("ingest_card: no project/Project_ReferenceID/project_name on card id=%s", card.get("id"))
         metadata = {
             "client": card.get("client", card.get("client_name", "Acme Corp")),
-            "project": card.get("project", card.get("project_name", "Apollo-123")),
+            "project": project,
             "author": card.get("author", card.get("contributor", "Walter")),
             "is_private": is_private_card(card),
         }
@@ -68,9 +76,24 @@ class VectorStore:
         self.collection.delete(ids=[str(card_id)])
         return str(card_id)
 
+    def list_cards(self, project: str) -> List[Dict]:
+        """Offline-first support: raw project listing (no query/embedding),
+        used by the PWA's guarded one-time sync to check vector freshness.
+        Defensive: empty/'default'/'all' means wildcard (debugging/demo only)
+        since Project_ReferenceID is never empty in normal flow."""
+        project = (project or "").strip()
+        if project.lower() in ("", "default", "all"):
+            results = self.collection.get()
+        else:
+            results = self.collection.get(where={"project": project})
+        return [{"id": i, "document": d, "metadata": m} for i, d, m in zip(results["ids"], results["documents"], results["metadatas"])]
+
     def query_vector_store(self, query_text: str, project: str, active_persona: str, top_k: int = 4) -> List[Dict]:
-        """Query with privacy filter: project AND (not private OR author match)."""
-        where = {"$and": [{"project": project}, {"$or": [{"is_private": False}, {"author": active_persona}]}]}
+        """Query with privacy filter: project AND (not private OR author match).
+        Defensive: empty/'default'/'all' project means wildcard (debug/demo)."""
+        project = (project or "").strip()
+        persona_filter = {"$or": [{"is_private": False}, {"author": active_persona}]}
+        where = persona_filter if project.lower() in ("", "default", "all") else {"$and": [{"project": project}, persona_filter]}
         results = self.collection.query(query_texts=[query_text], n_results=top_k, where=where)
         processed_results = []
         for i, document in enumerate(results['documents'][0]):

@@ -144,6 +144,13 @@ export function TimelineCard(props) {
   // Smart Append banner expand state (per-card) — independent of openProv so the
   // banner toggle reveals staged RAW/AI nodes even before the card is expanded.
   const [appendOpen, setAppendOpen] = window.React.useState({});
+  // P0 FIX (React #300 "Rendered fewer hooks than expected"): this MUST be a
+  // single component-level hook, keyed by card id — same pattern as appendOpen
+  // above. It was previously declared as window.React.useState(null) INSIDE
+  // moments.map() (one hook per rendered card). Any render where the number of
+  // visible cards changes (persona switch, project switch, note approval, etc.)
+  // changes the hook count between renders -> React error #300 -> white screen.
+  const [selectedNodeMap, setSelectedNodeMap] = window.React.useState({});
   window.React.useEffect(() => {
     if (!menuOpenId) return;
     const close = () => setMenuOpenId(null);
@@ -343,8 +350,18 @@ export function TimelineCard(props) {
     const menuOpen = menuOpenId && String(menuOpenId) === String(m.id);
     const isEditing = editingId && String(editingId) === String(m.id);
     const hasAppends = (() => { try { return Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0; } catch (e) { return false; } })();
-    // Task 2 & 4 state: inline node content viewer
-    const [selectedNode, setSelectedNode] = window.React.useState(null);
+    // Task 2 & 4 state: inline node content viewer.
+    // P0 FIX: derived from the component-level selectedNodeMap (keyed by card
+    // id) instead of a per-card useState — no hook is declared inside this
+    // .map() callback anymore.
+    const selectedNode = selectedNodeMap[m.id] || null;
+    const setSelectedNode = (n) => {
+      setSelectedNodeMap((prev) => {
+        const next = Object.assign({}, prev);
+        if (n) next[m.id] = n; else delete next[m.id];
+        return next;
+      });
+    };
     const toggleNode = (n) => {
       if (selectedNode && selectedNode.text === n.text) setSelectedNode(null);
       else setSelectedNode(n);

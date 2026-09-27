@@ -143,7 +143,11 @@ export function AppCenter(p) {
   const slotTimeline = Array.isArray(slotProps.timeline) ? slotProps.timeline : (Array.isArray(p.timeline) ? p.timeline : []);
   const slotNotes = Array.isArray(slotProps.notes) ? slotProps.notes : (Array.isArray(p.notes) ? p.notes : []);
   const centerProject = slotProps.project || active;
-  const centerScoped = slotTimeline.filter((t) => centerMatch(t, centerProject));
+  // P1 FIX (Issue #4 / Discovery B): exclude still-staged, unrefined cards
+  // (syncStatus 'pending_processing') from Key Moments too — mirrors the same
+  // fix in TimelineCard.js's canSeeCard(). These belong only in the
+  // Harvester's STAGED(N) counter until AI processing promotes them.
+  const centerScoped = slotTimeline.filter((t) => centerMatch(t, centerProject) && t && t.syncStatus !== 'pending_processing');
   const centerFiltered = centerScoped.filter((t) => !centerIsNoise(t));
   const centerTop5 = centerFiltered.slice().sort((a, b) => centerImpactOf(b) - centerImpactOf(a)).slice(0, 5);
   // Split Key Moments: Timeline Events (top 5 by impact) vs Informational Updates

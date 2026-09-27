@@ -10,6 +10,7 @@ import { AppRight } from './AppRight.js';
 import { genProjectReferenceID, projectIdEquals, stripLeadingZeros } from '../core/schema.js';
 import { askSmartAssistant } from '../core/AiClient.js';
 import { piiScreen } from '../core/PiiGate.js';
+import { PERSONAS } from '../constants/personas.js';
 const { useState, useEffect, useMemo } = window.React;
 const html = window.htm.bind(window.React.createElement);
 function fmtDate(iso) { try { const d = new Date(iso); const p = (n) => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear(); } catch (e) { return ''; } }
@@ -400,7 +401,7 @@ export function App() {
           <div className="flex items-center gap-1 bg-white rounded-full px-3 py-1 border border-[#bfdbfe] shadow-sm"><button onClick=${() => { setClient('ALL Clients'); setQ(''); setMode('project'); }} className="font-medium" title="Show all clients">All Clients</button>${active ? html`<span className="text-[#6b7280]">/</span><button onClick=${() => { setClient(active.client_name); setQ(''); setMode('client360'); setC360(active.client_name); }} className="font-medium" title="Filter to this client">${active.client_name}</button><span className="text-[#6b7280]">/</span><span className="font-semibold">${active.project_name}</span>` : (client !== 'ALL Clients' ? html`<span className="text-[#6b7280]">/</span><span className="font-medium">${client}</span>` : null)}</div>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-[11px] text-[#6b7280]">Persona</label><select value=${activePersona} onChange=${(e) => setActivePersona(e.target.value)} className="bg-white border border-[#bfdbfe] rounded-full px-3 py-1 text-[11px] font-medium" title="Switch persona view"><option>Brené</option><option>Malcolm</option><option>Walter</option><option>Daniel</option></select>
+          <label className="text-[11px] text-[#6b7280]">Persona</label><select value=${activePersona} onChange=${(e) => setActivePersona(e.target.value)} className="bg-white border border-[#bfdbfe] rounded-full px-3 py-1 text-[11px] font-medium" title="Switch persona view">${PERSONAS.map((p) => html`<option key=${p} value=${p}>${p}</option>`)}</select>
           <div className="text-[11px] text-[#6b7280] italic flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse inline-block"></span>Sync latest</div>
           <button onClick=${() => setGuideOpen(true)} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
         </div>

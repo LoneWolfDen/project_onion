@@ -207,13 +207,19 @@ export function HarvesterPanel(props) {
     const text = String(src.content || src.detail || src.synthesizedText || src.title || clip || '').trim();
     const screened = piiScreen(text);
     const persona = getPersona();
+    // P1 FIX (Issue #6 — BIG issue): title fallback previously sliced from
+    // the unscreened `text`, leaking PII into the title even when content
+    // was correctly redacted. If src.title is explicit it is trusted as-is
+    // (caller-provided/edited); the auto-derived fallback now uses the
+    // screened text.
+    const clipTitle = String(src.title || screened.text.slice(0, 80) || 'Bookmarklet scrape');
     return {
       id: String(src.id || ('clip-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 10000))),
       projectId: String(src.projectId || canonicalProjectId || ''),
       project_name: String(src.project_name || (project && project.project_name) || ''),
       Project_ReferenceID: String(src.Project_ReferenceID || (project && project.Project_ReferenceID) || ''),
       type: String(src.type || 'Scrape'),
-      title: String(src.title || text.slice(0, 80) || 'Bookmarklet scrape'),
+      title: clipTitle,
       source: String(src.source || 'Bookmarklet Clipboard'),
       timestamp: String(src.timestamp || 'Just now'),
       content: screened.text,
@@ -312,23 +318,23 @@ export function HarvesterPanel(props) {
     if (!v) { setParkMsg('Paste or type raw text first.'); return; }
     if (!project) { setParkMsg('Select a project first so Data Park knows the anchor.'); return; }
     const screened = piiScreen(v);
-    const stageTitle = v.slice(0, 80) || (kind + ' fragment');
+    // P1 FIX (Issue #6 — BIG issue): stagedTitle was previously sliced from
+    // the UNSCREENED raw `v`, so the body was redacted but the title still
+    // showed the whole unredacted text (e.g. an email address or phone
+    // number leaking through the title even though content was clean).
+    // Title now derives from the SAME screened text as content.
+    const stagedTitle = screened.text.slice(0, 80) || (kind + ' fragment');
     // Dedup gate: compute contentHash BEFORE staging so identical content
     // never lands in Data Park twice.
     let contentHash = '';
-    try { contentHash = await sha256Hex(String(stageTitle || '') + String(screened.text || '')); } catch (e) {}
-    //const isDup = readAllTimelineCards().some((c) => c && ((c.contentHash && contentHash && c.contentHash === contentHash) || (c.title === stageTitle && (c.content === screened.text || c.synthesizedText === screened.text))));
-    
-    
-    // TO - handle old cards with no hash:
+    try { contentHash = await sha256Hex(String(stagedTitle || '') + String(screened.text || '')); } catch (e) {}
+    // Issue B FIX (P1): same over-aggressive title-equality fallback removed
+    // here too, for consistency with onProcess() — two different fragments
+    // that happen to share the same (80-char truncated) title must NOT be
+    // treated as duplicates. contentHash = SHA256(title+content) is the only
+    // dedup signal now (exact-content match).
     const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []) || [];
-    const isDup = allCards.some((c) => {
-      if (!c) return false;
-      if (c.contentHash && contentHash && c.contentHash === contentHash) return true;
-      // Fallback for old cards - compare title AND content trimmed
-      return c.title === stageTitle && ( (c.content && c.content.trim() === screened.text.trim()) || (c.synthesizedText && c.synthesizedText.trim() === screened.text.trim()) );
-    });
-
+    const isDup = !!contentHash && allCards.some((c) => c && c.contentHash && c.contentHash === contentHash);
 
     if (isDup) { setParkMsg('Duplicate content detected — skipped.'); return; }
     const payload = {
@@ -337,7 +343,7 @@ export function HarvesterPanel(props) {
       project_name: project.project_name,
       Project_ReferenceID: project.Project_ReferenceID,
       type: kind,
-      title: stageTitle,
+      title: stagedTitle,
       source: 'Data Park Dropzone',
       timestamp: 'Just now',
       content: screened.text,
@@ -376,9 +382,18 @@ export function HarvesterPanel(props) {
       if (!mine.length) { setParkMsg('No pending_processing items — stage text to Data Park first.'); setProcessing(false); return; }
       const out = [];
       for (const item of mine) {
-        const text = item.content || item.detail || item.title || '';
+        const rawText = item.content || item.detail || item.title || '';
+        // P1 FIX (Issue #6 — BIG issue): defense-in-depth screening. Staged
+        // items normally already carry screened content/title (onStage now
+        // screens both), but items reaching this loop via the direct-fallback
+        // paths (bare rawText / staged prop / legacy pre-fix rows) may still
+        // carry unscreened text. Screen here too so title is NEVER derived
+        // from unredacted text, matching the body's redaction exactly.
+        const screenedItem = piiScreen(rawText);
+        const text = screenedItem.text;
         const ai = await processWithAI(text, item.type || kind);
-        const stagedTitle = item.title || (text || '').slice(0, 80) || ((item.type || kind) + ' fragment');
+        const rawTitleSource = item.title || (rawText || '').slice(0, 80) || ((item.type || kind) + ' fragment');
+        const stagedTitle = piiScreen(rawTitleSource).text.slice(0, 80) || ((item.type || kind) + ' fragment');
         // --- Harvester Smart Append (Entity Resolution, Dual-Mode) ---
         // Step 1: legacy pure-offline exact-match (ref IDs + topic tokens).
         // Step 2 (NEW): vector semantic overlap via POST :8006/ask behind the
@@ -422,17 +437,21 @@ export function HarvesterPanel(props) {
         // so identical content never lands in the queue/Data Park twice.
         let contentHash = '';
         try { contentHash = await sha256Hex(String(stagedTitle || '') + String(text || '')); } catch (e) {}
-        //const isDup = readAllTimelineCards().some((c) => c && ((c.contentHash && contentHash && c.contentHash === contentHash) || (c.title === stagedTitle && (c.content === text || c.synthesizedText === text))));
-                
-        // TO - handle old cards with no hash:
+        // Issue B FIX (P1): the previous title-equality fallback flagged any
+        // two DIFFERENT staged fragments that merely shared an (80-char
+        // truncated) title as duplicates of an already-committed card, even
+        // though their full content differed (e.g. four separate FW-REQ-4471
+        // updates: gentle reminder / follow-up / signed PO awaited / approved
+        // $25k). That caused "AI parsing complete: 0 card(s)" for genuinely
+        // new content. It also referenced an out-of-scope `screened` variable
+        // (only defined in onStage/buildClipboardPayload, not here), which
+        // would throw a ReferenceError whenever the title-match branch fired.
+        // Dedup now relies ONLY on contentHash = SHA256(title+content) — an
+        // exact-content match — never on title-only equality against
+        // already-committed cards.
         const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []) || [];
-        const isDup = allCards.some((c) => {
-          if (!c) return false;
-          if (c.contentHash && contentHash && c.contentHash === contentHash) return true;
-          // Fallback for old cards - compare title AND content trimmed
-          return c.title === stageTitle && ( (c.content && c.content.trim() === screened.text.trim()) || (c.synthesizedText && c.synthesizedText.trim() === screened.text.trim()) );
-        });
-        
+        const isDup = !!contentHash && allCards.some((c) => c && c.contentHash && c.contentHash === contentHash);
+
         if (isDup) { setParkMsg('Duplicate content detected — skipped.'); continue; }
         out.push({
           sourceId: item.id,
@@ -443,7 +462,7 @@ export function HarvesterPanel(props) {
           source: item.source || (ai && ai.source) || 'Harvester',
           timestamp: item.timestamp || (ai && ai.timestamp) || 'Just now',
           content: text,
-          piiStatus: (ai && ai.piiStatus) || item.piiStatus || 'Clean',
+          piiStatus: screenedItem.flag !== 'Clean' ? screenedItem.flag : ((ai && ai.piiStatus) || item.piiStatus || 'Clean'),
           title: stagedTitle,
           synthesizedText: (ai && ai.synthesizedText) || '',
           tags: (ai && ai.tags) || [],

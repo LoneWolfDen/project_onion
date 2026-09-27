@@ -257,6 +257,15 @@ export function TimelineCard(props) {
   const meNorm = String(activePersona || '').trim().toLowerCase();
   const canSeeCard = (m) => {
     try {
+      // P1 FIX (Issue #4 / Discovery B): a card that is still staged and
+      // awaiting AI refinement (syncStatus 'pending_processing') must NEVER
+      // render as a real Status Card in the main feed — it is raw, unrefined
+      // Data Park input. It should only be reflected in the Harvester's
+      // STAGED(N) counter until "Run AI Processing Engine" promotes it (via
+      // markProcessed -> syncStatus 'pending_upload') or it is consumed by a
+      // Smart Append. This filter runs before the privacy gate so it applies
+      // regardless of the card's privacy value.
+      if (m && m.syncStatus === 'pending_processing') return false;
       if (!isPrivateCard(m)) return true;
       const me = String(activePersona || '').trim().toLowerCase();
       if (!me) return false;
@@ -341,7 +350,27 @@ export function TimelineCard(props) {
     const structEntries = (m && m.structured && typeof m.structured === 'object') ? Object.keys(m.structured).map(function (k) { return [k, String(m.structured[k])]; }) : [];
     const effPii = String(m.piiStatus || d.flag || 'Clean');
     const isApproved = effPii === 'Approved' || effPii === 'Clean' || (props.approved && props.approved.has && props.approved.has(m.id));
-    const isOwner = (() => { try { const o = String(m.author || m.contributor || '').trim().toLowerCase(); const me = String(props.activePersona || '').trim().toLowerCase(); return !!o && o === me; } catch (e) { return false; } })();
+    // P1 FIX (Issue #3): isOwner previously only matched the card's TOP-LEVEL
+    // author/contributor. If Walter smart-appends a private pending-review
+    // update onto a card originally authored by Daniel, Walter could see the
+    // card (canSeeCard already does the wider participant check) but could
+    // NOT see the Approve CTA or his own staged node content, because isOwner
+    // said "no" for him. Widen isOwner to the same participant check used by
+    // canSeeCard: top-level author/contributor OR any nodes[].author/
+    // contributor OR any pendingAppends[].author/contributor.
+    const isOwner = (() => {
+      try {
+        const me = String(props.activePersona || '').trim().toLowerCase();
+        if (!me) return false;
+        const o = String(m.author || m.contributor || '').trim().toLowerCase();
+        if (o && o === me) return true;
+        const nodes = Array.isArray(m.nodes) ? m.nodes : [];
+        if (nodes.some((n) => String((n && (n.author || n.contributor)) || '').trim().toLowerCase() === me)) return true;
+        const appends = Array.isArray(m.pendingAppends) ? m.pendingAppends : [];
+        if (appends.some((a) => String((a && (a.author || a.contributor)) || '').trim().toLowerCase() === me)) return true;
+        return false;
+      } catch (e) { return false; }
+    })();
     const confText = (m && m.confidence) || ("Medium — Fused from Data Park Dropzone · Impact " + ((m && m.impactScore) || 0.7));
     const hasPendingAppends = isOwner && (/private/i.test(JSON.stringify(m.nodes || [])) || /private/i.test(JSON.stringify(m.timeline || [])) || (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some(function (n) { return n && n.stagedAppend; })));
     const approveCta = hasPendingAppends ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve Updates & Share</button>` : (((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved) ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve redacted share</button>` : html`<button type="button" disabled className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Approved for Team Share</button>`);

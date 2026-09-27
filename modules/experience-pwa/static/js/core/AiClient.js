@@ -16,12 +16,12 @@ function mockResult(text, type) {
   const impactScore = /po|invoice|risk|overrun|milestone|payroll/.test(lower) ? 0.9 : 0.35;
   const isInvoice = /po|invoice|invoic|payment|billing/.test(lower);
   const isRisk = /risk|raid|overrun|delay|blocker|blocked/.test(lower);
+  // BUG 2 fix: previously appended a static marketing suffix ("AI Synthesis
+  // (Type): ... — Key entities preserved; noise stripped; next action
+  // inferred for timeline.") to every card regardless of content. Return the
+  // clean synthesized text only — no boilerplate wrapper.
   return {
-    synthesizedText:
-      'AI Synthesis (' + String(type || 'general') + '): ' +
-      (clean || 'No input provided.') +
-      (clean && clean.length >= 220 ? '…' : '') +
-      ' — Key entities preserved; noise stripped; next action inferred for timeline.',
+    synthesizedText: (clean || 'No input provided.') + (clean && clean.length >= 220 ? '…' : ''),
     tags,
     impactScore,
     mergeHint: isInvoice

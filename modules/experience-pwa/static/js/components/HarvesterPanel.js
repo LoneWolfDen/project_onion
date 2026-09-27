@@ -200,11 +200,32 @@ export function HarvesterPanel(props) {
   const canonicalProjectId = project ? String(project.project_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-') : '';
   // P2 Fix (Backlog #3/#15) — STAGED(N): count timeline rows for this project
   // still sitting in 'pending_processing' (staged, not yet AI-processed).
-  const stagedCount = (() => {
+  // BUG 5 fix: also expose the full row list (title/time/hash/preview) so a
+  // "Data Park staged (N) — pending before AI" panel can render below the
+  // Stage/Run buttons, mirroring what the Bookmarklet's "Staged" list already
+  // shows, plus per-row delete and a "Clear all" action.
+  const stagedRows = (() => {
     try {
-      return readAllTimelineCards().filter((t) => t && t.syncStatus === 'pending_processing' && (!project || t.project_name === project.project_name || t.projectId === canonicalProjectId)).length;
-    } catch (e) { return 0; }
+      return readAllTimelineCards().filter((t) => t && t.syncStatus === 'pending_processing' && (!project || t.project_name === project.project_name || t.projectId === canonicalProjectId));
+    } catch (e) { return []; }
   })();
+  const stagedCount = stagedRows.length;
+  const onDeleteStaged = async (id) => {
+    try {
+      const api = dbApi();
+      if (api && api.deleteCard) await api.deleteCard(String(id));
+      setParkMsg('Removed staged item.');
+    } catch (e) { setParkMsg('Delete failed: ' + String((e && e.message) || e)); }
+  };
+  const onClearStaged = async () => {
+    try {
+      const api = dbApi();
+      if (api && api.clearPendingProcessing) {
+        const r = await api.clearPendingProcessing(project && project.project_name);
+        setParkMsg('Cleared ' + ((r && r.removed) || 0) + ' staged item(s).');
+      }
+    } catch (e) { setParkMsg('Clear failed: ' + String((e && e.message) || e)); }
+  };
   // Bookmarklet clipboard wiring (offline-resilient, same pending_processing flow as Data Park):
   // - Stage clipboard: push parsed clipboard JSON (or raw text) into pending_processing
   // - Run Harvester & Refine: processWithAI(clipboardText) -> parsedReviewQueue
@@ -350,7 +371,15 @@ export function HarvesterPanel(props) {
     // that happen to share the same (80-char truncated) title must NOT be
     // treated as duplicates. contentHash = SHA256(title+content) is the only
     // dedup signal now (exact-content match).
-    const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []) || [];
+    // BUG 1 fix: readAllTimelineCards() returns ALL timeline rows, including
+    // any item still sitting in 'pending_processing' — the freshly-staged
+    // item itself is not in there yet (stageToDataPark hasn't run), but any
+    // OTHER item staged moments earlier is, and comparing against those
+    // (which are not "committed" content) is not the intent of this dedup
+    // gate. Exclude pending_processing rows from the comparison set so only
+    // already-committed cards are checked (this is also what makes onStage
+    // and onProcess consistent with each other).
+    const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []).filter((c) => c && c.syncStatus !== 'pending_processing') || [];
     const isDup = !!contentHash && allCards.some((c) => c && c.contentHash && c.contentHash === contentHash);
 
     if (isDup) { setParkMsg('Duplicate content detected — skipped.'); return; }
@@ -466,7 +495,16 @@ export function HarvesterPanel(props) {
         // Dedup now relies ONLY on contentHash = SHA256(title+content) — an
         // exact-content match — never on title-only equality against
         // already-committed cards.
-        const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []) || [];
+        // BUG 1 fix (CRITICAL): the item currently being processed is ITSELF
+        // still 'pending_processing' at this point in the loop (Run AI hasn't
+        // marked it processed yet), so without excluding pending_processing
+        // rows here, readAllTimelineCards() includes the item's own row and
+        // its contentHash matches itself — a guaranteed self-match false
+        // positive that skips EVERY staged item, producing the observed
+        // "AI parsing complete: 0 card(s) ready for review" even though the
+        // content is genuinely new. Exclude pending_processing so only
+        // already-committed cards are compared.
+        const allCards = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []).filter((c) => c && c.syncStatus !== 'pending_processing') || [];
         const isDup = !!contentHash && allCards.some((c) => c && c.contentHash && c.contentHash === contentHash);
 
         if (isDup) { setParkMsg('Duplicate content detected — skipped.'); continue; }
@@ -681,6 +719,27 @@ export function HarvesterPanel(props) {
             <span title="Cards staged in Data Park awaiting AI processing" style=${{ fontSize: '11px', fontWeight: 700, color: stagedCount > 0 ? '#92400E' : '#065F46', background: stagedCount > 0 ? '#FFF7ED' : '#ECFDF5', border: '1px solid ' + (stagedCount > 0 ? '#FDBA74' : '#A7F3D0'), borderRadius: '9999px', padding: '4px 10px' }}>STAGED (${stagedCount})</span>
           </div>
           <div style=${{ fontSize: '11px', minHeight: '16px', marginTop: '6px', fontStyle: 'italic', color: '#1e40af' }}>${parkMsg}</div>
+          ${stagedCount > 0 ? html`<div style=${{ marginTop: '8px', background: '#fff', border: '1px solid #FDBA74', borderRadius: '8px', padding: '6px 8px' }}>
+            <div style=${{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style=${{ fontSize: '10px', fontWeight: 700, color: '#92400E' }}>Data Park staged (${stagedCount}) — pending before AI</span>
+              <button type="button" onClick=${onClearStaged} style=${{ marginLeft: 'auto', fontSize: '10px', color: '#991B1B', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Clear all</button>
+            </div>
+            <div style=${{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              ${stagedRows.map((s) => {
+                const hash8 = String(s.contentHash || '').slice(0, 8) || '—';
+                let timeLabel = '—';
+                try { const d = new Date(s.created_at); if (!isNaN(d.getTime())) timeLabel = d.toLocaleTimeString(); } catch (e) {}
+                const preview = String(s.content || s.detail || s.title || '').slice(0, 60);
+                return html`<div key=${s.id} style=${{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', background: '#FFF7ED', border: '1px solid #FDE1C7', borderRadius: '6px', padding: '4px 6px' }}>
+                  <span style=${{ fontWeight: 700, color: '#7C2D12', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title=${s.title}>${s.title || 'Untitled'}</span>
+                  <span style=${{ color: '#92400E' }}>${timeLabel}</span>
+                  <span style=${{ color: '#92400E', fontFamily: 'monospace' }} title="Content hash">${hash8}</span>
+                  <span style=${{ color: '#6b7280', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title=${preview}>${preview}${preview.length >= 60 ? '…' : ''}</span>
+                  <button type="button" title="Remove staged item" onClick=${() => onDeleteStaged(s.id)} style=${{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+                </div>`;
+              })}
+            </div>
+          </div>` : null}
         </div>
         ${Array.isArray(parsedReviewQueue) && parsedReviewQueue.length ? html`<div className="hcp-card" style=${{ borderColor: '#c4b5fd', background: '#f5f3ff' }}>
           <div className="hcp-label">Contributor Parser Review (${parsedReviewQueue.length}) — review, edit, set privacy, then approve</div>

@@ -263,6 +263,21 @@ class FailoverDB {
     const s = readLocal();
     return (s.timeline || []).filter((t) => t && t.syncStatus === 'pending_processing');
   }
+  // BUG 5 fix: bulk "Clear all" for the Data Park staged-list UI — removes
+  // every row still sitting in 'pending_processing' (optionally scoped to a
+  // single project) without touching already-committed cards.
+  async clearPendingProcessing(projectName) {
+    const s = readLocal();
+    const before = Array.isArray(s.timeline) ? s.timeline.length : 0;
+    s.timeline = (s.timeline || []).filter((t) => {
+      if (!t || t.syncStatus !== 'pending_processing') return true;
+      if (projectName && t.project_name !== projectName) return true;
+      return false;
+    });
+    const removed = before - s.timeline.length;
+    if (removed > 0) writeLocal(s);
+    return { removed };
+  }
   async markProcessed(id, aiResult) {
     const s = readLocal();
     const t = (s.timeline || []).find((x) => x && String(x.id) === String(id));
@@ -308,6 +323,32 @@ class FailoverDB {
     // FIXED: Allow private pending-review nodes even if parent is Team Shared
     // Old code forced effPrivacy = Team Shared when parent was shared, so amber never showed
     const effPrivacy = (meta && meta.privacy) ? meta.privacy : 'My Notes (Private)';
+    // BUG 3 fix: Review & Merge idempotency. Clicking "Review & Merge" twice
+    // (or re-processing the same staged item) previously pushed a brand new
+    // RAW/AI node pair every time, even when the exact same RAW text was
+    // already merged into this card — producing duplicate staged pills
+    // (RAW/AI x2, x3...) and an ever-growing "Smart Append: N staged
+    // update(s)" banner. Detect an existing node with the same text BEFORE
+    // pushing anything; if found, this is a repeat click — just clear the
+    // now-redundant staged source row + matching pendingAppends entry (if
+    // any) and return the card unchanged, without appending duplicate nodes.
+    try {
+      const existingTexts = new Set((target.nodes || []).map((n) => String((n && (n.fullText || n.text)) || '').slice(0, 200)));
+      const rawTxt = String((stagedRawNode && stagedRawNode.text) || '').slice(0, 200);
+      if (rawTxt && existingTexts.has(rawTxt)) {
+        const stagedId = meta && meta.stagedId;
+        if (stagedId) {
+          const si = tlList.findIndex((x) => x && String(x.id) === String(stagedId) && x.syncStatus === 'pending_processing');
+          if (si >= 0) tlList.splice(si, 1);
+        }
+        if (Array.isArray(target.pendingAppends)) {
+          target.pendingAppends = target.pendingAppends.filter((p) => String((p && p.stagedId) || '') !== String(stagedId || '') || !stagedId);
+        }
+        target.updated_at = nowIso;
+        writeLocal(s);
+        return target;
+      }
+    } catch (e) {}
     const pushNode = (n) => {
       if (!n || (!n.text && !n.kind)) return;
       target.nodes.push({
@@ -338,6 +379,10 @@ class FailoverDB {
       source: (meta && meta.source) || '',
       reasons: (meta && meta.reasons) || [],
       score: (meta && typeof meta.score === 'number') ? meta.score : 0,
+      // BUG 3 fix: carry the source staged-row id so the idempotency guard
+      // above can find + drop the matching pendingAppends entry on a repeat
+      // Review & Merge click without re-appending duplicate nodes.
+      stagedId: (meta && meta.stagedId) || '',
     });
     target.updated_at = nowIso;
     target.syncStatus = 'pending_upload';

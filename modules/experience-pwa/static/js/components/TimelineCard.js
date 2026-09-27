@@ -211,9 +211,23 @@ function buildConfidenceText(m, chips, tier) {
 function similarToPlaybookBanner(m, clientName) {
   try {
     if (!m || typeof m !== 'object') return null;
-    const list = Array.isArray(m.pendingAppends) ? m.pendingAppends : null;
-    if (!list || !list.length) return null;
-    const last = list[list.length - 1];
+    const pendingList = Array.isArray(m.pendingAppends) ? m.pendingAppends : [];
+    const stagedNodes = Array.isArray(m.nodes) ? m.nodes.filter((n) => n && n.stagedAppend) : [];
+    const hasPending = pendingList.length > 0;
+    // BUG 3 fix: previously this only ever checked pendingAppends.length, so
+    // once merged (pendingAppends cleared by the approve flow but the
+    // stagedAppend RAW/AI node pair remains on the card) the banner either
+    // vanished with no confirmation, or — if a stale re-click re-triggered a
+    // merge — kept showing "Review & Merge" forever, inviting duplicate
+    // clicks/duplicate nodes. Now distinguish "still pending" (purple, CTA)
+    // from "already merged" (green, no CTA) so a second click can't re-fire.
+    const isMerged = !hasPending && stagedNodes.length > 0;
+    if (!hasPending && !isMerged) return null;
+    if (isMerged) {
+      const mergedCount = Math.max(1, Math.round(stagedNodes.length / 2));
+      return html`<div className="mt-2 w-full px-2 py-1 rounded-[8px] bg-[#F0FDF4] border border-[#BBF7D0] text-[10px] text-[#065F46]">✅ Merged — ${mergedCount} update(s) merged as private / pending-review nodes</div>`;
+    }
+    const last = pendingList[pendingList.length - 1];
     const reasons = Array.isArray(last && last.reasons) ? last.reasons : [];
     const reasonText = reasons.length ? reasons.slice(0, 2).join(' · ') : 'extension details overlap';
     const label = clientName ? ('Similar to client playbook in ' + clientName) : 'Similar to client playbook';

@@ -1,6 +1,6 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
-import { calcConfidence } from '../core/confidence.js';
+import { calcConfidence, confidenceTier } from '../core/confidence.js';
 import { piiScreen } from '../core/PiiGate.js';
 const html = window.htm.bind(window.React.createElement);
 export function matchRef(t, p) {
@@ -48,6 +48,21 @@ function iconForSource(src) {
   if (s.indexOf('gdp') >= 0 || s.indexOf('status') >= 0) return '📈';
   return '📄';
 }
+// P2 Fix (Backlog #9 / Q5) — Pills cumulative AI text. RAW pills keep their
+// own fullText unchanged; AI pills show every AI node's text UP TO AND
+// INCLUDING that pill's position, joined with line breaks, so the reader can
+// see how the AI synthesis evolved (and spot/correct hallucinations) instead
+// of only the latest fragment.
+function getCumulativeAiText(nodes, idx) {
+  try {
+    if (!Array.isArray(nodes)) return '';
+    return nodes.slice(0, idx + 1)
+      .filter((n) => String((n && n.kind) || '').toUpperCase() === 'AI')
+      .map((n) => String((n && n.text) || '').trim())
+      .filter(Boolean)
+      .join('\n\n');
+  } catch (e) { return ''; }
+}
 function miniTimelineFor(m) {
   if (m && Array.isArray(m.timeline) && m.timeline.length) return m.timeline.slice(0, 10).map((t) => ({
     kind: String((t && t.kind) || 'EV').toUpperCase(),
@@ -57,6 +72,22 @@ function miniTimelineFor(m) {
     at: String((t && (t.at || t.timestamp || t.created_at)) || m.timestamp || 'Just now'),
     stagedAppend: !!(t && t.stagedAppend),
   }));
+  if (m && Array.isArray(m.nodes) && m.nodes.length) {
+    const nodesArr = m.nodes;
+    return nodesArr.slice(0, 10).map((n, i) => {
+      const kind = String((n && n.kind) || 'EV').toUpperCase();
+      const ownText = String((n && n.text) || '');
+      const fullText = kind === 'AI' ? (getCumulativeAiText(nodesArr, i) || ownText) : ownText;
+      return {
+        kind,
+        label: ownText.slice(0, 28) || kind,
+        fullText,
+        author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'System'),
+        at: String((n && (n.at || n.appended_at || n.timestamp)) || m.timestamp || 'Just now'),
+        stagedAppend: !!(n && n.stagedAppend),
+      };
+    });
+  }
   if (m && Array.isArray(m.nodes) && m.nodes.length) return m.nodes.slice(0, 10).map((n) => ({
     kind: String((n && n.kind) || 'EV').toUpperCase(),
     label: String((n && n.text) || (n && n.kind) || '').slice(0, 28) || String((n && n.kind) || ''),
@@ -126,6 +157,75 @@ function sourceListFor(m) {
   if (m && m.type && m.source && String(m.type) !== String(m.source)) out.push(String(m.type));
   (Array.isArray(m && m.tags) ? m.tags : []).forEach((t) => { const v = String(t || '').trim(); if (v && out.indexOf(v) < 0) out.push(v); });
   return out.filter(Boolean).slice(0, 6);
+}
+// P2 Fix (Backlog #10b / Q3) — Full Provenance multiple links. mockSeed has
+// no provenance[] array and every card carries exactly one source/type
+// string, so a single-link "Provenance History" was all that could ever
+// render. Rebuild REAL multi-link provenance from the card's own nodes[]:
+// each RAW/AI node is a distinct provenance entry tagged with its own
+// source/author/at (falling back to the card-level source/type/author when a
+// node doesn't carry its own), so a card with several harvested fragments
+// shows several lines (e.g. 2 emails, 3 RAID rows) instead of just one.
+function provenanceEntriesFor(m) {
+  try {
+    const nodes = Array.isArray(m && m.nodes) ? m.nodes : [];
+    if (!nodes.length) return [];
+    return nodes.map((n, i) => {
+      const label = String((n && n.source) || (m && m.source) || (m && m.type) || 'Timeline');
+      return {
+        key: 'prov-' + i + '-' + String((n && n.kind) || ''),
+        label,
+        kind: String((n && n.kind) || 'EV').toUpperCase(),
+        author: String((n && (n.author || n.contributor)) || (m && (m.author || m.contributor)) || 'System'),
+        at: String((n && (n.at || n.appended_at || n.timestamp)) || (m && m.timestamp) || 'Just now'),
+        snippet: String((n && n.text) || '').slice(0, 90),
+      };
+    });
+  } catch (e) { return []; }
+}
+// P2 Fix (Backlog #7 / Q7) — Model confidence detailed sentence was dead
+// code: confText/structEntries were computed but never referenced in the
+// returned JSX. Build a real sentence from the card's own mergeHint +
+// structured fields + distinct source chips, e.g. "High — 3 sources fused,
+// validated via Milestone: Sprint 1, Amount: $45k. Sources: Email + Teams".
+function buildConfidenceText(m, chips, tier) {
+  try {
+    const structured = (m && m.structured && typeof m.structured === 'object') ? m.structured : null;
+    const structBits = structured ? Object.keys(structured).map((k) => k + ': ' + String(structured[k])).join(', ') : '';
+    const sourceCount = Math.max(1, (chips || []).length);
+    const sourcesLabel = (chips && chips.length) ? chips.slice(0, 4).join(' + ') : String((m && (m.source || m.type)) || 'Timeline');
+    const mergeHint = (m && m.mergeHint) ? String(m.mergeHint) : '';
+    let sentence = String(tier || 'Medium') + ' — ' + sourceCount + ' source' + (sourceCount === 1 ? '' : 's') + ' fused' + (structBits ? ', validated via ' + structBits : '') + '.';
+    sentence += ' Sources: ' + sourcesLabel;
+    if (mergeHint) sentence += ' — ' + mergeHint;
+    return sentence;
+  } catch (e) { return String((m && m.confidence) || 'Medium — fused from cross-referenced sources.'); }
+}
+// P2 Fix (Backlog #10a / Q2) — "Similar to client playbook" purple banner.
+// Previously findSmartAppendMatch/buildSmartAppendFor logic only surfaced an
+// amber banner inside the Harvester review queue; a committed card that WAS
+// an append target never showed anything on the main feed. Reuse the same
+// pendingAppends signal (Option A from the assessment: only cards with an
+// active append history) but render a distinct purple variant with a
+// "Review & Merge" CTA that scrolls to the Harvester slide-out.
+function similarToPlaybookBanner(m, clientName) {
+  try {
+    if (!m || typeof m !== 'object') return null;
+    const list = Array.isArray(m.pendingAppends) ? m.pendingAppends : null;
+    if (!list || !list.length) return null;
+    const last = list[list.length - 1];
+    const reasons = Array.isArray(last && last.reasons) ? last.reasons : [];
+    const reasonText = reasons.length ? reasons.slice(0, 2).join(' · ') : 'extension details overlap';
+    const label = clientName ? ('Similar to client playbook in ' + clientName) : 'Similar to client playbook';
+    const onReviewMerge = (e) => {
+      try { if (e && e.stopPropagation) e.stopPropagation(); if (e && e.preventDefault) e.preventDefault(); } catch (e2) {}
+      try {
+        const el = document.getElementById('harvester-control-panel');
+        if (el) { el.classList.add('open'); if (el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      } catch (e3) {}
+    };
+    return html`<button type="button" onClick=${onReviewMerge} title="Review the matched Harvester staging item" className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#F5F3FF] border border-[#C4B5FD] text-[10px] text-[#5B21B6] cursor-pointer hover:bg-[#EDE9FE]">⚡ ${label} — ${reasonText} <span className="ml-1 font-bold underline">Review & Merge</span></button>`;
+  } catch (e) { return null; }
 }
 export function TimelineCard(props) {
   const project = props.project;
@@ -280,12 +380,38 @@ export function TimelineCard(props) {
       return false;
     } catch (e) { return true; }
   };
+  // P2 Fix (Backlog #2/#8) — Confidence was always 63% because calcConfidence
+  // was fed a SYNTHETIC single-origin array ([{origin: m.source||m.type||'Timeline'}])
+  // and a hardcoded sourceRowCount of 1, no matter how much real evidence the
+  // card actually had. Feed calcConfidence REAL evidence instead: every
+  // distinct provenance chip (sourceListFor: source/type/tags) counts as a
+  // distinct "origin", and the row count reflects the actual cross-referenced
+  // node + pendingAppends volume, so cards genuinely vary (71%, 84%, 92%...).
   const allMoments = timeline.filter((t) => matchRef(t, project)).filter(canSeeCard).map((m) => {
     const s = piiScreen(m.synthesizedText || m.content || m.detail || '');
-    const pct = calcConfidence([{ origin: m.source || m.type || 'Timeline' }], 1);
+    const evidenceChips = sourceListFor(m);
+    const evidence = (evidenceChips.length ? evidenceChips : ['Timeline']).map((c) => ({ origin: c }));
+    const nodeCount = Array.isArray(m.nodes) ? m.nodes.length : 0;
+    const provenanceCount = Array.isArray(m.pendingAppends) ? m.pendingAppends.length : 0;
+    const sourceRowCount = Math.max(1, nodeCount + provenanceCount);
+    const pct = calcConfidence(evidence, sourceRowCount);
     return { raw: m, clean: s.text, flag: s.flag, pct };
   });
-  const moments = allMoments.filter((d) => !isNoise(d.raw)).slice(0, 10);
+  // P2 Fix (Backlog #13/#12) — Sort order: modified/appended-to cards must
+  // bubble to the top (updated_at desc), with any card carrying an active
+  // pendingAppends (amber "staged update" banner) pinned above everything
+  // else so a reviewer never misses a Smart Append waiting for approval.
+  const sortedMoments = allMoments.slice().sort((a, b) => {
+    const aPending = Array.isArray(a.raw && a.raw.pendingAppends) ? a.raw.pendingAppends.length : 0;
+    const bPending = Array.isArray(b.raw && b.raw.pendingAppends) ? b.raw.pendingAppends.length : 0;
+    const aHasPending = aPending > 0 ? 1 : 0;
+    const bHasPending = bPending > 0 ? 1 : 0;
+    if (aHasPending !== bHasPending) return bHasPending - aHasPending;
+    const aT = new Date((a.raw && (a.raw.updated_at || a.raw.created_at)) || 0).getTime() || 0;
+    const bT = new Date((b.raw && (b.raw.updated_at || b.raw.created_at)) || 0).getTime() || 0;
+    return bT - aT;
+  });
+  const moments = sortedMoments.filter((d) => !isNoise(d.raw)).slice(0, 10);
   const projNotes = notes.filter((n) => matchRef(n, project)).filter((n) => {
     // Notes UI — same spec-exact gate: shared/unknown renders; private renders
     // iff owner (author||contributor, case-insensitive) matches viewer.
@@ -305,24 +431,30 @@ export function TimelineCard(props) {
   // Task 3: pending vector count — prefer LIVE props (re-rendered on every
   // onion:db-update via setSyncTick above); fall back to localStorage read so the
   // header is correct even before the first subscribed re-render.
+  // P2 Fix (Backlog #11 / Q1) — count the SAME local syncStatus field the
+  // Force Sync button ("onForceSyncTc" -> OnionDB.forceSync()) actually flips
+  // (pending_upload / pending_review), not vectorSyncStatus (a separate,
+  // unrelated pipeline). Otherwise the counter can show "(0)" forever even
+  // with real unsynced cards, or never reach 0 after a successful sync.
   const pendingVecLive = (() => {
     try {
       const fromProps = [].concat(Array.isArray(notes) ? notes : [], Array.isArray(moments) ? moments : []);
-      if (fromProps.length) return fromProps.filter((x) => x && x.vectorSyncStatus === 'pending').length;
+      if (fromProps.length) return fromProps.filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
     } catch (e) {}
     try {
       const raw = (typeof localStorage !== 'undefined' && localStorage.getItem('onion_db_state')) || '';
       const st = raw ? JSON.parse(raw) : null;
       const all = [].concat((st && st.notes) || [], (st && st.timeline) || []);
-      return all.filter((x) => x && x.vectorSyncStatus === 'pending').length;
+      return all.filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
     } catch (e) { return 0; }
   })();
+  const syncLabelTc = pendingVecLive > 0 ? ('Force Sync ☁️ (' + pendingVecLive + ')') : 'All synced ✅';
   const tcPrivRows = projNotes.filter((d) => isPrivTc(d)).map((d) => tcNoteRow(d, true));
   const tcTeamRows = projNotes.filter((d) => !isPrivTc(d)).map((d) => tcNoteRow(d, false));
   const renderYourNotesFallback = () => {
     if (props.hideYourNotes) return null;
     return html`<div className="rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4">
-      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2"><span title=${'Active persona: ' + String(activePersona || '')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold" style=${{ width: '24px', height: '24px', fontSize: '12px' }}>${String(activePersona || 'B').slice(0, 1).toUpperCase()}</span>YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">Force Sync ☁️ (${pendingVecLive})</button></h3></div>
+      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2"><span title=${'Active persona: ' + String(activePersona || '')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold" style=${{ width: '24px', height: '24px', fontSize: '12px' }}>${String(activePersona || 'B').slice(0, 1).toUpperCase()}</span>YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">${syncLabelTc}</button></h3></div>
 
       ${notesOpen ? html`<div className="mt-3 space-y-3">
         <div className="flex gap-2 flex-wrap"><input value=${draft} onInput=${(e) => setDraft(e.target.value)} placeholder="Add a note..." className="flex-1 bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" />
@@ -371,7 +503,13 @@ export function TimelineCard(props) {
         return false;
       } catch (e) { return false; }
     })();
-    const confText = (m && m.confidence) || ("Medium — Fused from Data Park Dropzone · Impact " + ((m && m.impactScore) || 0.7));
+    // P2 Fix (Backlog #7/#8) — confText was dead code computed from a static
+    // literal and never rendered. Now derived from the SAME real confidence
+    // tier (d.pct via calcConfidence real evidence above) + the card's own
+    // mergeHint/structured/chips, and actually wired into the floor below.
+    const confTier = confidenceTier(d.pct);
+    const confText = buildConfidenceText(m, chips, confTier);
+    const provenanceEntries = provenanceEntriesFor(m);
     const hasPendingAppends = isOwner && (/private/i.test(JSON.stringify(m.nodes || [])) || /private/i.test(JSON.stringify(m.timeline || [])) || (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some(function (n) { return n && n.stagedAppend; })));
     const approveCta = hasPendingAppends ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve Updates & Share</button>` : (((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved) ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve redacted share</button>` : html`<button type="button" disabled className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Approved for Team Share</button>`);
     const open = openProv.has(m.id) || (focusId && String(focusId) === String(m.id));
@@ -449,11 +587,12 @@ export function TimelineCard(props) {
       ${timelineStrip(m, isOwner, selectedNode, toggleNode)}
       ${selectedNode ? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${selectedNode.kind} Node Content</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'System'} • ${selectedNode.at || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
       ${pendingAppendsBanner(m, appendsOpen, toggleAppends)}
+      ${similarToPlaybookBanner(m, m.client_name)}
       ${hasAppends && (!!appendOpen[m.id] || !!open) ? appendedNodesBlock(m, isOwner) : null}
       ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B] underline cursor-pointer">${c}</button>`)}</div>` : null}
       ${open ? html`<div className="mt-3 bg-[#f8fafc] rounded-[12px] p-3 space-y-2">
         ${hasAppends && (!!appendOpen[m.id] || !!open) && isOwner ? appendedNodesBlock(m, isOwner) : null}
-        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Provenance History</div><div className="max-h-32 overflow-y-auto no-scrollbar space-y-1">${chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title}</span></div>`)}</div></div>
+        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Full Provenance — ${provenanceEntries.length || chips.length} link(s)</div><div className="max-h-40 overflow-y-auto no-scrollbar space-y-1">${(provenanceEntries.length ? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title}</span></div>`))}</div></div>
         ${approveCta}
       </div>` : null}
       <div className="mt-3 pt-2 border-t border-[#E6EAF2] flex items-center justify-between gap-2">
@@ -469,12 +608,15 @@ export function TimelineCard(props) {
           <span>•</span>
           <div className="flex items-center gap-1">${chips.map((c) => html`<span key=${c} title=${c} className="leading-none text-[12px]">${iconForSource(c)}</span>`)}</div>
           <span>•</span>
-          <span>${d.pct}% Confidence</span>
+          <span>${d.pct}% Confidence (${confTier})</span>
           <span>•</span>
           <span>PII: ${effPii}</span>
           <span>•</span>
           <span>${createdDate}</span>
         </div>
+      </div>
+      <div className="mt-2 p-2.5 rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF2] text-[11px] text-[#334155]">
+        <span className="font-semibold text-[#1E293B]">Model confidence:</span> ${confText}
       </div>
     </div>`;
   });

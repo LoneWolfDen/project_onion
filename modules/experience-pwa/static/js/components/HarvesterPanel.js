@@ -160,6 +160,16 @@ export function HarvesterPanel(props) {
   const [processing, setProcessing] = window.React.useState(false);
   const [parsedReviewQueue, setParsedReviewQueue] = window.React.useState([]);
   const [approving, setApproving] = window.React.useState(false);
+  // P2 Fix (Backlog #3/#15) — STAGED(N) counter next to "Run AI Processing
+  // Engine": no visible count of items staged in Data Park (syncStatus
+  // 'pending_processing') but not yet AI-processed existed before. Live
+  // re-render on every onion:db-update so Stage -> N=1, Run AI -> N=0.
+  const [, setStagedTick] = window.React.useState(0);
+  window.React.useEffect(() => {
+    const h = () => { try { setStagedTick((v) => v + 1); } catch (e) {} };
+    try { window.addEventListener('onion:db-update', h); } catch (e) {}
+    return () => { try { window.removeEventListener('onion:db-update', h); } catch (e) {} };
+  }, []);
   // Black-hole fix: App.js passes staged items via props but never wires onRun.
   // Mirror any incoming staged prop into the contributor review queue so
   // "Staged N clipboard item(s)" always renders in CONTRIBUTOR PARSER REVIEW.
@@ -188,6 +198,13 @@ export function HarvesterPanel(props) {
   const metaOpp = (project && (project.opportunity_numbers || [])[0]) || '—';
   const metaKw = ((clientMeta && clientMeta.keywords) || []).join(', ') || '—';
   const canonicalProjectId = project ? String(project.project_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-') : '';
+  // P2 Fix (Backlog #3/#15) — STAGED(N): count timeline rows for this project
+  // still sitting in 'pending_processing' (staged, not yet AI-processed).
+  const stagedCount = (() => {
+    try {
+      return readAllTimelineCards().filter((t) => t && t.syncStatus === 'pending_processing' && (!project || t.project_name === project.project_name || t.projectId === canonicalProjectId)).length;
+    } catch (e) { return 0; }
+  })();
   // Bookmarklet clipboard wiring (offline-resilient, same pending_processing flow as Data Park):
   // - Stage clipboard: push parsed clipboard JSON (or raw text) into pending_processing
   // - Run Harvester & Refine: processWithAI(clipboardText) -> parsedReviewQueue
@@ -658,9 +675,10 @@ export function HarvesterPanel(props) {
             <span style=${{ fontSize: '11px', color: apiKey && String(apiKey).trim() ? '#065F46' : '#92400E', alignSelf: 'center' }}>${apiKey && String(apiKey).trim() ? '● Live AI' : '● Mock AI'}</span>
           </div>
           <textarea id="datapark-raw" rows="6" value=${rawText} onInput=${(e) => setRawText(e.target.value)} placeholder="Paste raw harvest text here (emails, RAID rows, chat excerpts)…" style=${{ width: '100%', marginTop: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px', fontSize: '12px' }}></textarea>
-          <div style=${{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+          <div style=${{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text-[12px] font-medium">Stage to Data Park</button>
             <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text-[12px] font-medium">${processing ? 'AI engine running...' : 'Run AI Processing Engine'}</button>
+            <span title="Cards staged in Data Park awaiting AI processing" style=${{ fontSize: '11px', fontWeight: 700, color: stagedCount > 0 ? '#92400E' : '#065F46', background: stagedCount > 0 ? '#FFF7ED' : '#ECFDF5', border: '1px solid ' + (stagedCount > 0 ? '#FDBA74' : '#A7F3D0'), borderRadius: '9999px', padding: '4px 10px' }}>STAGED (${stagedCount})</span>
           </div>
           <div style=${{ fontSize: '11px', minHeight: '16px', marginTop: '6px', fontStyle: 'italic', color: '#1e40af' }}>${parkMsg}</div>
         </div>

@@ -163,3 +163,8 @@ modules/vector-service/chroma_data/
 modules/vector-service/chroma_data/
 modules/vector-service/chroma_data/
 **/chroma_data/
+modules/vector-service/chroma_data/
+**/*_bak.js
+**/fixed-backups/
+**/*notFullyWorking*
+docs/fixed-backups/

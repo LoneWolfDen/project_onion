@@ -143,11 +143,16 @@ export function AppCenter(p) {
   const slotTimeline = Array.isArray(slotProps.timeline) ? slotProps.timeline : (Array.isArray(p.timeline) ? p.timeline : []);
   const slotNotes = Array.isArray(slotProps.notes) ? slotProps.notes : (Array.isArray(p.notes) ? p.notes : []);
   const centerProject = slotProps.project || active;
-  const centerScoped = slotTimeline.filter((t) => centerMatch(t, centerProject));
+  // P1 FIX (Issue #4 / Discovery B): exclude still-staged, unrefined cards
+  // (syncStatus 'pending_processing') from Key Moments too — mirrors the same
+  // fix in TimelineCard.js's canSeeCard(). These belong only in the
+  // Harvester's STAGED(N) counter until AI processing promotes them.
+  const centerScoped = slotTimeline.filter((t) => centerMatch(t, centerProject) && t && t.syncStatus !== 'pending_processing');
   const centerFiltered = centerScoped.filter((t) => !centerIsNoise(t));
   const centerTop5 = centerFiltered.slice().sort((a, b) => centerImpactOf(b) - centerImpactOf(a)).slice(0, 5);
   // Split Key Moments: Timeline Events (top 5 by impact) vs Informational Updates
   // (explicit #Info tag OR low impact score < 0.4) rendered as compact collapsible rows.
+  /*
   const isInfoCard = (m) => {
     const tags = Array.isArray(m && m.tags) ? m.tags.map((t) => String(t || '').toLowerCase()) : [];
     if (tags.some((t) => t === '#info' || t.indexOf('#info') === 0)) return true;
@@ -160,7 +165,52 @@ export function AppCenter(p) {
     const title = centerTitle(m);
     const preview = String(m.synthesizedText || m.content || m.detail || title || '').slice(0, 120);
     return htmlC`<div key=${key} className="rounded-[10px] bg-white border border-[#E6EAF2]"><button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]: !prev[key] }))} className="w-full text-left px-2.5 py-1.5 text-[12px] text-[#475569] truncate" title=${title}>${open ? '▾ ' : '▸ '}heard about: ${title}</button>${open ? htmlC`<div className="px-2.5 pb-2 text-[12px] text-[#1E293B]">${preview}</div>` : null}</div>`;
-  }) : [htmlC`<div className="text-[11px] italic text-[#64748B]">No informational updates.</div>`];
+  }) : [htmlC`<div className="text-[11px] italic text-[#64748B]">No informational updates.</div>`]; 
+   */
+  const isInfoCard = (m) => {
+    const tags = Array.isArray(m && m.tags)? m.tags.map((t) => String(t || '').toLowerCase()) : [];
+    if (tags.some((t) => t === '#info' || t.indexOf('#info') === 0)) return true;
+    return centerImpactOf(m) < 0.4;
+  };
+  const infoCards = centerScoped.filter(isInfoCard);
+  const infoRows = infoCards.length? infoCards.map((m) => {
+    const key = String(m.id || m.title || centerTitle(m));
+    const open =!!infoOpen[key];
+    const title = centerTitle(m);
+    const preview = String(m.synthesizedText || m.content || m.detail || title || '').slice(0, 120);
+    const nodes = Array.isArray(m.nodes)? m.nodes : [];
+    const sortedHistory = [...nodes].sort((a,b) => {
+      const atA = new Date(a.at || a.appended_at || a.created_at || 0).getTime();
+      const atB = new Date(b.at || b.appended_at || b.created_at || 0).getTime();
+      return atB - atA;
+    });
+    const historyToShow = sortedHistory.length? sortedHistory : [{kind:'', text: preview, at: m.updated_at || m.created_at || '', fullText: preview}];
+    //return htmlC`<div key=${key} className="rounded- bg-white border border-[#E6EAF2]"><button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]:!prev[key] }))} className="w-full text-left px-2.5 py-1.5 text- text-[#475569] truncate" title=${title}>${open? '▾ ' : '▸ '}heard about: ${title} <span class="ml-1 text- text-[#94A3B8]">(${nodes.length||1})</span></button>${open? htmlC`<div className="px-2.5 pb-2 space-y-1 max-h- overflow-y-auto">${historyToShow.map((n, idx) => htmlC`<div key=${idx} className="flex gap-2 text- border-b border-[#F1F5F9] py-1 last:border-0"><span className="shrink-0 text- text-[#94A3B8]">${String(n.at || n.appended_at || '').slice(0,16).replace('T',' ')}</span><span className="shrink-0 font-bold text-[#1E293B]">${String(n.kind||'').toUpperCase()}</span><span className="flex-1 min-w-0 break-words text-[#334155]">${String(n.fullText || n.text || '').slice(0,400)}</span></div>`)}</div>` : null}</div>`;
+    return htmlC`<div key=${key} className="rounded-lg bg-white border border-[#E6EAF2]">
+  <button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]:!prev[key] }))} className="w-full text-left px-2.5 py-1.5 text- text-[#475569] truncate" title=${title}>
+    ${open? '▾ ' : '▸ '}heard about: ${title} <span class="ml-1 text-[14px] text-[#94A3B8]">(${nodes.length||1})</span>
+  </button>
+  ${open? htmlC`<div className="px-2.5 pb-2 space-y-1 max-h- overflow-y-auto">
+    ${[...(historyToShow||[])].sort((a,b)=>{
+      // newest first, then AI before RAW for same timestamp
+      const ta = String(a.at||a.appended_at||'');
+      const tb = String(b.at||b.appended_at||'');
+      if (ta!==tb) return tb.localeCompare(ta);
+      const ka = String(a.kind||'').toUpperCase();
+      const kb = String(b.kind||'').toUpperCase();
+      if (ka===kb) return 0;
+      return ka==='AI' ? -1 : 1;
+    }).map((n, idx) => {
+      const isRaw = String(n.kind||'').toUpperCase()==='RAW';
+      return htmlC`<div key=${idx} className=${"flex gap-2 border-b border-[#F1F5F9] py-1 last:border-0 " + (isRaw ? "ml-6 pl-2 border-l-2 border-l-[#E2E8F0] opacity-70" : "")}>
+        <span className="shrink-0 text-[12px] text-[#94A3B8]">${String(n.at || n.appended_at || '').slice(0,16).replace('T',' ')}</span>
+        <span className=${"shrink-0 font-bold " + (isRaw ? "text-[7px] text-[#94A3B8] italic" : "text-[7px] text-[#1E40AF]")}>${String(n.kind||'').toUpperCase()}</span>
+        <span className=${"flex-1 min-w-0 break-words " + (isRaw ? "text-[7px] italic text-[#64748B]" : "text-[7px] text-[#1E293B] font-medium")}>${String(n.fullText || n.text || '').slice(0,400)}</span>
+      </div>`;
+    })}
+    </div>` : null}
+  </div>`;
+  }) : [htmlC`<div className="text- italic text-[#64748B]">No informational updates.</div>`];
   const keyRows = centerTop5.length ? centerTop5.map((m) => {
     const age = centerAge(m);
     const title = centerTitle(m);
@@ -210,10 +260,16 @@ export function AppCenter(p) {
   const vecSynced = (d) => String((d && d.vectorSyncStatus) || '') === 'synced';
   const noteRow = (d) => htmlC`<button key=${String(d.id || d.title)} onClick=${() => onEditNote(d)} title=${'Click to edit: ' + String(d.original || d.title || d.content || '')} className="w-full text-left py-1.5 border-b border-[#E6EAF2]"><div className="flex items-center gap-1 text-[12px] text-[#1E293B] truncate" style=${{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span className="flex-1 min-w-0 truncate">${d.original || d.title || d.content || ''}</span><span className="shrink-0 text-[#94A3B8]" title=${'vector:' + String((d && d.vectorSyncStatus) || 'n/a') + ' local:' + String((d && d.syncStatus) || 'synced')}>${vecSynced(d) ? '✅' : '☁️'}</span></div></button>`;
   // Task 3: pending vector count from LIVE visible props (re-rendered via onion:db-update).
-  const pendingVec = (Array.isArray(visibleNotes) ? visibleNotes : []).filter((x) => x && x.vectorSyncStatus === 'pending').length;
+  // P2 Fix (Backlog #11 / Q1) — counter was conflated: it previously counted
+  // vectorSyncStatus==='pending' (a DIFFERENT pipeline than the Force Sync
+  // button below, which flips LOCAL syncStatus 'pending_upload'/'pending_review'
+  // to 'synced'). Count the SAME field the button acts on so 0 actually means
+  // "nothing left to sync" instead of being permanently stuck.
+  const pendingVec = (Array.isArray(visibleNotes) ? visibleNotes : []).filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
+  const syncLabel = pendingVec > 0 ? ('Force Sync ☁️ (' + pendingVec + ' pending)') : 'All synced ✅';
   const privateCols = privateNotes.length ? privateNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No private notes.</div>`];
   const teamCols = teamNotes.length ? teamNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No team notes.</div>`];
-  const yourNotes = htmlC`<div className="mt-4 rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-[13px]">YOUR NOTES</h3><span className="flex items-center gap-2"><button onClick=${onForceSync} title="Flip pending_upload to synced for offline/online UI test" className="text-[10px] underline text-[#1F4A7A]">Force Sync ☁️ (${pendingVec} pending)</button></span></div><div className="mt-3 flex gap-2 flex-wrap items-center"><span title=${'Viewing as ' + (p.activePersona || 'User')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold shrink-0" style=${{ width: '32px', height: '32px', fontSize: '13px' }}>${String(p.activePersona || 'U')[0]}</span><input value=${noteDraft} onInput=${(e) => setNoteDraft(e.target.value)} placeholder="Add a note..." className="flex-1 min-w-[180px] bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" /><button onClick=${() => submitNote('Private')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-white border border-[#111827] text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#fff', color: '#111827', border: '1px solid #111827' }}>🔒 Add as Private (Only Me)</button><button onClick=${() => submitNote('Team Shared')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-black text-white text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#111827', color: '#fff', border: '1px solid #111827' }}>👥 Add as Team Shared</button></div>${noteMsg ? htmlC`<div className="mt-2 text-[11px] italic text-[#64748B]">${noteMsg}</div>` : null}<div className="mt-3 flex flex-row gap-4"><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1E293B]">Private Notes (${privateNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${privateCols}</div></div><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1F4A7A]">Team Shared Notes (${teamNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${teamCols}</div></div></div></div>`;
+  const yourNotes = htmlC`<div className="mt-4 rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-[13px]">YOUR NOTES</h3><span className="flex items-center gap-2"><button onClick=${onForceSync} title="Flip pending_upload to synced for offline/online UI test" className="text-[10px] underline text-[#1F4A7A]">${syncLabel}</button></span></div><div className="mt-3 flex gap-2 flex-wrap items-center"><span title=${'Viewing as ' + (p.activePersona || 'User')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold shrink-0" style=${{ width: '32px', height: '32px', fontSize: '13px' }}>${String(p.activePersona || 'U')[0]}</span><input value=${noteDraft} onInput=${(e) => setNoteDraft(e.target.value)} placeholder="Add a note..." className="flex-1 min-w-[180px] bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" /><button onClick=${() => submitNote('Private')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-white border border-[#111827] text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#fff', color: '#111827', border: '1px solid #111827' }}>🔒 Add as Private (Only Me)</button><button onClick=${() => submitNote('Team Shared')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-black text-white text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#111827', color: '#fff', border: '1px solid #111827' }}>👥 Add as Team Shared</button></div>${noteMsg ? htmlC`<div className="mt-2 text-[11px] italic text-[#64748B]">${noteMsg}</div>` : null}<div className="mt-3 flex flex-row gap-4"><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1E293B]">Private Notes (${privateNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${privateCols}</div></div><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1F4A7A]">Team Shared Notes (${teamNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${teamCols}</div></div></div></div>`;
   const archivedRows = (p.archived || []).map((a) => htmlC`<div key=${a.Project_ReferenceID} className="p-2 rounded-[8px] bg-[#f3f4f6] border text-[11px]">${a.project_name} — ${a.archived_justification || ''}</div>`);
   return htmlC`<div className="flex-1 min-w-0 bg-[#fbfdfb]"><div className="p-4 lg:p-5 space-y-5 relative"><div className="rounded-[16px] bg-white border border-[#e5e7eb] shadow-sm p-4 relative"><div className="flex flex-wrap items-center gap-2"><div className="min-w-0 flex flex-wrap items-center gap-2"><h2 className="text-[16px] font-semibold leading-tight">${active.project_name}</h2>${oppChips}${projChips}${personaBadge}</div><div className="ml-auto flex gap-2"><button onClick=${p.onEdit} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px] font-medium">Edit Project Details</button><button onClick=${p.onDetails} className="px-3 py-1 rounded-full bg-[#f0f7ff] border border-[#bfdbfe] text-[11px]">${p.detailsOpen ? 'Collapse' : 'Expand'}</button></div></div><div className="mt-1 text-[11px] text-[#6b7280]">${active.Project_ReferenceID} • Created ${p.fmt(active.created_at)} • Last updated ${p.fmt(active.updated_at || active.created_at)}</div>${p.editSlot}${detailsBody}${keyMoments}${yourNotes}<div className="mt-4"><div className="flex items-center gap-2"><div className="text-[13px] font-semibold">Status Cards</div><button onClick=${() => setCollapseAllTrigger((v) => v + 1)} className="ml-auto px-3 py-1 rounded-full bg-[#FFF5D6] border border-[#fde68a] text-[11px] font-medium">Collapse All</button></div><div className="mt-2">${statusFeedWithCollapse}</div></div></div><div className="mt-3 p-2 rounded-[8px] bg-[#f3f4f6] border border-dashed text-[11px]">Archived (${(p.archived || []).length})</div><div className="mt-2 space-y-1">${archivedRows}</div></div></div>`;
 }

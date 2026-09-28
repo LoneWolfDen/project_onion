@@ -1,6 +1,6 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
-import { calcConfidence } from '../core/confidence.js';
+import { calcConfidence, confidenceTier } from '../core/confidence.js';
 import { piiScreen } from '../core/PiiGate.js';
 const html = window.htm.bind(window.React.createElement);
 export function matchRef(t, p) {
@@ -48,7 +48,57 @@ function iconForSource(src) {
   if (s.indexOf('gdp') >= 0 || s.indexOf('status') >= 0) return '📈';
   return '📄';
 }
+// P2 Fix (Backlog #9 / Q5) — Pills cumulative AI text. RAW pills keep their
+// own fullText unchanged; AI pills show every AI node's text UP TO AND
+// INCLUDING that pill's position, joined with line breaks, so the reader can
+// see how the AI synthesis evolved (and spot/correct hallucinations) instead
+// of only the latest fragment.
+function getCumulativeAiText(nodes, idx) {
+  try {
+    if (!Array.isArray(nodes)) return '';
+    return nodes.slice(0, idx + 1)
+      .filter((n) => String((n && n.kind) || '').toUpperCase() === 'AI')
+      .map((n) => String((n && n.text) || '').trim())
+      .filter(Boolean)
+      .join('\n\n');
+  } catch (e) { return ''; }
+}
 function miniTimelineFor(m) {
+  if (m && Array.isArray(m.timeline) && m.timeline.length) {
+    // was slice(0,10) — return ALL so new appends are visible
+    return m.timeline.map((t) => ({
+      kind: String((t && t.kind) || 'EV').toUpperCase(),
+      label: String((t && t.label) || (t && t.kind) || ''),
+      fullText: String((t && (t.text || t.content || t.detail || t.label)) || ''),
+      author: String((t && (t.author || t.contributor)) || m.author || m.contributor || 'System'),
+      at: String((t && (t.at || t.timestamp || t.created_at)) || m.timestamp || 'Just now'),
+      stagedAppend:!!(t && t.stagedAppend),
+    }));
+  }
+  if (m && Array.isArray(m.nodes) && m.nodes.length) {
+    const nodesArr = m.nodes; // no slice — show all, so Append pills appear
+    return nodesArr.map((n, i) => {
+      const kind = String((n && n.kind) || 'EV').toUpperCase();
+      const ownText = String((n && n.text) || '');
+      const fullText = kind === 'AI'? (getCumulativeAiText(nodesArr, i) || ownText) : ownText;
+      return {
+        kind,
+        label: ownText.slice(0, 28) || kind,
+        fullText,
+        author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'System'),
+        at: String((n && (n.at || n.appended_at || n.timestamp)) || m.timestamp || 'Just now'),
+        stagedAppend:!!(n && n.stagedAppend),
+      };
+    });
+  }
+  var srcs = [];
+  if (m && m.source) srcs.push(String(m.source));
+  if (m && m.type && String(m.type)!== String(m.source)) srcs.push(String(m.type));
+  var out = srcs.filter(Boolean).slice(0, 3).map((s) => ({ kind: String(s).slice(0, 2).toUpperCase(), label: s }));
+  if (m && m.timestamp) out.push({ kind: String(m.timestamp).slice(0, 2).toUpperCase(), label: String(m.timestamp) });
+  return out.slice(0, 4);
+}
+/*function miniTimelineFor(m) {
   if (m && Array.isArray(m.timeline) && m.timeline.length) return m.timeline.slice(0, 10).map((t) => ({
     kind: String((t && t.kind) || 'EV').toUpperCase(),
     label: String((t && t.label) || (t && t.kind) || ''),
@@ -57,6 +107,22 @@ function miniTimelineFor(m) {
     at: String((t && (t.at || t.timestamp || t.created_at)) || m.timestamp || 'Just now'),
     stagedAppend: !!(t && t.stagedAppend),
   }));
+  if (m && Array.isArray(m.nodes) && m.nodes.length) {
+    const nodesArr = m.nodes;
+    return nodesArr.slice(0, 10).map((n, i) => {
+      const kind = String((n && n.kind) || 'EV').toUpperCase();
+      const ownText = String((n && n.text) || '');
+      const fullText = kind === 'AI' ? (getCumulativeAiText(nodesArr, i) || ownText) : ownText;
+      return {
+        kind,
+        label: ownText.slice(0, 28) || kind,
+        fullText,
+        author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'System'),
+        at: String((n && (n.at || n.appended_at || n.timestamp)) || m.timestamp || 'Just now'),
+        stagedAppend: !!(n && n.stagedAppend),
+      };
+    });
+  }
   if (m && Array.isArray(m.nodes) && m.nodes.length) return m.nodes.slice(0, 10).map((n) => ({
     kind: String((n && n.kind) || 'EV').toUpperCase(),
     label: String((n && n.text) || (n && n.kind) || '').slice(0, 28) || String((n && n.kind) || ''),
@@ -71,12 +137,88 @@ function miniTimelineFor(m) {
   var out = srcs.filter(Boolean).slice(0, 3).map((s) => ({ kind: String(s).slice(0, 2).toUpperCase(), label: s }));
   if (m && m.timestamp) out.push({ kind: String(m.timestamp).slice(0, 2).toUpperCase(), label: String(m.timestamp) });
   return out.slice(0, 4);
-}
+} */
+/*
 function mockPillDate(idx) {
   // Deterministic mock DDMMYYYY strings rotating per pill index (e.g. 23092026).
   const dates = ['23092026', '24092026', '25092026', '26092026', '27092026', '28092026'];
   return dates[Number(idx || 0) % dates.length];
 }
+*/
+function realPillDate(at) {
+  try {
+    const d = new Date(String(at||''));
+    if (isNaN(d.getTime())) return String(at||'').slice(0,10);
+    return d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit'}); // 23/09
+  } catch(e){ return ''; }
+}
+/*function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
+  const rawItems = miniTimelineFor(m);
+  const combinedNodes = Array.isArray(rawItems)? rawItems : [];
+  const visibleNodes = combinedNodes.filter((n) => {
+    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) ||!!(n && n.stagedAppend);
+    if (!isPrivateNode) return true;
+    return!!isOwner;
+  });
+  // FIX: sort chronological, RAW before AI for same timestamp
+  const items = visibleNodes.slice().sort((a,b) => {
+    const dA = new Date(a.at||0).getTime();
+    const dB = new Date(b.at||0).getTime();
+    if (dA!==dB) return dA-dB;
+    if (a.kind!==b.kind) return a.kind==='RAW'? -1 : 1;
+    return 0;
+  });
+  if (!items.length) return null;
+  return html`<div className="max-w-full pb-2 mb-1 overflow-x-auto no-scrollbar" style=${{ scrollbarWidth:'none', MsOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}><div className="mt-2 relative min-w-max" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-center gap-2 flex-nowrap w-max" style=${{ whiteSpace:'nowrap' }}>${items.map((t, i) => {
+    const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
+    const isActive = selectedNode && selectedNode.kind===t.kind && selectedNode.at===t.at && selectedNode.fullText===t.fullText;
+    return html`<span key=${String(t.kind) + '-' + i + '-' + t.at} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded- border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '52px', background: isActive? '#1F4A7A' : (t.stagedAppend? '#fef3c7' : '#E8F2FF'), borderColor: isActive? '#1F4A7A' : (t.stagedAppend? '#f59e0b' : '#A8C6F0'), color: isActive? '#ffffff' : (t.stagedAppend? '#92400e' : '#1F4A7A'), lineHeight: '1.1' }}><span className="text- font-bold">${ref}</span><span className="text- ${isActive? 'text-blue-100' : 'text-[#64748B]'}">${realPillDate(t.at)}</span>${t.stagedAppend? html`<span className="text- font-bold text-[#92400e]">staged</span>` : null}</button></span>`;
+  })}</div></div></div>`;
+}*/
+/*function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
+  const rawItems = miniTimelineFor(m);
+  const combinedNodes = Array.isArray(rawItems)? rawItems : [];
+  const visibleNodes = combinedNodes.filter((n) => {
+    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) ||!!(n && n.stagedAppend);
+    if (!isPrivateNode) return true;
+    return!!isOwner;
+  });
+  // ORDER FIX: RAW before AI, chronological
+  const items = visibleNodes.slice().sort((a,b) => {
+    const dA = new Date(a.at||0).getTime();
+    const dB = new Date(b.at||0).getTime();
+    if (dA!==dB) return dA-dB;
+    if (a.kind!==b.kind) return a.kind==='RAW'? -1 : 1;
+    return 0;
+  });
+  if (!items.length) return null;
+  return html`<div className="w-full pb-2 mb-1 overflow-x-auto no-scrollbar" style=${{ scrollbarWidth:'none', msOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}><div className="mt-2 relative min-w-max" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-center gap-2 flex-nowrap" style=${{ whiteSpace:'nowrap', width:'max-content' }}>${items.map((t, i) => {
+    const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
+    const isActive = selectedNode && selectedNode.kind===t.kind && selectedNode.at===t.at && selectedNode.fullText===t.fullText;
+    return html`<span key=${String(t.kind)+'-'+i+'-'+t.at} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth:'52px', borderRadius:'6px', background: isActive? '#1F4A7A' : (t.stagedAppend? '#fef3c7' : '#E8F2FF'), borderColor: isActive? '#1F4A7A' : (t.stagedAppend? '#f59e0b' : '#A8C6F0'), color: isActive? '#ffffff' : (t.stagedAppend? '#92400e' : '#1F4A7A'), lineHeight:'1.1' }}><span className="text-[9px] font-bold">${ref}</span><span className="text-[9px]" style=${{ color: isActive? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend? html`<span className="text-[9px] font-bold" style=${{ color:'#92400e' }}>staged</span>` : null}</button></span>`;
+  })}</div></div></div>`;
+}*/
+/*function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
+  const rawItems = miniTimelineFor(m);
+  const combinedNodes = Array.isArray(rawItems)? rawItems : [];
+  const visibleNodes = combinedNodes.filter((n) => {
+    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) ||!!(n && n.stagedAppend);
+    if (!isPrivateNode) return true;
+    return!!isOwner;
+  });
+  const items = visibleNodes.slice().sort((a,b) => {
+    const dA = new Date(a.at||0).getTime();
+    const dB = new Date(b.at||0).getTime();
+    if (dA!==dB) return dA-dB;
+    return a.kind==='RAW'? -1 : 1;
+  });
+  if (!items.length) return null;
+  return html`<div className="w-full overflow-x-auto scrollbar-thin pb-2 mb-1" style=${{ scrollbarWidth:'none', msOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}><div className="mt-2 relative" style=${{ minWidth:'max-content' }} title="Timeline"><div className="absolute left-0 right-0" style=${{ top:'22px', height:'2px', background:'#E6EAF2' }}></div><div className="relative flex items-center gap-2 flex-nowrap" style=${{ whiteSpace:'nowrap', width:'max-content' }}>${items.map((t,i) => {
+    const ref = String(t.kind||'EV').slice(0,3).toUpperCase();
+    const isActive = selectedNode && selectedNode.kind===t.kind && selectedNode.at===t.at && selectedNode.fullText===t.fullText;
+    return html`<span key=${t.kind+'-'+i+'-'+t.at} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded- border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth:'56px', borderRadius:'6px', background: isActive? '#1F4A7A' : (t.stagedAppend? '#fef3c7' : '#E8F2FF'), borderColor: isActive? '#1F4A7A' : (t.stagedAppend? '#f59e0b' : '#A8C6F0'), color: isActive? '#fff' : (t.stagedAppend? '#92400e' : '#1F4A7A'), lineHeight:'1.1' }}><span className="text- font-bold">${ref}</span><span className="text-" style=${{ color: isActive? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend? html`<span className="text- font-bold" style=${{ color:'#92400e' }}>staged</span>` : null}</button></span>`;
+  })}</div></div></div>`;
+}*/
 function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
   const rawItems = miniTimelineFor(m);
   const combinedNodes = Array.isArray(rawItems) ? rawItems : [];
@@ -85,14 +227,35 @@ function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
     if (!isPrivateNode) return true;
     return !!isOwner;
   });
-  const items = visibleNodes;
+  
+  const items = visibleNodes.slice().sort((a, b) => {
+    const dA = new Date(a.at || 0).getTime();
+    const dB = new Date(b.at || 0).getTime();
+    if (dA !== dB) return dA - dB;
+    return a.kind === 'RAW' ? -1 : 1;
+  });
+  
   if (!items.length) return null;
-  return html`<div className="overflow-x-auto scrollbar-thin max-w-full pb-2 mb-1"><div className="mt-2 relative" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-center gap-2 w-max">${items.map((t, i) => {
-    const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
-    const isActive = selectedNode && (selectedNode.label === t.label || selectedNode.fullText === t.fullText);
-    return html`<span key=${String(t.kind) + '-' + i} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '52px', background: isActive ? '#1F4A7A' : (t.stagedAppend ? '#fef3c7' : '#E8F2FF'), borderColor: isActive ? '#1F4A7A' : (t.stagedAppend ? '#f59e0b' : '#A8C6F0'), color: isActive ? '#fff' : '#1F4A7A', lineHeight: '1.1' }}><span className="text-[9px] font-bold">${ref}</span><span className="text-[9px] ${isActive ? 'text-blue-100' : 'text-[#64748B]'}">${mockPillDate(i)}</span>${t.stagedAppend ? html`<span className="text-[9px] font-bold text-[#92400e]">staged</span>` : null}</button></span>`;
-  })}</div></div></div>`;
+  
+  return html`<div className="w-full max-w-full min-w-0 overflow-x-auto pb-3 mb-1" style=${{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="mt-2 relative w-max min-w-full" title="Timeline">
+      <div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div>
+      <div className="relative flex items-center gap-2 flex-nowrap w-max">
+        ${items.map((t, i) => {
+          const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
+          const isActive = selectedNode && selectedNode.kind === t.kind && selectedNode.at === t.at && selectedNode.fullText === t.fullText;
+          return html`<span key=${t.kind + '-' + i + '-' + t.at} className="flex items-stretch shrink-0">
+            <button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '56px', background: isActive ? '#1F4A7A' : (t.stagedAppend ? '#fef3c7' : '#E8F2FF'), borderColor: isActive ? '#1F4A7A' : (t.stagedAppend ? '#f59e0b' : '#A8C6F0'), color: isActive ? '#fff' : (t.stagedAppend ? '#92400e' : '#1F4A7A'), lineHeight: '1.1' }}>
+              <span className="text-[10px] font-bold">${ref}</span>
+              <span className="text-[10px]" style=${{ color: isActive ? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend ? html`<span className="text-[10px] font-bold" style=${{ color: '#92400e' }}>staged</span>` : null}
+            </button>
+          </span>`;
+        })}
+      </div>
+    </div>
+  </div>`;
 }
+
 function pendingAppendsBanner(m, open, onToggle) {
   // Task 1 — crash-hardened: strict null/type checks before .length. A throw
   // here unmounts the whole feed (React render cycle), which is exactly the
@@ -106,17 +269,33 @@ function pendingAppendsBanner(m, open, onToggle) {
     return html`<button type="button" onClick=${fn} title=${open ? 'Collapse staged updates' : 'Expand staged updates'} aria-expanded=${open ? 'true' : 'false'} className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#fffbeb] border border-[#fcd34d] text-[10px] text-[#92400e] cursor-pointer hover:bg-[#fef3c7]">🔗 Smart Append: ${n} staged update(s) appended as horizontal RAW/AI nodes — private / pending review <span className="ml-1 font-bold">${open ? '▾ collapse' : '▸ expand'}</span></button>`;
   } catch (e) { return null; }
 }
-function appendedNodesBlock(m, isOwner) {
-  // Task 1 — crash-hardened: never .filter/.map a non-array. Owner gate kept
-  // (stagedAppend nodes are private), but the CALLER decides visibility — this
-  // fn only guards types so a malformed card can't unmount the feed.
+/*function appendedNodesBlock(m, isOwner) {
+  // Task 1 — crash-hardened + P1 fix: owner gate removed here.
+  // canSeeCard already filters private cards, and isOwner already widened
+  // to include nodes[].author / pendingAppends[].author.
+  // This fn only guards types.
   try {
-    if (!m || typeof m !== 'object') return null;
-    if (!isOwner) return null;
-    const nodes = Array.isArray(m.nodes) ? m.nodes : [];
+    if (!m || typeof m!== 'object') return null;
+    const nodes = Array.isArray(m.nodes)? m.nodes : [];
     const list = nodes.filter((x) => x && typeof x === 'object' && x.stagedAppend);
-    if (!list.length) return html`<div className="mt-2 p-2 rounded-[10px] bg-white border text-[11px] text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
-    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded-[10px] bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text-[10px] italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text-[12px] text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+    if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+  } catch (e) { return null; }
+} */
+function appendedNodesBlock(m) {
+  try {
+    if (!m || typeof m!== 'object') return null;
+    const nodes = Array.isArray(m.nodes)? m.nodes : [];
+    const list = nodes.filter(x => x && typeof x === 'object' && x.stagedAppend);
+    list.sort((a,b) => {
+      const atA = new Date(a.appended_at||a.at||0).getTime();
+      const atB = new Date(b.appended_at||b.at||0).getTime();
+      if (atA!==atB) return atA-atB;
+      if (a.kind!==b.kind) return a.kind==='RAW'? -1 : 1;
+      return 0;
+    });
+    if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
   } catch (e) { return null; }
 }
 function sourceListFor(m) {
@@ -127,6 +306,89 @@ function sourceListFor(m) {
   (Array.isArray(m && m.tags) ? m.tags : []).forEach((t) => { const v = String(t || '').trim(); if (v && out.indexOf(v) < 0) out.push(v); });
   return out.filter(Boolean).slice(0, 6);
 }
+// P2 Fix (Backlog #10b / Q3) — Full Provenance multiple links. mockSeed has
+// no provenance[] array and every card carries exactly one source/type
+// string, so a single-link "Provenance History" was all that could ever
+// render. Rebuild REAL multi-link provenance from the card's own nodes[]:
+// each RAW/AI node is a distinct provenance entry tagged with its own
+// source/author/at (falling back to the card-level source/type/author when a
+// node doesn't carry its own), so a card with several harvested fragments
+// shows several lines (e.g. 2 emails, 3 RAID rows) instead of just one.
+function provenanceEntriesFor(m) {
+  try {
+    const nodes = Array.isArray(m && m.nodes) ? m.nodes : [];
+    if (!nodes.length) return [];
+    return nodes.map((n, i) => {
+      const label = String((n && n.source) || (m && m.source) || (m && m.type) || 'Timeline');
+      return {
+        key: 'prov-' + i + '-' + String((n && n.kind) || ''),
+        label,
+        kind: String((n && n.kind) || 'EV').toUpperCase(),
+        author: String((n && (n.author || n.contributor)) || (m && (m.author || m.contributor)) || 'System'),
+        at: String((n && (n.at || n.appended_at || n.timestamp)) || (m && m.timestamp) || 'Just now'),
+        snippet: String((n && n.text) || '').slice(0, 90),
+      };
+    });
+  } catch (e) { return []; }
+}
+// P2 Fix (Backlog #7 / Q7) — Model confidence detailed sentence was dead
+// code: confText/structEntries were computed but never referenced in the
+// returned JSX. Build a real sentence from the card's own mergeHint +
+// structured fields + distinct source chips, e.g. "High — 3 sources fused,
+// validated via Milestone: Sprint 1, Amount: $45k. Sources: Email + Teams".
+function buildConfidenceText(m, chips, tier) {
+  try {
+    const structured = (m && m.structured && typeof m.structured === 'object') ? m.structured : null;
+    const structBits = structured ? Object.keys(structured).map((k) => k + ': ' + String(structured[k])).join(', ') : '';
+    const sourceCount = Math.max(1, (chips || []).length);
+    const sourcesLabel = (chips && chips.length) ? chips.slice(0, 4).join(' + ') : String((m && (m.source || m.type)) || 'Timeline');
+    const mergeHint = (m && m.mergeHint) ? String(m.mergeHint) : '';
+    let sentence = String(tier || 'Medium') + ' — ' + sourceCount + ' source' + (sourceCount === 1 ? '' : 's') + ' fused' + (structBits ? ', validated via ' + structBits : '') + '.';
+    sentence += ' Sources: ' + sourcesLabel;
+    if (mergeHint) sentence += ' — ' + mergeHint;
+    return sentence;
+  } catch (e) { return String((m && m.confidence) || 'Medium — fused from cross-referenced sources.'); }
+}
+// P2 Fix (Backlog #10a / Q2) — "Similar to client playbook" purple banner.
+// Previously findSmartAppendMatch/buildSmartAppendFor logic only surfaced an
+// amber banner inside the Harvester review queue; a committed card that WAS
+// an append target never showed anything on the main feed. Reuse the same
+// pendingAppends signal (Option A from the assessment: only cards with an
+// active append history) but render a distinct purple variant with a
+// "Review & Merge" CTA that scrolls to the Harvester slide-out.
+function similarToPlaybookBanner(m, clientName) {
+  try {
+    if (!m || typeof m !== 'object') return null;
+    const pendingList = Array.isArray(m.pendingAppends) ? m.pendingAppends : [];
+    const stagedNodes = Array.isArray(m.nodes) ? m.nodes.filter((n) => n && n.stagedAppend) : [];
+    const hasPending = pendingList.length > 0;
+    // BUG 3 fix: previously this only ever checked pendingAppends.length, so
+    // once merged (pendingAppends cleared by the approve flow but the
+    // stagedAppend RAW/AI node pair remains on the card) the banner either
+    // vanished with no confirmation, or — if a stale re-click re-triggered a
+    // merge — kept showing "Review & Merge" forever, inviting duplicate
+    // clicks/duplicate nodes. Now distinguish "still pending" (purple, CTA)
+    // from "already merged" (green, no CTA) so a second click can't re-fire.
+    const isMerged = !hasPending && stagedNodes.length > 0;
+    if (!hasPending && !isMerged) return null;
+    if (isMerged) {
+      const mergedCount = Math.max(1, Math.round(stagedNodes.length / 2));
+      return html`<div className="mt-2 w-full px-2 py-1 rounded-[8px] bg-[#F0FDF4] border border-[#BBF7D0] text-[10px] text-[#065F46]">✅ Merged — ${mergedCount} update(s) merged as private / pending-review nodes</div>`;
+    }
+    const last = pendingList[pendingList.length - 1];
+    const reasons = Array.isArray(last && last.reasons) ? last.reasons : [];
+    const reasonText = reasons.length ? reasons.slice(0, 2).join(' · ') : 'extension details overlap';
+    const label = clientName ? ('Similar to client playbook in ' + clientName) : 'Similar to client playbook';
+    const onReviewMerge = (e) => {
+      try { if (e && e.stopPropagation) e.stopPropagation(); if (e && e.preventDefault) e.preventDefault(); } catch (e2) {}
+      try {
+        const el = document.getElementById('harvester-control-panel');
+        if (el) { el.classList.add('open'); if (el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      } catch (e3) {}
+    };
+    return html`<button type="button" onClick=${onReviewMerge} title="Review the matched Harvester staging item" className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#F5F3FF] border border-[#C4B5FD] text-[10px] text-[#5B21B6] cursor-pointer hover:bg-[#EDE9FE]">⚡ ${label} — ${reasonText} <span className="ml-1 font-bold underline">Review & Merge</span></button>`;
+  } catch (e) { return null; }
+}
 export function TimelineCard(props) {
   const project = props.project;
   const timeline = props.timeline || [];
@@ -134,6 +396,7 @@ export function TimelineCard(props) {
   const privacyFilter = props.privacyFilter || 'Both';
   const collapseAllTrigger = props.collapseAllTrigger || 0;
   const [openProv, setOpenProv] = window.React.useState(new Set());
+  const [provOpen, setProvOpen] = window.React.useState({}); // per-card provenance collapse
   const [notesOpen, setNotesOpen] = window.React.useState(true);
   const [draft, setDraft] = window.React.useState('');
   const [noteMsg, setNoteMsg] = window.React.useState('');
@@ -144,6 +407,13 @@ export function TimelineCard(props) {
   // Smart Append banner expand state (per-card) — independent of openProv so the
   // banner toggle reveals staged RAW/AI nodes even before the card is expanded.
   const [appendOpen, setAppendOpen] = window.React.useState({});
+  // P0 FIX (React #300 "Rendered fewer hooks than expected"): this MUST be a
+  // single component-level hook, keyed by card id — same pattern as appendOpen
+  // above. It was previously declared as window.React.useState(null) INSIDE
+  // moments.map() (one hook per rendered card). Any render where the number of
+  // visible cards changes (persona switch, project switch, note approval, etc.)
+  // changes the hook count between renders -> React error #300 -> white screen.
+  const [selectedNodeMap, setSelectedNodeMap] = window.React.useState({});
   window.React.useEffect(() => {
     if (!menuOpenId) return;
     const close = () => setMenuOpenId(null);
@@ -250,6 +520,15 @@ export function TimelineCard(props) {
   const meNorm = String(activePersona || '').trim().toLowerCase();
   const canSeeCard = (m) => {
     try {
+      // P1 FIX (Issue #4 / Discovery B): a card that is still staged and
+      // awaiting AI refinement (syncStatus 'pending_processing') must NEVER
+      // render as a real Status Card in the main feed — it is raw, unrefined
+      // Data Park input. It should only be reflected in the Harvester's
+      // STAGED(N) counter until "Run AI Processing Engine" promotes it (via
+      // markProcessed -> syncStatus 'pending_upload') or it is consumed by a
+      // Smart Append. This filter runs before the privacy gate so it applies
+      // regardless of the card's privacy value.
+      if (m && m.syncStatus === 'pending_processing') return false;
       if (!isPrivateCard(m)) return true;
       const me = String(activePersona || '').trim().toLowerCase();
       if (!me) return false;
@@ -264,12 +543,38 @@ export function TimelineCard(props) {
       return false;
     } catch (e) { return true; }
   };
+  // P2 Fix (Backlog #2/#8) — Confidence was always 63% because calcConfidence
+  // was fed a SYNTHETIC single-origin array ([{origin: m.source||m.type||'Timeline'}])
+  // and a hardcoded sourceRowCount of 1, no matter how much real evidence the
+  // card actually had. Feed calcConfidence REAL evidence instead: every
+  // distinct provenance chip (sourceListFor: source/type/tags) counts as a
+  // distinct "origin", and the row count reflects the actual cross-referenced
+  // node + pendingAppends volume, so cards genuinely vary (71%, 84%, 92%...).
   const allMoments = timeline.filter((t) => matchRef(t, project)).filter(canSeeCard).map((m) => {
     const s = piiScreen(m.synthesizedText || m.content || m.detail || '');
-    const pct = calcConfidence([{ origin: m.source || m.type || 'Timeline' }], 1);
+    const evidenceChips = sourceListFor(m);
+    const evidence = (evidenceChips.length ? evidenceChips : ['Timeline']).map((c) => ({ origin: c }));
+    const nodeCount = Array.isArray(m.nodes) ? m.nodes.length : 0;
+    const provenanceCount = Array.isArray(m.pendingAppends) ? m.pendingAppends.length : 0;
+    const sourceRowCount = Math.max(1, nodeCount + provenanceCount);
+    const pct = calcConfidence(evidence, sourceRowCount);
     return { raw: m, clean: s.text, flag: s.flag, pct };
   });
-  const moments = allMoments.filter((d) => !isNoise(d.raw)).slice(0, 10);
+  // P2 Fix (Backlog #13/#12) — Sort order: modified/appended-to cards must
+  // bubble to the top (updated_at desc), with any card carrying an active
+  // pendingAppends (amber "staged update" banner) pinned above everything
+  // else so a reviewer never misses a Smart Append waiting for approval.
+  const sortedMoments = allMoments.slice().sort((a, b) => {
+    const aPending = Array.isArray(a.raw && a.raw.pendingAppends) ? a.raw.pendingAppends.length : 0;
+    const bPending = Array.isArray(b.raw && b.raw.pendingAppends) ? b.raw.pendingAppends.length : 0;
+    const aHasPending = aPending > 0 ? 1 : 0;
+    const bHasPending = bPending > 0 ? 1 : 0;
+    if (aHasPending !== bHasPending) return bHasPending - aHasPending;
+    const aT = new Date((a.raw && (a.raw.updated_at || a.raw.created_at)) || 0).getTime() || 0;
+    const bT = new Date((b.raw && (b.raw.updated_at || b.raw.created_at)) || 0).getTime() || 0;
+    return bT - aT;
+  });
+  const moments = sortedMoments.filter((d) => !isNoise(d.raw)).slice(0, 10);
   const projNotes = notes.filter((n) => matchRef(n, project)).filter((n) => {
     // Notes UI — same spec-exact gate: shared/unknown renders; private renders
     // iff owner (author||contributor, case-insensitive) matches viewer.
@@ -289,24 +594,30 @@ export function TimelineCard(props) {
   // Task 3: pending vector count — prefer LIVE props (re-rendered on every
   // onion:db-update via setSyncTick above); fall back to localStorage read so the
   // header is correct even before the first subscribed re-render.
+  // P2 Fix (Backlog #11 / Q1) — count the SAME local syncStatus field the
+  // Force Sync button ("onForceSyncTc" -> OnionDB.forceSync()) actually flips
+  // (pending_upload / pending_review), not vectorSyncStatus (a separate,
+  // unrelated pipeline). Otherwise the counter can show "(0)" forever even
+  // with real unsynced cards, or never reach 0 after a successful sync.
   const pendingVecLive = (() => {
     try {
       const fromProps = [].concat(Array.isArray(notes) ? notes : [], Array.isArray(moments) ? moments : []);
-      if (fromProps.length) return fromProps.filter((x) => x && x.vectorSyncStatus === 'pending').length;
+      if (fromProps.length) return fromProps.filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
     } catch (e) {}
     try {
       const raw = (typeof localStorage !== 'undefined' && localStorage.getItem('onion_db_state')) || '';
       const st = raw ? JSON.parse(raw) : null;
       const all = [].concat((st && st.notes) || [], (st && st.timeline) || []);
-      return all.filter((x) => x && x.vectorSyncStatus === 'pending').length;
+      return all.filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
     } catch (e) { return 0; }
   })();
+  const syncLabelTc = pendingVecLive > 0 ? ('Force Sync ☁️ (' + pendingVecLive + ')') : 'All synced ✅';
   const tcPrivRows = projNotes.filter((d) => isPrivTc(d)).map((d) => tcNoteRow(d, true));
   const tcTeamRows = projNotes.filter((d) => !isPrivTc(d)).map((d) => tcNoteRow(d, false));
   const renderYourNotesFallback = () => {
     if (props.hideYourNotes) return null;
     return html`<div className="rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4">
-      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2"><span title=${'Active persona: ' + String(activePersona || '')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold" style=${{ width: '24px', height: '24px', fontSize: '12px' }}>${String(activePersona || 'B').slice(0, 1).toUpperCase()}</span>YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">Force Sync ☁️ (${pendingVecLive})</button></h3></div>
+      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2"><span title=${'Active persona: ' + String(activePersona || '')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold" style=${{ width: '24px', height: '24px', fontSize: '12px' }}>${String(activePersona || 'B').slice(0, 1).toUpperCase()}</span>YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">${syncLabelTc}</button></h3></div>
 
       ${notesOpen ? html`<div className="mt-3 space-y-3">
         <div className="flex gap-2 flex-wrap"><input value=${draft} onInput=${(e) => setDraft(e.target.value)} placeholder="Add a note..." className="flex-1 bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" />
@@ -334,8 +645,34 @@ export function TimelineCard(props) {
     const structEntries = (m && m.structured && typeof m.structured === 'object') ? Object.keys(m.structured).map(function (k) { return [k, String(m.structured[k])]; }) : [];
     const effPii = String(m.piiStatus || d.flag || 'Clean');
     const isApproved = effPii === 'Approved' || effPii === 'Clean' || (props.approved && props.approved.has && props.approved.has(m.id));
-    const isOwner = (() => { try { const o = String(m.author || m.contributor || '').trim().toLowerCase(); const me = String(props.activePersona || '').trim().toLowerCase(); return !!o && o === me; } catch (e) { return false; } })();
-    const confText = (m && m.confidence) || ("Medium — Fused from Data Park Dropzone · Impact " + ((m && m.impactScore) || 0.7));
+    // P1 FIX (Issue #3): isOwner previously only matched the card's TOP-LEVEL
+    // author/contributor. If Walter smart-appends a private pending-review
+    // update onto a card originally authored by Daniel, Walter could see the
+    // card (canSeeCard already does the wider participant check) but could
+    // NOT see the Approve CTA or his own staged node content, because isOwner
+    // said "no" for him. Widen isOwner to the same participant check used by
+    // canSeeCard: top-level author/contributor OR any nodes[].author/
+    // contributor OR any pendingAppends[].author/contributor.
+    const isOwner = (() => {
+      try {
+        const me = String(props.activePersona || '').trim().toLowerCase();
+        if (!me) return false;
+        const o = String(m.author || m.contributor || '').trim().toLowerCase();
+        if (o && o === me) return true;
+        const nodes = Array.isArray(m.nodes) ? m.nodes : [];
+        if (nodes.some((n) => String((n && (n.author || n.contributor)) || '').trim().toLowerCase() === me)) return true;
+        const appends = Array.isArray(m.pendingAppends) ? m.pendingAppends : [];
+        if (appends.some((a) => String((a && (a.author || a.contributor)) || '').trim().toLowerCase() === me)) return true;
+        return false;
+      } catch (e) { return false; }
+    })();
+    // P2 Fix (Backlog #7/#8) — confText was dead code computed from a static
+    // literal and never rendered. Now derived from the SAME real confidence
+    // tier (d.pct via calcConfidence real evidence above) + the card's own
+    // mergeHint/structured/chips, and actually wired into the floor below.
+    const confTier = confidenceTier(d.pct);
+    const confText = buildConfidenceText(m, chips, confTier);
+    const provenanceEntries = provenanceEntriesFor(m);
     const hasPendingAppends = isOwner && (/private/i.test(JSON.stringify(m.nodes || [])) || /private/i.test(JSON.stringify(m.timeline || [])) || (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some(function (n) { return n && n.stagedAppend; })));
     const approveCta = hasPendingAppends ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve Updates & Share</button>` : (((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved) ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve redacted share</button>` : html`<button type="button" disabled className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Approved for Team Share</button>`);
     const open = openProv.has(m.id) || (focusId && String(focusId) === String(m.id));
@@ -343,13 +680,27 @@ export function TimelineCard(props) {
     const menuOpen = menuOpenId && String(menuOpenId) === String(m.id);
     const isEditing = editingId && String(editingId) === String(m.id);
     const hasAppends = (() => { try { return Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0; } catch (e) { return false; } })();
-    // Task 2 & 4 state: inline node content viewer
-    const [selectedNode, setSelectedNode] = window.React.useState(null);
+    // Task 2 & 4 state: inline node content viewer.
+    // P0 FIX: derived from the component-level selectedNodeMap (keyed by card
+    // id) instead of a per-card useState — no hook is declared inside this
+    // .map() callback anymore.
+    const selectedNode = selectedNodeMap[m.id] || null;
+    const setSelectedNode = (n) => {
+      setSelectedNodeMap((prev) => {
+        const next = Object.assign({}, prev);
+        if (n) next[m.id] = n; else delete next[m.id];
+        return next;
+      });
+    };
+    /*
     const toggleNode = (n) => {
       if (selectedNode && selectedNode.text === n.text) setSelectedNode(null);
       else setSelectedNode(n);
+    };*/
+    const toggleNode = (n) => {
+      if (selectedNode && selectedNode.at===n.at && selectedNode.kind===n.kind && selectedNode.fullText===n.fullText) setSelectedNode(null);
+      else setSelectedNode(n);
     };
-
     // Task 2 — banner toggle is independent of card expand: appendsOpen tracks the
     // banner's own toggle only (NOT `open`), so collapsed cards still reveal
     // staged RAW/AI nodes on first click.
@@ -400,14 +751,21 @@ export function TimelineCard(props) {
           ${isOwner ? html`<button type="button" onClick=${() => onFlipPrivacy && onFlipPrivacy(m)} className="ml-auto text-[11px] font-medium text-[#1F4A7A] hover:underline flex items-center gap-1"><span>${isPrivate ? '👥 Share with Team' : '🔒 Make Private'}</span></button>` : null}
         </div>
       </div>` : null}
+      
+      
       ${timelineStrip(m, isOwner, selectedNode, toggleNode)}
-      ${selectedNode ? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${selectedNode.kind} Node Content</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'System'} • ${selectedNode.at || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
+      ${selectedNode? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${selectedNode.kind} Node Content</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'System'} • ${selectedNode.at || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
       ${pendingAppendsBanner(m, appendsOpen, toggleAppends)}
-      ${hasAppends && (!!appendOpen[m.id] || !!open) ? appendedNodesBlock(m, isOwner) : null}
+      ${similarToPlaybookBanner(m, m.client_name)}
+      ${hasAppends &&!!appendOpen[m.id]? appendedNodesBlock(m) : null}
+
       ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B] underline cursor-pointer">${c}</button>`)}</div>` : null}
       ${open ? html`<div className="mt-3 bg-[#f8fafc] rounded-[12px] p-3 space-y-2">
-        ${hasAppends && (!!appendOpen[m.id] || !!open) && isOwner ? appendedNodesBlock(m, isOwner) : null}
-        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Provenance History</div><div className="max-h-32 overflow-y-auto no-scrollbar space-y-1">${chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title}</span></div>`)}</div></div>
+      
+        <!--
+        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Full Provenance — ${provenanceEntries.length || chips.length} link(s)</div><div className="max-h-40 overflow-y-auto no-scrollbar space-y-1">${(provenanceEntries.length ? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title}</span></div>`))}</div></div>
+        -->
+        <div className="p-2 rounded-[10px] bg-white border"><button type="button" onClick=${() => setProvOpen(p=>Object.assign({},p,{[m.id]:!p[m.id]}))} className="w-full flex items-center justify-between text-[10px] font-semibold mb-1 text-[#475569] hover:text-[#1E293B]"><span>Full Provenance — ${provenanceEntries.length || chips.length} link(s)</span><span className="text-[10px] bg-[#F8FAFC] border border-[#E6EAF2] rounded-full px-2 py-0.5">${provOpen[m.id]? '▾ Collapse' : '▸ Expand'}</span></button>${provOpen[m.id]? html`<div className="max-h-40 overflow-y-auto no-scrollbar space-y-1 mt-2">${(provenanceEntries.length? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[10px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text[10px] text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[10]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[10px] text-[#64748B] truncate">${m.title}</span></div>`))}</div>` : null}</div>
         ${approveCta}
       </div>` : null}
       <div className="mt-3 pt-2 border-t border-[#E6EAF2] flex items-center justify-between gap-2">
@@ -423,12 +781,15 @@ export function TimelineCard(props) {
           <span>•</span>
           <div className="flex items-center gap-1">${chips.map((c) => html`<span key=${c} title=${c} className="leading-none text-[12px]">${iconForSource(c)}</span>`)}</div>
           <span>•</span>
-          <span>${d.pct}% Confidence</span>
+          <span>${d.pct}% Confidence (${confTier})</span>
           <span>•</span>
           <span>PII: ${effPii}</span>
           <span>•</span>
           <span>${createdDate}</span>
         </div>
+      </div>
+      <div className="mt-2 p-2.5 rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF2] text-[11px] text-[#334155]">
+        <span className="font-semibold text-[#1E293B]">Model confidence:</span> ${confText}
       </div>
     </div>`;
   });

@@ -677,10 +677,24 @@ export function HarvesterPanel(props) {
     } catch (e) { setParkMsg('Reset failed: ' + String((e && e.message) || e)); }
   };
   return html`<div>
+    
     <button id="harvester-open-btn" type="button" onClick=${() => setOpen(true)}>🛸 Open Harvester Control</button>
-    <div id="harvester-backdrop" className=${open ? 'open' : ''} onClick=${() => setOpen(false)}></div>
+    <div id="harvester-backdrop" className=${open ? 'open' : ''} onClick=${() => {
+      try { setOpen(false); } catch(e){}
+      try {
+        document.getElementById('harvester-control-panel')?.classList.remove('open');
+        document.getElementById('harvester-backdrop')?.classList.remove('open');
+      } catch(e){}
+    }}></div>
+    
     <aside id="harvester-control-panel" aria-label="Harvester Control Center" className=${open ? 'open' : ''}>
-      <div style=${{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px', borderBottom: '1px solid #E5E7EB' }}><div style=${{ fontWeight: 800, fontSize: '15px' }}>Harvester Control Center</div><button id="harvester-close-btn" type="button" onClick=${() => setOpen(false)} style=${{ marginLeft: 'auto', background: '#fff', border: '1px solid #CBD5E1', borderRadius: '9999px', width: '30px', height: '30px', cursor: 'pointer' }}>✕</button></div>
+      <div style=${{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px', borderBottom: '1px solid #E5E7EB' }}><div style=${{ fontWeight: 800, fontSize: '15px' }}>Harvester Control Center</div><button id="harvester-close-btn" type="button" onClick=${() => {
+        try { setOpen(false); } catch(e){}
+        try {
+          document.getElementById('harvester-control-panel')?.classList.remove('open');
+          document.getElementById('harvester-backdrop')?.classList.remove('open');
+        } catch(e){};      
+        }} style=${{ marginLeft: 'auto', background: '#fff', border: '1px solid #CBD5E1', borderRadius: '9999px', width: '30px', height: '30px', cursor: 'pointer' }}>✕</button></div>
       <div className="hcp-scroll"><div id="harvester-target-headline" style=${{ fontSize: '12px', fontWeight: 700 }}>Targeting Ingestion for: ${metaProject}</div>
         <div className="hcp-card"><div className="hcp-label">Scope Monitor L1/L2</div><div style=${{ fontSize: '12px' }}>Client: <b>${metaClient}</b> | Project: <b>${metaProject}</b></div><div style=${{ fontSize: '12px' }}>Opp: <b>${metaOpp}</b></div><div style=${{ fontSize: '11px' }}>Keywords: <span>${metaKw}</span></div></div>
         <div className="hcp-card"><div className="hcp-label">API Delta Scan Window (Outlook/Teams/GDP Status)</div><div style=${{ display: 'flex', gap: '8px' }}><input type="date" id="harvester-delta-from" value=${from} onInput=${(e) => setFrom(e.target.value)} /><input type="date" id="harvester-delta-to" value=${to} onInput=${(e) => setTo(e.target.value)} /></div></div>
@@ -712,12 +726,33 @@ export function HarvesterPanel(props) {
             </select>
             <span style=${{ fontSize: '11px', color: apiKey && String(apiKey).trim() ? '#065F46' : '#92400E', alignSelf: 'center' }}>${apiKey && String(apiKey).trim() ? '● Live AI' : '● Mock AI'}</span>
           </div>
+          ${false && html` 
           <textarea id="datapark-raw" rows="6" value=${rawText} onInput=${(e) => setRawText(e.target.value)} placeholder="Paste raw harvest text here (emails, RAID rows, chat excerpts)…" style=${{ width: '100%', marginTop: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px', fontSize: '12px' }}></textarea>
           <div style=${{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text-[12px] font-medium">Stage to Data Park</button>
-            <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text-[12px] font-medium">${processing ? 'AI engine running...' : 'Run AI Processing Engine'}</button>
-            <span title="Cards staged in Data Park awaiting AI processing" style=${{ fontSize: '11px', fontWeight: 700, color: stagedCount > 0 ? '#92400E' : '#065F46', background: stagedCount > 0 ? '#FFF7ED' : '#ECFDF5', border: '1px solid ' + (stagedCount > 0 ? '#FDBA74' : '#A7F3D0'), borderRadius: '9999px', padding: '4px 10px' }}>STAGED (${stagedCount})</span>
-          </div>
+             <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text-[12px] font-medium">Stage to Data Park</button>
+             <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text-[12px] font-medium">${processing ? 'AI engine running...' : 'Run AI Processing Engine'}</button>
+             <span title="Cards staged in Data Park awaiting AI processing" style=${{ fontSize: '11px', fontWeight: 700, color: stagedCount > 0 ? '#92400E' : '#065F46', background: stagedCount > 0 ? '#FFF7ED' : '#ECFDF5', border: '1px solid ' + (stagedCount > 0 ? '#FDBA74' : '#A7F3D0'), borderRadius: '9999px', padding: '4px 10px' }}>STAGED (${stagedCount})</span>
+           </div>
+          `}
+          <textarea id="datapark-raw" rows="6" value=${rawText} onInput=${(e) => setRawText(e.target.value)} placeholder="Paste raw harvest text here…" style=${{ width: '100%', marginTop: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px', fontSize: '12px' }}></textarea>
+          ${(() => {
+            try {
+              const raw = typeof localStorage!=='undefined'? localStorage.getItem('onion_db_state') : null;
+              const s = raw? JSON.parse(raw) : {timeline:[]};
+              const pending = (s.timeline||[]).filter(t=>t && t.syncStatus==='pending_processing');
+              const n = pending.length;
+              return html`<div style=${{ display:'flex', gap:'6px', marginTop:'8px', flexWrap:'wrap', alignItems:'center' }}>
+                <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text- font-medium">Stage to Data Park</button>
+                <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text- font-medium">${processing? 'AI engine running...' : 'Run AI Processing Engine'+(n? ' STAGED('+n+')' : '')}</button>
+                ${n? html`<span style=${{ fontSize:'10px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'9999px', padding:'2px 8px', color:'#1e40af' }}>${n} raw fragment(s) awaiting AI</span>` : null}
+              </div>`;
+            } catch(e){
+              return html`<div style=${{ display:'flex', gap:'6px', marginTop:'8px', flexWrap:'wrap' }}>
+                <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text- font-medium">Stage to Data Park</button>
+                <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text- font-medium">${processing? 'AI engine running...' : 'Run AI Processing Engine'}</button>
+              </div>`;
+            }
+          })()}
           <div style=${{ fontSize: '11px', minHeight: '16px', marginTop: '6px', fontStyle: 'italic', color: '#1e40af' }}>${parkMsg}</div>
           ${stagedCount > 0 ? html`<div style=${{ marginTop: '8px', background: '#fff', border: '1px solid #FDBA74', borderRadius: '8px', padding: '6px 8px' }}>
             <div style=${{ display: 'flex', alignItems: 'center', gap: '6px' }}>

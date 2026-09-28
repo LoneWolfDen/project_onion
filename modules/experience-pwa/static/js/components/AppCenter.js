@@ -152,6 +152,7 @@ export function AppCenter(p) {
   const centerTop5 = centerFiltered.slice().sort((a, b) => centerImpactOf(b) - centerImpactOf(a)).slice(0, 5);
   // Split Key Moments: Timeline Events (top 5 by impact) vs Informational Updates
   // (explicit #Info tag OR low impact score < 0.4) rendered as compact collapsible rows.
+  /*
   const isInfoCard = (m) => {
     const tags = Array.isArray(m && m.tags) ? m.tags.map((t) => String(t || '').toLowerCase()) : [];
     if (tags.some((t) => t === '#info' || t.indexOf('#info') === 0)) return true;
@@ -164,7 +165,52 @@ export function AppCenter(p) {
     const title = centerTitle(m);
     const preview = String(m.synthesizedText || m.content || m.detail || title || '').slice(0, 120);
     return htmlC`<div key=${key} className="rounded-[10px] bg-white border border-[#E6EAF2]"><button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]: !prev[key] }))} className="w-full text-left px-2.5 py-1.5 text-[12px] text-[#475569] truncate" title=${title}>${open ? '▾ ' : '▸ '}heard about: ${title}</button>${open ? htmlC`<div className="px-2.5 pb-2 text-[12px] text-[#1E293B]">${preview}</div>` : null}</div>`;
-  }) : [htmlC`<div className="text-[11px] italic text-[#64748B]">No informational updates.</div>`];
+  }) : [htmlC`<div className="text-[11px] italic text-[#64748B]">No informational updates.</div>`]; 
+   */
+  const isInfoCard = (m) => {
+    const tags = Array.isArray(m && m.tags)? m.tags.map((t) => String(t || '').toLowerCase()) : [];
+    if (tags.some((t) => t === '#info' || t.indexOf('#info') === 0)) return true;
+    return centerImpactOf(m) < 0.4;
+  };
+  const infoCards = centerScoped.filter(isInfoCard);
+  const infoRows = infoCards.length? infoCards.map((m) => {
+    const key = String(m.id || m.title || centerTitle(m));
+    const open =!!infoOpen[key];
+    const title = centerTitle(m);
+    const preview = String(m.synthesizedText || m.content || m.detail || title || '').slice(0, 120);
+    const nodes = Array.isArray(m.nodes)? m.nodes : [];
+    const sortedHistory = [...nodes].sort((a,b) => {
+      const atA = new Date(a.at || a.appended_at || a.created_at || 0).getTime();
+      const atB = new Date(b.at || b.appended_at || b.created_at || 0).getTime();
+      return atB - atA;
+    });
+    const historyToShow = sortedHistory.length? sortedHistory : [{kind:'', text: preview, at: m.updated_at || m.created_at || '', fullText: preview}];
+    //return htmlC`<div key=${key} className="rounded- bg-white border border-[#E6EAF2]"><button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]:!prev[key] }))} className="w-full text-left px-2.5 py-1.5 text- text-[#475569] truncate" title=${title}>${open? '▾ ' : '▸ '}heard about: ${title} <span class="ml-1 text- text-[#94A3B8]">(${nodes.length||1})</span></button>${open? htmlC`<div className="px-2.5 pb-2 space-y-1 max-h- overflow-y-auto">${historyToShow.map((n, idx) => htmlC`<div key=${idx} className="flex gap-2 text- border-b border-[#F1F5F9] py-1 last:border-0"><span className="shrink-0 text- text-[#94A3B8]">${String(n.at || n.appended_at || '').slice(0,16).replace('T',' ')}</span><span className="shrink-0 font-bold text-[#1E293B]">${String(n.kind||'').toUpperCase()}</span><span className="flex-1 min-w-0 break-words text-[#334155]">${String(n.fullText || n.text || '').slice(0,400)}</span></div>`)}</div>` : null}</div>`;
+    return htmlC`<div key=${key} className="rounded-lg bg-white border border-[#E6EAF2]">
+  <button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]:!prev[key] }))} className="w-full text-left px-2.5 py-1.5 text- text-[#475569] truncate" title=${title}>
+    ${open? '▾ ' : '▸ '}heard about: ${title} <span class="ml-1 text-[14px] text-[#94A3B8]">(${nodes.length||1})</span>
+  </button>
+  ${open? htmlC`<div className="px-2.5 pb-2 space-y-1 max-h- overflow-y-auto">
+    ${[...(historyToShow||[])].sort((a,b)=>{
+      // newest first, then AI before RAW for same timestamp
+      const ta = String(a.at||a.appended_at||'');
+      const tb = String(b.at||b.appended_at||'');
+      if (ta!==tb) return tb.localeCompare(ta);
+      const ka = String(a.kind||'').toUpperCase();
+      const kb = String(b.kind||'').toUpperCase();
+      if (ka===kb) return 0;
+      return ka==='AI' ? -1 : 1;
+    }).map((n, idx) => {
+      const isRaw = String(n.kind||'').toUpperCase()==='RAW';
+      return htmlC`<div key=${idx} className=${"flex gap-2 border-b border-[#F1F5F9] py-1 last:border-0 " + (isRaw ? "ml-6 pl-2 border-l-2 border-l-[#E2E8F0] opacity-70" : "")}>
+        <span className="shrink-0 text-[12px] text-[#94A3B8]">${String(n.at || n.appended_at || '').slice(0,16).replace('T',' ')}</span>
+        <span className=${"shrink-0 font-bold " + (isRaw ? "text-[7px] text-[#94A3B8] italic" : "text-[7px] text-[#1E40AF]")}>${String(n.kind||'').toUpperCase()}</span>
+        <span className=${"flex-1 min-w-0 break-words " + (isRaw ? "text-[7px] italic text-[#64748B]" : "text-[7px] text-[#1E293B] font-medium")}>${String(n.fullText || n.text || '').slice(0,400)}</span>
+      </div>`;
+    })}
+    </div>` : null}
+  </div>`;
+  }) : [htmlC`<div className="text- italic text-[#64748B]">No informational updates.</div>`];
   const keyRows = centerTop5.length ? centerTop5.map((m) => {
     const age = centerAge(m);
     const title = centerTitle(m);

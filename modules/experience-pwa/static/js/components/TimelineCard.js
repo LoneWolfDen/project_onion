@@ -64,6 +64,41 @@ function getCumulativeAiText(nodes, idx) {
   } catch (e) { return ''; }
 }
 function miniTimelineFor(m) {
+  if (m && Array.isArray(m.timeline) && m.timeline.length) {
+    // was slice(0,10) — return ALL so new appends are visible
+    return m.timeline.map((t) => ({
+      kind: String((t && t.kind) || 'EV').toUpperCase(),
+      label: String((t && t.label) || (t && t.kind) || ''),
+      fullText: String((t && (t.text || t.content || t.detail || t.label)) || ''),
+      author: String((t && (t.author || t.contributor)) || m.author || m.contributor || 'System'),
+      at: String((t && (t.at || t.timestamp || t.created_at)) || m.timestamp || 'Just now'),
+      stagedAppend:!!(t && t.stagedAppend),
+    }));
+  }
+  if (m && Array.isArray(m.nodes) && m.nodes.length) {
+    const nodesArr = m.nodes; // no slice — show all, so Append pills appear
+    return nodesArr.map((n, i) => {
+      const kind = String((n && n.kind) || 'EV').toUpperCase();
+      const ownText = String((n && n.text) || '');
+      const fullText = kind === 'AI'? (getCumulativeAiText(nodesArr, i) || ownText) : ownText;
+      return {
+        kind,
+        label: ownText.slice(0, 28) || kind,
+        fullText,
+        author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'System'),
+        at: String((n && (n.at || n.appended_at || n.timestamp)) || m.timestamp || 'Just now'),
+        stagedAppend:!!(n && n.stagedAppend),
+      };
+    });
+  }
+  var srcs = [];
+  if (m && m.source) srcs.push(String(m.source));
+  if (m && m.type && String(m.type)!== String(m.source)) srcs.push(String(m.type));
+  var out = srcs.filter(Boolean).slice(0, 3).map((s) => ({ kind: String(s).slice(0, 2).toUpperCase(), label: s }));
+  if (m && m.timestamp) out.push({ kind: String(m.timestamp).slice(0, 2).toUpperCase(), label: String(m.timestamp) });
+  return out.slice(0, 4);
+}
+/*function miniTimelineFor(m) {
   if (m && Array.isArray(m.timeline) && m.timeline.length) return m.timeline.slice(0, 10).map((t) => ({
     kind: String((t && t.kind) || 'EV').toUpperCase(),
     label: String((t && t.label) || (t && t.kind) || ''),
@@ -102,12 +137,88 @@ function miniTimelineFor(m) {
   var out = srcs.filter(Boolean).slice(0, 3).map((s) => ({ kind: String(s).slice(0, 2).toUpperCase(), label: s }));
   if (m && m.timestamp) out.push({ kind: String(m.timestamp).slice(0, 2).toUpperCase(), label: String(m.timestamp) });
   return out.slice(0, 4);
-}
+} */
+/*
 function mockPillDate(idx) {
   // Deterministic mock DDMMYYYY strings rotating per pill index (e.g. 23092026).
   const dates = ['23092026', '24092026', '25092026', '26092026', '27092026', '28092026'];
   return dates[Number(idx || 0) % dates.length];
 }
+*/
+function realPillDate(at) {
+  try {
+    const d = new Date(String(at||''));
+    if (isNaN(d.getTime())) return String(at||'').slice(0,10);
+    return d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit'}); // 23/09
+  } catch(e){ return ''; }
+}
+/*function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
+  const rawItems = miniTimelineFor(m);
+  const combinedNodes = Array.isArray(rawItems)? rawItems : [];
+  const visibleNodes = combinedNodes.filter((n) => {
+    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) ||!!(n && n.stagedAppend);
+    if (!isPrivateNode) return true;
+    return!!isOwner;
+  });
+  // FIX: sort chronological, RAW before AI for same timestamp
+  const items = visibleNodes.slice().sort((a,b) => {
+    const dA = new Date(a.at||0).getTime();
+    const dB = new Date(b.at||0).getTime();
+    if (dA!==dB) return dA-dB;
+    if (a.kind!==b.kind) return a.kind==='RAW'? -1 : 1;
+    return 0;
+  });
+  if (!items.length) return null;
+  return html`<div className="max-w-full pb-2 mb-1 overflow-x-auto no-scrollbar" style=${{ scrollbarWidth:'none', MsOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}><div className="mt-2 relative min-w-max" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-center gap-2 flex-nowrap w-max" style=${{ whiteSpace:'nowrap' }}>${items.map((t, i) => {
+    const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
+    const isActive = selectedNode && selectedNode.kind===t.kind && selectedNode.at===t.at && selectedNode.fullText===t.fullText;
+    return html`<span key=${String(t.kind) + '-' + i + '-' + t.at} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded- border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '52px', background: isActive? '#1F4A7A' : (t.stagedAppend? '#fef3c7' : '#E8F2FF'), borderColor: isActive? '#1F4A7A' : (t.stagedAppend? '#f59e0b' : '#A8C6F0'), color: isActive? '#ffffff' : (t.stagedAppend? '#92400e' : '#1F4A7A'), lineHeight: '1.1' }}><span className="text- font-bold">${ref}</span><span className="text- ${isActive? 'text-blue-100' : 'text-[#64748B]'}">${realPillDate(t.at)}</span>${t.stagedAppend? html`<span className="text- font-bold text-[#92400e]">staged</span>` : null}</button></span>`;
+  })}</div></div></div>`;
+}*/
+/*function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
+  const rawItems = miniTimelineFor(m);
+  const combinedNodes = Array.isArray(rawItems)? rawItems : [];
+  const visibleNodes = combinedNodes.filter((n) => {
+    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) ||!!(n && n.stagedAppend);
+    if (!isPrivateNode) return true;
+    return!!isOwner;
+  });
+  // ORDER FIX: RAW before AI, chronological
+  const items = visibleNodes.slice().sort((a,b) => {
+    const dA = new Date(a.at||0).getTime();
+    const dB = new Date(b.at||0).getTime();
+    if (dA!==dB) return dA-dB;
+    if (a.kind!==b.kind) return a.kind==='RAW'? -1 : 1;
+    return 0;
+  });
+  if (!items.length) return null;
+  return html`<div className="w-full pb-2 mb-1 overflow-x-auto no-scrollbar" style=${{ scrollbarWidth:'none', msOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}><div className="mt-2 relative min-w-max" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-center gap-2 flex-nowrap" style=${{ whiteSpace:'nowrap', width:'max-content' }}>${items.map((t, i) => {
+    const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
+    const isActive = selectedNode && selectedNode.kind===t.kind && selectedNode.at===t.at && selectedNode.fullText===t.fullText;
+    return html`<span key=${String(t.kind)+'-'+i+'-'+t.at} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth:'52px', borderRadius:'6px', background: isActive? '#1F4A7A' : (t.stagedAppend? '#fef3c7' : '#E8F2FF'), borderColor: isActive? '#1F4A7A' : (t.stagedAppend? '#f59e0b' : '#A8C6F0'), color: isActive? '#ffffff' : (t.stagedAppend? '#92400e' : '#1F4A7A'), lineHeight:'1.1' }}><span className="text-[9px] font-bold">${ref}</span><span className="text-[9px]" style=${{ color: isActive? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend? html`<span className="text-[9px] font-bold" style=${{ color:'#92400e' }}>staged</span>` : null}</button></span>`;
+  })}</div></div></div>`;
+}*/
+/*function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
+  const rawItems = miniTimelineFor(m);
+  const combinedNodes = Array.isArray(rawItems)? rawItems : [];
+  const visibleNodes = combinedNodes.filter((n) => {
+    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) ||!!(n && n.stagedAppend);
+    if (!isPrivateNode) return true;
+    return!!isOwner;
+  });
+  const items = visibleNodes.slice().sort((a,b) => {
+    const dA = new Date(a.at||0).getTime();
+    const dB = new Date(b.at||0).getTime();
+    if (dA!==dB) return dA-dB;
+    return a.kind==='RAW'? -1 : 1;
+  });
+  if (!items.length) return null;
+  return html`<div className="w-full overflow-x-auto scrollbar-thin pb-2 mb-1" style=${{ scrollbarWidth:'none', msOverflowStyle:'none', WebkitOverflowScrolling:'touch' }}><div className="mt-2 relative" style=${{ minWidth:'max-content' }} title="Timeline"><div className="absolute left-0 right-0" style=${{ top:'22px', height:'2px', background:'#E6EAF2' }}></div><div className="relative flex items-center gap-2 flex-nowrap" style=${{ whiteSpace:'nowrap', width:'max-content' }}>${items.map((t,i) => {
+    const ref = String(t.kind||'EV').slice(0,3).toUpperCase();
+    const isActive = selectedNode && selectedNode.kind===t.kind && selectedNode.at===t.at && selectedNode.fullText===t.fullText;
+    return html`<span key=${t.kind+'-'+i+'-'+t.at} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded- border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth:'56px', borderRadius:'6px', background: isActive? '#1F4A7A' : (t.stagedAppend? '#fef3c7' : '#E8F2FF'), borderColor: isActive? '#1F4A7A' : (t.stagedAppend? '#f59e0b' : '#A8C6F0'), color: isActive? '#fff' : (t.stagedAppend? '#92400e' : '#1F4A7A'), lineHeight:'1.1' }}><span className="text- font-bold">${ref}</span><span className="text-" style=${{ color: isActive? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend? html`<span className="text- font-bold" style=${{ color:'#92400e' }}>staged</span>` : null}</button></span>`;
+  })}</div></div></div>`;
+}*/
 function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
   const rawItems = miniTimelineFor(m);
   const combinedNodes = Array.isArray(rawItems) ? rawItems : [];
@@ -116,14 +227,35 @@ function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
     if (!isPrivateNode) return true;
     return !!isOwner;
   });
-  const items = visibleNodes;
+  
+  const items = visibleNodes.slice().sort((a, b) => {
+    const dA = new Date(a.at || 0).getTime();
+    const dB = new Date(b.at || 0).getTime();
+    if (dA !== dB) return dA - dB;
+    return a.kind === 'RAW' ? -1 : 1;
+  });
+  
   if (!items.length) return null;
-  return html`<div className="overflow-x-auto scrollbar-thin max-w-full pb-2 mb-1"><div className="mt-2 relative" title="Timeline"><div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div><div className="relative flex items-center gap-2 w-max">${items.map((t, i) => {
-    const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
-    const isActive = selectedNode && (selectedNode.label === t.label || selectedNode.fullText === t.fullText);
-    return html`<span key=${String(t.kind) + '-' + i} className="flex items-stretch shrink-0"><button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '52px', background: isActive ? '#1F4A7A' : (t.stagedAppend ? '#fef3c7' : '#E8F2FF'), borderColor: isActive ? '#1F4A7A' : (t.stagedAppend ? '#f59e0b' : '#A8C6F0'), color: isActive ? '#fff' : '#1F4A7A', lineHeight: '1.1' }}><span className="text-[9px] font-bold">${ref}</span><span className="text-[9px] ${isActive ? 'text-blue-100' : 'text-[#64748B]'}">${mockPillDate(i)}</span>${t.stagedAppend ? html`<span className="text-[9px] font-bold text-[#92400e]">staged</span>` : null}</button></span>`;
-  })}</div></div></div>`;
+  
+  return html`<div className="w-full max-w-full min-w-0 overflow-x-auto pb-3 mb-1" style=${{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="mt-2 relative w-max min-w-full" title="Timeline">
+      <div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div>
+      <div className="relative flex items-center gap-2 flex-nowrap w-max">
+        ${items.map((t, i) => {
+          const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
+          const isActive = selectedNode && selectedNode.kind === t.kind && selectedNode.at === t.at && selectedNode.fullText === t.fullText;
+          return html`<span key=${t.kind + '-' + i + '-' + t.at} className="flex items-stretch shrink-0">
+            <button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '56px', background: isActive ? '#1F4A7A' : (t.stagedAppend ? '#fef3c7' : '#E8F2FF'), borderColor: isActive ? '#1F4A7A' : (t.stagedAppend ? '#f59e0b' : '#A8C6F0'), color: isActive ? '#fff' : (t.stagedAppend ? '#92400e' : '#1F4A7A'), lineHeight: '1.1' }}>
+              <span className="text-[10px] font-bold">${ref}</span>
+              <span className="text-[10px]" style=${{ color: isActive ? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend ? html`<span className="text-[10px] font-bold" style=${{ color: '#92400e' }}>staged</span>` : null}
+            </button>
+          </span>`;
+        })}
+      </div>
+    </div>
+  </div>`;
 }
+
 function pendingAppendsBanner(m, open, onToggle) {
   // Task 1 — crash-hardened: strict null/type checks before .length. A throw
   // here unmounts the whole feed (React render cycle), which is exactly the
@@ -137,17 +269,33 @@ function pendingAppendsBanner(m, open, onToggle) {
     return html`<button type="button" onClick=${fn} title=${open ? 'Collapse staged updates' : 'Expand staged updates'} aria-expanded=${open ? 'true' : 'false'} className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#fffbeb] border border-[#fcd34d] text-[10px] text-[#92400e] cursor-pointer hover:bg-[#fef3c7]">🔗 Smart Append: ${n} staged update(s) appended as horizontal RAW/AI nodes — private / pending review <span className="ml-1 font-bold">${open ? '▾ collapse' : '▸ expand'}</span></button>`;
   } catch (e) { return null; }
 }
-function appendedNodesBlock(m, isOwner) {
-  // Task 1 — crash-hardened: never .filter/.map a non-array. Owner gate kept
-  // (stagedAppend nodes are private), but the CALLER decides visibility — this
-  // fn only guards types so a malformed card can't unmount the feed.
+/*function appendedNodesBlock(m, isOwner) {
+  // Task 1 — crash-hardened + P1 fix: owner gate removed here.
+  // canSeeCard already filters private cards, and isOwner already widened
+  // to include nodes[].author / pendingAppends[].author.
+  // This fn only guards types.
   try {
-    if (!m || typeof m !== 'object') return null;
-    if (!isOwner) return null;
-    const nodes = Array.isArray(m.nodes) ? m.nodes : [];
+    if (!m || typeof m!== 'object') return null;
+    const nodes = Array.isArray(m.nodes)? m.nodes : [];
     const list = nodes.filter((x) => x && typeof x === 'object' && x.stagedAppend);
-    if (!list.length) return html`<div className="mt-2 p-2 rounded-[10px] bg-white border text-[11px] text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
-    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded-[10px] bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text-[10px] italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text-[12px] text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+    if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+  } catch (e) { return null; }
+} */
+function appendedNodesBlock(m) {
+  try {
+    if (!m || typeof m!== 'object') return null;
+    const nodes = Array.isArray(m.nodes)? m.nodes : [];
+    const list = nodes.filter(x => x && typeof x === 'object' && x.stagedAppend);
+    list.sort((a,b) => {
+      const atA = new Date(a.appended_at||a.at||0).getTime();
+      const atB = new Date(b.appended_at||b.at||0).getTime();
+      if (atA!==atB) return atA-atB;
+      if (a.kind!==b.kind) return a.kind==='RAW'? -1 : 1;
+      return 0;
+    });
+    if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
   } catch (e) { return null; }
 }
 function sourceListFor(m) {
@@ -248,6 +396,7 @@ export function TimelineCard(props) {
   const privacyFilter = props.privacyFilter || 'Both';
   const collapseAllTrigger = props.collapseAllTrigger || 0;
   const [openProv, setOpenProv] = window.React.useState(new Set());
+  const [provOpen, setProvOpen] = window.React.useState({}); // per-card provenance collapse
   const [notesOpen, setNotesOpen] = window.React.useState(true);
   const [draft, setDraft] = window.React.useState('');
   const [noteMsg, setNoteMsg] = window.React.useState('');
@@ -543,11 +692,15 @@ export function TimelineCard(props) {
         return next;
       });
     };
+    /*
     const toggleNode = (n) => {
       if (selectedNode && selectedNode.text === n.text) setSelectedNode(null);
       else setSelectedNode(n);
+    };*/
+    const toggleNode = (n) => {
+      if (selectedNode && selectedNode.at===n.at && selectedNode.kind===n.kind && selectedNode.fullText===n.fullText) setSelectedNode(null);
+      else setSelectedNode(n);
     };
-
     // Task 2 — banner toggle is independent of card expand: appendsOpen tracks the
     // banner's own toggle only (NOT `open`), so collapsed cards still reveal
     // staged RAW/AI nodes on first click.
@@ -598,15 +751,21 @@ export function TimelineCard(props) {
           ${isOwner ? html`<button type="button" onClick=${() => onFlipPrivacy && onFlipPrivacy(m)} className="ml-auto text-[11px] font-medium text-[#1F4A7A] hover:underline flex items-center gap-1"><span>${isPrivate ? '👥 Share with Team' : '🔒 Make Private'}</span></button>` : null}
         </div>
       </div>` : null}
+      
+      
       ${timelineStrip(m, isOwner, selectedNode, toggleNode)}
-      ${selectedNode ? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${selectedNode.kind} Node Content</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'System'} • ${selectedNode.at || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
+      ${selectedNode? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${selectedNode.kind} Node Content</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'System'} • ${selectedNode.at || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
       ${pendingAppendsBanner(m, appendsOpen, toggleAppends)}
       ${similarToPlaybookBanner(m, m.client_name)}
-      ${hasAppends && (!!appendOpen[m.id] || !!open) ? appendedNodesBlock(m, isOwner) : null}
+      ${hasAppends &&!!appendOpen[m.id]? appendedNodesBlock(m) : null}
+
       ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B] underline cursor-pointer">${c}</button>`)}</div>` : null}
       ${open ? html`<div className="mt-3 bg-[#f8fafc] rounded-[12px] p-3 space-y-2">
-        ${hasAppends && (!!appendOpen[m.id] || !!open) && isOwner ? appendedNodesBlock(m, isOwner) : null}
+      
+        <!--
         <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Full Provenance — ${provenanceEntries.length || chips.length} link(s)</div><div className="max-h-40 overflow-y-auto no-scrollbar space-y-1">${(provenanceEntries.length ? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title}</span></div>`))}</div></div>
+        -->
+        <div className="p-2 rounded-[10px] bg-white border"><button type="button" onClick=${() => setProvOpen(p=>Object.assign({},p,{[m.id]:!p[m.id]}))} className="w-full flex items-center justify-between text-[10px] font-semibold mb-1 text-[#475569] hover:text-[#1E293B]"><span>Full Provenance — ${provenanceEntries.length || chips.length} link(s)</span><span className="text-[10px] bg-[#F8FAFC] border border-[#E6EAF2] rounded-full px-2 py-0.5">${provOpen[m.id]? '▾ Collapse' : '▸ Expand'}</span></button>${provOpen[m.id]? html`<div className="max-h-40 overflow-y-auto no-scrollbar space-y-1 mt-2">${(provenanceEntries.length? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[10px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text[10px] text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[10]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[10px] text-[#64748B] truncate">${m.title}</span></div>`))}</div>` : null}</div>
         ${approveCta}
       </div>` : null}
       <div className="mt-3 pt-2 border-t border-[#E6EAF2] flex items-center justify-between gap-2">

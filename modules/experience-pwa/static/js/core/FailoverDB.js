@@ -34,8 +34,8 @@ export function ensureTimelineNodes(card) {
       const rawText = String(card.content || card.detail || card.synthesizedText || card.title || '');
       const aiText = String(card.synthesizedText || card.content || card.detail || card.title || '');
       card.nodes = [
-        { kind: 'RAW', text: rawText, author: card.author || card.contributor || getDefaultPersona(), at: card.created_at || card.timestamp },
-        { kind: 'AI', text: aiText, author: 'Onion AI', at: card.created_at || card.timestamp }
+        { kind: 'AI', text: aiText, author: 'AI', at: card.created_at || card.timestamp },
+        { kind: 'RAW', text: rawText, author: card.author || card.contributor || getDefaultPersona(), at: card.created_at || card.timestamp }
       ];
     }
   } catch (e) {}
@@ -263,6 +263,16 @@ class FailoverDB {
     const s = readLocal();
     return (s.timeline || []).filter((t) => t && t.syncStatus === 'pending_processing');
   }
+  async approveStaged(cardId){
+    const s = readLocal();
+    const card = (s.timeline||[]).find(c=>String(c.id)===String(cardId));
+    if(!card) return;
+    (card.nodes||[]).forEach(n=>{ if(n && n.stagedAppend){ n.stagedAppend=false; n.appendSyncStatus='approved'; n.privacy='Team Shared'; n.is_private=false; }});
+    card.pendingAppends=[];
+    card.updated_at=new Date().toISOString();
+    writeLocal(s);
+    return card;
+  }
   // BUG 5 fix: bulk "Clear all" for the Data Park staged-list UI — removes
   // every row still sitting in 'pending_processing' (optionally scoped to a
   // single project) without touching already-committed cards.
@@ -349,6 +359,7 @@ class FailoverDB {
         return target;
       }
     } catch (e) {}
+    /*
     const pushNode = (n) => {
       if (!n || (!n.text && !n.kind)) return;
       target.nodes.push({
@@ -366,8 +377,28 @@ class FailoverDB {
         fullText: n.text
       });
     };
-    pushNode(stagedRawNode);
+    */
+    const pushNode = (n) => {
+      if (!n || (!n.text && !n.kind)) return;
+      const txt = String((n && n.text) || '').slice(0,800).trim();
+      const kind = String((n && n.kind) || 'EV').toUpperCase();
+      // dedup: skip if same kind+text already staged
+      //if (target.nodes.some(ex => ex && ex.stagedAppend && String(ex.kind).toUpperCase()===kind && String(ex.text||'').trim()===txt)) return;
+      const norm = txt.toLowerCase();
+      if (target.nodes.some(ex => ex && ex.stagedAppend && String(ex.kind).toUpperCase()===kind && String(ex.text||'').trim().toLowerCase()===norm)) return;
+      target.nodes.push({
+        kind, text: txt,
+        author: String((n && (n.author || n.contributor)) || metaAuthor || 'User'),
+        contributor: String((n && (n.contributor || n.author)) || metaContrib || 'User'),
+        stagedAppend: true,
+        is_private: true, isPrivate: true,
+        privacy: effPrivacy, appendPrivacy: effPrivacy,
+        appendSyncStatus: 'pending_review',
+        appended_at: nowIso, fullText: n.text
+      });
+    };
     pushNode(stagedAiNode);
+    pushNode(stagedRawNode);
     if (!Array.isArray(target.pendingAppends)) target.pendingAppends = [];
     target.pendingAppends.push({
       at: nowIso,

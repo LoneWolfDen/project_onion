@@ -390,13 +390,14 @@ export function App() {
   const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} onSync=${handleSyncCard} onDelete=${onDeleteCard} onEdit=${onEditCard} />` : null;
   const askRaw = String(ask || '').trim();
   const hits = (askRaw ? contextCards.filter((t) => matchesAssistantQuery(t, askRaw)) : contextCards).slice(0, 3);
+  /*
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
     <div className="sticky top-0 z-20 border-b border-[#d6e8ff]" style=${{ background: 'linear-gradient(90deg,#D6F5E8 0%,#D6E8FF 100%)' }}>
       <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center font-bold text-[11px]">ON</div>
-          <div className="font-semibold tracking-tight">Project Onion</div>
-          <div className="text-[11px] text-[#6b7280] italic hidden md:block">Org Intelligence</div>
+          <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center font-bold text-[11px]">CO</div>
+          <div className="font-semibold tracking-tight">Continuum</div>
+          <div className="text-[11px] text-[#6b7280] italic hidden md:block">Everyday Intelligence • World of Continuum</div>
           <div className="h-4 w-px bg-[#bfdbfe] mx-1 hidden md:block"></div>
           <div className="flex items-center gap-1 bg-white rounded-full px-3 py-1 border border-[#bfdbfe] shadow-sm"><button onClick=${() => { setClient('ALL Clients'); setQ(''); setMode('project'); }} className="font-medium" title="Show all clients">All Clients</button>${active ? html`<span className="text-[#6b7280]">/</span><button onClick=${() => { setClient(active.client_name); setQ(''); setMode('client360'); setC360(active.client_name); }} className="font-medium" title="Filter to this client">${active.client_name}</button><span className="text-[#6b7280]">/</span><span className="font-semibold">${active.project_name}</span>` : (client !== 'ALL Clients' ? html`<span className="text-[#6b7280]">/</span><span className="font-medium">${client}</span>` : null)}</div>
         </div>
@@ -423,7 +424,106 @@ export function App() {
       </aside>
     </div>` : null}
     <${HarvesterPanel} project=${active} activePersona=${activePersona} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} />
+  </div>`;*/
+    return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
+    <div className="sticky top-0 z-20 border-b border-[#d6e8ff]" style=${{ background: 'linear-gradient(90deg,#D6F5E8 0%,#D6E8FF 100%)' }}>
+      <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center font-bold text-[11px]">CO</div>
+          <div className="font-semibold tracking-tight">Continuum</div>
+          <div className="text-[11px] text-[#6b7280] italic hidden md:block">Everyday Intelligence • World of Continuum</div>
+          <div className="h-4 w-px bg-[#bfdbfe] mx-1 hidden md:block"></div>
+          <div className="flex items-center gap-1 bg-white rounded-full px-3 py-1 border border-[#bfdbfe] shadow-sm"><button onClick=${() => { setClient('ALL Clients'); setQ(''); setMode('project'); }} className="font-medium" title="Show all clients">All Clients</button>${active ? html`<span className="text-[#6b7280]">/</span><button onClick=${() => { setClient(active.client_name); setQ(''); setMode('client360'); setC360(active.client_name); }} className="font-medium" title="Filter to this client">${active.client_name}</button><span className="text-[#6b7280]">/</span><span className="font-semibold">${active.project_name}</span>` : (client !== 'ALL Clients' ? html`<span className="text-[#6b7280]">/</span><span className="font-medium">${client}</span>` : null)}</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-[11px] text-[#6b7280]">Persona</label><select value=${activePersona} onChange=${(e) => setActivePersona(e.target.value)} className="bg-white border border-[#bfdbfe] rounded-full px-3 py-1 text-[11px] font-medium" title="Switch persona view">${PERSONAS.map((p) => html`<option key=${p} value=${p}>${p}</option>`)}</select>
+          <div className="text-[11px] text-[#6b7280] italic flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse inline-block"></span>Sync latest</div>
+          <button onClick=${() => setGuideOpen(true)} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
+        </div>
+      </div>
+    </div>
+    <div className="flex flex-col lg:flex-row">
+      <${AppLeft} client=${client} onClient=${(v) => { setClient(v); setQ(''); setMode('project'); }} clients=${clients} q=${q} setQ=${setQ} empty=${projects.length === 0} onRegister=${openReg} onOpenHandover=${() => setHandoverOpen(true)} onClientArtefacts=${() => setMode('client360')} projects=${projects} fmt=${fmtDate} onPick=${(r) => setProject(r)} isActive=${(x) => active && x.Project_ReferenceID === active.Project_ReferenceID} />
+      <${AppCenter} mode=${mode} c360=${c360} activePersona=${activePersona} onBack=${() => setMode('project')} onPickProject=${(r) => setProject(r)} allProjects=${db.projects} timeline=${db.timeline} notes=${db.notes} domains=${domains} keywords=${keywords} active=${active} fmt=${fmtDate} onEdit=${openEdit} onDetails=${() => setDetailsOpen((v) => !v)} detailsOpen=${detailsOpen} editSlot=${editSlot} timelineSlot=${timelineSlot} archived=${archived} />
+      <${AppRight} privacy=${privacy} setPrivacy=${onPrivacyChange} ask=${ask} setAsk=${onAskClear} hits=${hits} onView=${onViewHit} keywords=${keywords} contextCards=${contextCards} activePersona=${activePersona} onClientArtefacts=${() => setMode('client360')} onAsk=${onAskAssistant} assistantAnswer=${assistantAnswer} assistantLoading=${assistantLoading} assistantSources=${assistantSources} scopedCount=${contextCards.length} />
+    </div>
+
+    <!-- The Footer is injected here -->
+    <div className="px-4 py-4 border-t border-[#E6EAF2] bg-[#fbfdfb]">
+      <${WorldOfContinuumFooter} activeProject=${active} />
+    </div>
+
+    <div className="px-4 py-2 text-[10px] italic text-[#9ca3af] border-t bg-white flex flex-wrap gap-3"><span>Project Onion v0.18.0 clean</span></div>
+    ${regSlot}
+    <${HandoverModal} isOpen=${isHandoverOpen} onClose=${() => setHandoverOpen(false)} activePersona=${activePersona} activeRef=${active ? active.Project_ReferenceID : null} onPickProject=${(r) => setProject(r)} onViewCard=${onViewHit} />
+    ${guideOpen ? html`<div className="fixed inset-0 z-50" style=${{ background: 'rgba(15,23,42,0.35)' }} onClick=${() => setGuideOpen(false)}>
+      <aside onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} aria-label="Project Onion Guide panel" style=${{ position: 'fixed', top: 0, right: 0, height: '100vh', width: '46vw', minWidth: '546px', maxWidth: '806px', background: 'linear-gradient(180deg,#F0F7FF 0%,#F3ECFF 55%,#FFF9F0 100%)', borderLeft: '1px solid #A8C6F0', boxShadow: '-8px 0 24px rgba(31,74,122,.16)', display: 'flex', flexDirection: 'column', zIndex: 51 }}>
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#A8C6F0]"><div className="font-semibold text-[14px] italic" style=${{ textAlign: 'left', color: '#0f2040' }}>Project Onion - Guide</div><div className="ml-auto flex items-center gap-2"><a href=${guideSrc} target="_blank" rel="noopener" title="Open in New Tab" className="px-3 py-1 rounded-full bg-white border border-[#A8C6F0] text-[12px]">↗</a><button onClick=${() => setGuideOpen(false)} title="Close" className="px-3 py-1 rounded-full bg-white border border-[#A8C6F0] text-[12px]">✕</button></div></div>
+        <div className="flex items-center gap-2 px-4 py-2" style=${{ background: 'rgba(255,255,255,.65)' }}><button onClick=${() => setGuideSrc('/static/docs/guide.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/guide.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>◉ Guide</button><button onClick=${() => setGuideSrc('/static/docs/Project-Onion-Relationship-Model.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/Project-Onion-Relationship-Model.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>🕸 Relationship</button><button onClick=${() => setGuideSrc('/static/docs/Project-Onion-Data-Model.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/Project-Onion-Data-Model.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>▦ Data Model</button><button onClick=${() => setGuideSrc('/static/docs/RAG-Architecture.html')} className=${'px-3 py-1 rounded-full text-[12px] border ' + (guideSrc === '/static/docs/RAG-Architecture.html' ? 'bg-[#0f2040] text-white border-[#0f2040]' : 'bg-white border-[#A8C6F0]')}>🧭 Test Flow</button></div>
+        <iframe src=${guideSrc} title="Project Onion Guide" style=${{ flex: 1, width: '100%', border: '0', background: '#fff' }}></iframe>
+      </aside>
+    </div>` : null}
+    <${HarvesterPanel} project=${active} activePersona=${activePersona} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} />
   </div>`;
 
 
+}
+
+// World of Continuum Footer - Add to AppRight.js bottom or App.js footer
+// This shows integration: Continuum card O-008891 -> Finance Engine v3.5
+
+function openFinanceEngine(projectId) {
+  const pid = projectId || 'O-008891';
+  // Finance v3.5 runs on localhost:3005
+  // It accepts ?project_id query - even if not natively, we store in localStorage for demo
+  try {
+    localStorage.setItem('continuum_last_project_id', pid);
+    localStorage.setItem('continuum_finance_link', JSON.stringify({ projectId: pid, source: 'Continuum', timestamp: new Date().toISOString() }));
+  } catch(e){}
+  window.open(`http://localhost:3005?project_id=${encodeURIComponent(pid)}&source=continuum&utm=world_of_continuum`, '_blank');
+}
+
+export function WorldOfContinuumFooter({ activeProject }) {
+  const pid = activeProject?.opportunity_numbers?.[0] || activeProject?.opportunity_id || 'O-008891';
+  const html = window.htm.bind(window.React.createElement);
+
+  const openFinanceEngine = (projectId) => {
+    const p = projectId || pid;
+    try {
+      localStorage.setItem('continuum_last_project_id', p);
+      localStorage.setItem('continuum_finance_link', JSON.stringify({ projectId: p, source: 'Continuum', ts: new Date().toISOString() }));
+    } catch(e){}
+    // v3.5 runs on 3005 - reads?project_id
+    window.open(`http://localhost:3005?project_id=${encodeURIComponent(p)}&source=continuum&utm=world_of_continuum`, '_blank');
+  };
+
+  return html`
+    <!-- Sticky bottom bar - World of Continuum -->
+    <div className="fixed bottom-0 left-0 w-full z-[20] border-t border-[#fbcfe8] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" style=${{ background: 'linear-gradient(90deg, #FFE4E6 0%, #FFF5D6 100%)' }}>
+      <div className="px-4 py-3 flex items-center justify-center w-full">
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          <div className="w-7 h-7 rounded-full bg-white border border-[#fbcfe8] text-[#831843] flex items-center justify-center font-bold text- shadow-sm shrink-0">WC</div>
+          <div className="font-semibold tracking-tight text- text-[#831843]">World of Continuum</div>
+          <div className="text- text-[#9f1239] italic hidden md:block">Portfolio of Applications</div>
+          <div className="h-4 w-px bg-[#fbcfe8] mx-1 hidden md:block"></div>
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <a href="https://github.com/LoneWolfDen/Project_Delivery_Accelerator_Engine" target="_blank" className="bg-white rounded-full px-3 py-1 border border-[#fbcfe8] shadow-sm font-medium text-[#831843] text- hover:scale-105 transition-transform">
+              Solution Accelerator ↗
+            </a>
+            <span className="text-[#f9a8d4] font-light">|</span>
+            <div className="flex items-center gap-1.5 bg-[#fdf2f8] rounded-full px-3 py-1 border border-[#f472b6] shadow-sm font-semibold text-[#475569] text-" title="Currently Active - Everyday Intelligence">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse inline-block"></span>
+              Continuum • ${pid}
+            </div>
+            <span className="text-[#f9a8d4] font-light">|</span>
+            <button type="button" onClick=${() => openFinanceEngine(pid)} className="bg-white rounded-full px-3 py-1 border border-[#fbcfe8] shadow-sm font-medium text-[#831843] text- hover:scale-105 transition-transform cursor-pointer hover:bg-[#831843] hover:text-white">
+              Finance Engine ↗
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Spacer so timeline not hidden behind fixed footer -->
+    <div className="h-16 w-full pointer-events-none"></div>
+  `;
 }

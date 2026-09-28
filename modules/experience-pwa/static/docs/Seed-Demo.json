@@ -1,0 +1,334 @@
+{
+  "clients": [
+    {
+      "account_name": "Acme Corp",
+      "domains": [
+        "acme.com",
+        "acme-corp.internal"
+      ],
+      "key_contacts": [
+        {
+          "email": "sarah.m@acme.com",
+          "group": "Client",
+          "name": "Sarah Mitchell",
+          "role": "Sponsor"
+        },
+        {
+          "email": "david.k@acme.com",
+          "group": "Client",
+          "name": "David Kim",
+          "role": "Delivery Lead"
+        }
+      ],
+      "keywords": [
+        "Invoice",
+        "PO",
+        "Sprint",
+        "RAID",
+        "MS3",
+        "FW-REQ",
+        "Velocity"
+      ]
+    },
+    {
+      "account_name": "NovaTech Labs",
+      "domains": [
+        "novatech.io"
+      ],
+      "key_contacts": [
+        {
+          "email": "priya@novatech.io",
+          "group": "Client",
+          "name": "Priya Nair",
+          "role": "Product Owner"
+        }
+      ],
+      "keywords": [
+        "UAT",
+        "FW-REQ",
+        "Escalation",
+        "Infra"
+      ]
+    },
+    {
+      "account_name": "Stellar Dynamics",
+      "domains": [
+        "stellar-dynamics.com"
+      ],
+      "key_contacts": [
+        {
+          "email": "marcus@stellar-dynamics.com",
+          "group": "Client",
+          "name": "Marcus Lee",
+          "role": "CTO"
+        }
+      ],
+      "keywords": [
+        "Milestone",
+        "Budget",
+        "Governance",
+        "RAG"
+      ]
+    }
+  ],
+  "financeLink": {
+    "sharedProjectId": "O-008891",
+    "continuumProjectRef": "Apollo-O-008891-200926120000",
+    "financeEngineUrl": "http://localhost:3005",
+    "financeEngineHealth": "http://localhost:3005/api/health",
+    "demoFlow": "Continuum card O-008891 -> Finance Engine v3.5 surplus calculation -> back to Continuum timeline"
+  },
+  "projects": [
+    {
+      "Project_ReferenceID": "Apollo-O-008891-200926120000",
+      "anchor_id": "Apollo-O-008891-200926120000",
+      "project_name": "Apollo-123",
+      "client_name": "Acme Corp",
+      "opportunity_id": "O-008891",
+      "opportunity_numbers": [
+        "O-008891"
+      ],
+      "project_ids": [
+        "987",
+        "O-008891",
+        "424242"
+      ],
+      "gdp_id": "987987",
+      "gdp_url": "https://gdp.internal/project-details/987987",
+      "connected_record_urls": [
+        "https://salesforce.internal/006xx0000012345"
+      ],
+      "keywords": [
+        "Invoice",
+        "PO Extension",
+        "MS3",
+        "Sprint 14",
+        "RAID",
+        "Velocity"
+      ],
+      "filter_keywords": [
+        "Invoice",
+        "PO",
+        "Sprint",
+        "RAID"
+      ],
+      "contacts": [
+        {
+          "email": "sarah.m@acme.com",
+          "group": "Client",
+          "name": "Sarah Mitchell",
+          "role": "Sponsor"
+        },
+        {
+          "email": "vamsi@internal.com",
+          "group": "Internal",
+          "name": "Vamsi Yedlapalli",
+          "role": "Delivery Manager"
+        }
+      ],
+      "sharepoint_urls": {
+        "Risk Log": [
+          "https://acme.sharepoint.com/Apollo-123/risks"
+        ],
+        "Service review folder": [
+          "https://acme.sharepoint.com/Apollo-123/reviews"
+        ]
+      },
+      "active": true,
+      "created_at": "2026-09-28T10:00:00.000Z"
+    },
+    {
+      "Project_ReferenceID": "NovaTech-O-564421-200926120100",
+      "project_name": "NovaTech-42",
+      "client_name": "NovaTech Labs",
+      "opportunity_numbers": [
+        "O-564421"
+      ],
+      "project_ids": [
+        "424242"
+      ],
+      "keywords": [
+        "UAT",
+        "Deploy"
+      ],
+      "active": true,
+      "created_at": "2026-09-28T09:00:00.000Z"
+    },
+    {
+      "Project_ReferenceID": "Helios-O-008893-200926120200",
+      "project_name": "Helios-09",
+      "client_name": "Acme Corp",
+      "opportunity_numbers": [
+        "O-008893"
+      ],
+      "project_ids": [
+        "99974052"
+      ],
+      "active": false,
+      "archived": true,
+      "created_at": "2026-09-27T10:00:00.000Z"
+    }
+  ],
+  "timeline": [
+    {
+      "id": "card-po-missing-001",
+      "Project_ReferenceID": "Apollo-O-008891-200926120000",
+      "project_name": "Apollo-123",
+      "title": "PO Missing submission - Latest received payments closing the loop logically. rec",
+      "synthesizedText": "Vendor registration indicates POs are dispatched to the central invoicing mailbox. Advise checking the registered inbox directly before escalating to client delivery contacts. To ready for invoicing. Missing PO - Invoicing Internal call held with action items to check designated mailbox.",
+      "detail": "Vendor registration indicates POs are dispatched to the central invoicing mailbox. Advise checking registered inbox. Missing PO - Invoicing Internal call held.",
+      "content": "Vendor registration indicates POs are dispatched to the central invoicing mailbox. Advise checking the registered inbox directly before escalating to client delivery contacts. To ready for invoicing. Missing PO - Invoicing Internal call held with action items to check designated mailbox.",
+      "source": "Outlook Mail",
+      "type": "Email",
+      "tags": [
+        "#Invoice_Resolved",
+        "#Risk_Watch",
+        "#Routine"
+      ],
+      "privacy": "Team Shared",
+      "author": "Bren\u00e9",
+      "contributor": "Bren\u00e9",
+      "opportunity_id": "O-008891",
+      "opportunity_numbers": [
+        "O-008891"
+      ],
+      "project_ids": [
+        "987",
+        "O-008891"
+      ],
+      "impactScore": 0.88,
+      "confidence": 88,
+      "piiStatus": "Approved",
+      "syncStatus": "synced",
+      "vectorSyncStatus": "synced",
+      "created_at": "2026-09-28T09:51:31.227Z",
+      "updated_at": "2026-09-28T10:45:00.000Z",
+      "pendingAppends": [],
+      "nodes": [
+        {
+          "kind": "RAW",
+          "text": "PO Extension Approved for O-008891 - Client confirmed extension via email, new validity till Dec 2025",
+          "author": "Daniel",
+          "contributor": "Daniel",
+          "fullText": "PO Extension Approved",
+          "at": "2026-09-28T09:30:00.000Z"
+        },
+        {
+          "kind": "AI",
+          "text": "PO Extension Approved - Client confirmed extension via email, new validity till Dec 2025, unblocking invoicing.",
+          "author": "Daniel",
+          "fullText": "PO Extension Approved - Client confirmed",
+          "at": "2026-09-28T09:31:00.000Z"
+        },
+        {
+          "kind": "RAW",
+          "text": "PO Missing submission - Latest received payments closing the loop logically. rec - vendor inbox check",
+          "author": "Bren\u00e9",
+          "fullText": "PO Missing submission",
+          "at": "2026-09-28T09:51:31.227Z"
+        },
+        {
+          "kind": "AI",
+          "text": "Vendor registration indicates POs are dispatched to the central invoicing mailbox. Missing PO - internal call held with action items.",
+          "author": "Bren\u00e9",
+          "fullText": "Vendor registration indicates POs are dispatched",
+          "at": "2026-09-28T09:52:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "card-ms3-blocked-002",
+      "Project_ReferenceID": "Apollo-O-008891-200926120000",
+      "project_name": "Apollo-123",
+      "title": "MS3 sign-off blocked \u2014 PO-88921 depleted",
+      "synthesizedText": "MS3 sign-off blocked \u2014 PO-88921 depleted. Finance engine v3.5 surplus calculation shows $45k at risk. Need PO extension before invoicing.",
+      "detail": "MS3 sign-off blocked due to depleted PO. Need extension approval from client. Finance engine shows surplus at risk.",
+      "source": "RAID Log",
+      "type": "Risk",
+      "tags": [
+        "#Risk_Watch",
+        "#Milestone_Tracked"
+      ],
+      "privacy": "Team Shared",
+      "author": "Daniel",
+      "opportunity_id": "O-008891",
+      "impactScore": 0.92,
+      "confidence": 92,
+      "syncStatus": "synced",
+      "created_at": "2026-09-28T08:00:00.000Z",
+      "updated_at": "2026-09-28T08:00:00.000Z",
+      "nodes": [
+        {
+          "kind": "RAW",
+          "text": "UAT deploy blocked \u2014 FW-REQ-4471 pending Infosec approval",
+          "author": "Daniel",
+          "at": "2026-09-28T07:00:00.000Z"
+        },
+        {
+          "kind": "AI",
+          "text": "UAT deploy blocked \u2014 FW-REQ-4471 pending Infosec, impacts MS3 timeline.",
+          "author": "Daniel",
+          "at": "2026-09-28T07:01:00.000Z"
+        },
+        {
+          "kind": "RAW",
+          "text": "MS3 sign-off blocked \u2014 PO-88921 depleted, surplus $45k blocked",
+          "author": "Daniel",
+          "at": "2026-09-28T08:00:00.000Z"
+        },
+        {
+          "kind": "AI",
+          "text": "MS3 blocked due to PO depletion. Finance impact $45k surplus at risk.",
+          "author": "Daniel",
+          "at": "2026-09-28T08:01:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "card-sprint-003",
+      "Project_ReferenceID": "Apollo-O-008891-200926120000",
+      "project_name": "Apollo-123",
+      "title": "Sprint 14 burndown \u2014 velocity at risk (11/32 pts)",
+      "synthesizedText": "Sprint 14 burndown \u2014 velocity at risk (11/32 points). Blocked by FW-REQ-4471 and PO extension. Team velocity 34%.",
+      "detail": "Sprint velocity at risk due to dependency on Infosec approval and PO extension. Daily standup flagged.",
+      "source": "Teams Chat",
+      "type": "Scrum",
+      "tags": [
+        "#Sprint",
+        "#Routine"
+      ],
+      "privacy": "Team Shared",
+      "author": "Bren\u00e9",
+      "impactScore": 0.65,
+      "syncStatus": "pending_upload",
+      "created_at": "2026-09-28T06:30:00.000Z",
+      "nodes": [
+        {
+          "kind": "RAW",
+          "text": "Sprint 14 burndown \u2014 velocity at risk (11/32 pts)",
+          "author": "Bren\u00e9",
+          "at": "2026-09-28T06:30:00.000Z"
+        },
+        {
+          "kind": "AI",
+          "text": "Sprint 14 at risk due to external dependencies, velocity 34%, need unblock.",
+          "author": "Bren\u00e9",
+          "at": "2026-09-28T06:31:00.000Z"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "id": "note-private-001",
+      "Project_ReferenceID": "Apollo-O-008891-200926120000",
+      "project_name": "Apollo-123",
+      "title": "My follow-up with Sarah on PO extension",
+      "content": "Spoke to Sarah \u2014 she confirmed PO extension will be signed today EOD. Need to update finance engine once received.",
+      "privacy": "My Notes (Private)",
+      "author": "Bren\u00e9",
+      "syncStatus": "synced",
+      "created_at": "2026-09-28T10:00:00.000Z"
+    }
+  ]
+}

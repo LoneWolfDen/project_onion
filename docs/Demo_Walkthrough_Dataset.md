@@ -107,7 +107,7 @@ The first 80 characters, `AP-4410 approved again: nightly batch sync stays for c
 
 ### Step 5 · Share with the team (2:50–3:30)
 
-**Do:** on the card, click **Share update with team** once.
+**Do:** expand the card (the expand button at its top right, or "▸ expand" in the draft banner), then click **Share update with team** once. The button only shows on an expanded card.
 
 **Expected:**
 - The draft pill becomes a normal RAW pill.

@@ -682,18 +682,18 @@ export function HarvesterPanel(props) {
     setApproving(false);
   };
   const onResetSeed = async () => {
-    setParkMsg('Resetting to hackathon demo data…');
+    setParkMsg('Resetting to the demo dataset…');
     try {
       const api = dbApi();
-      if (api && api.resetToSeedData) await api.resetToSeedData();
+      if (api && api.resetToDemoDataset) await api.resetToDemoDataset();
       else {
-        try {
-          const mod = await import('../core/FailoverDB.js');
-          if (mod && mod.resetToSeedData) await mod.resetToSeedData();
-        } catch (e2) {}
+        const mod = await import('../core/FailoverDB.js');
+        if (mod && mod.resetToDemoDataset) await mod.resetToDemoDataset();
       }
       setParsedReviewQueue([]);
-      setParkMsg('Demo data restored ✅ — fresh test data loaded.');
+      setParkMsg('Demo dataset restored ✅ — reloading…');
+      // Reload so the selected project, persona, filters and review queue start clean.
+      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 600);
     } catch (e) { setParkMsg('Reset failed: ' + String((e && e.message) || e)); }
   };
   return html`<div>
@@ -738,7 +738,7 @@ export function HarvesterPanel(props) {
               <button type="button" onClick=${() => { try { localStorage.removeItem('OPENROUTER_API_KEY'); } catch (e) {} setApiKey(''); setParkMsg('Key cleared — Mock mode active.'); }} className="px-3 py-1 rounded-full bg-white border text-[11px]">Clear (use Mock)</button>
             </div>
             <div style=${{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280', marginTop: '4px' }}>No key → 1.2s simulated latency + mock JSON so the demo never fails.</div>
-            <button type="button" onClick=${onResetSeed} title="Clear local cache and reload hackathon seed" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset to Hackathon Demo Data</button>
+            <button type="button" onClick=${onResetSeed} title="Replace all local data with the fictional hackathon demo dataset (API key settings are kept)" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset Demo Dataset</button>
           </div>` : null}
           <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>
             <select value=${kind} onChange=${(e) => setKind(e.target.value)} style=${{ background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}>

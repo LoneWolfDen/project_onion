@@ -58,7 +58,7 @@ export function App() {
   const [q, setQ] = useState('');
   const [activeRef, setActiveRef] = useState(null);
   const [mode, setMode] = useState('project');
-  const [c360, setC360] = useState('Acme Corp');
+  const [c360, setC360] = useState(''); // empty: Client 360 follows the active project's client
   const [privacy, setPrivacy] = useState('Both');
   const [activePersona, setActivePersona] = useState('Brené');
   const [focusId, setFocusId] = useState(null);
@@ -81,7 +81,7 @@ export function App() {
   const [mName, setMName] = useState('');
   const [mOpp, setMOpp] = useState(''); const [mOppList, setMOppList] = useState(['']);
   const [mProj, setMProj] = useState(''); const [mProjList, setMProjList] = useState(['']);
-  const [mAccount, setMAccount] = useState('Acme Corp');
+  const [mAccount, setMAccount] = useState('');
   const [mJust, setMJust] = useState('');
   const [mErr, setMErr] = useState('');
   const [mGdp, setMGdp] = useState('');

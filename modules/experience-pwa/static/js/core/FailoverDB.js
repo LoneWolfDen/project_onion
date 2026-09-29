@@ -1,5 +1,6 @@
 // js/core/FailoverDB.js part1 — Failover Repository Pattern (mandatory).
 import { MOCK_SEED } from '../data/mockSeed.js';
+import { buildDemoState } from '../data/demoDataset.js';
 import { getDefaultPersona } from '../constants/personas.js';
 let _vectorMirror = null;
 function vectorMirror() {
@@ -42,6 +43,11 @@ export function ensureTimelineNodes(card) {
   return card;
 }
 export function seedState() { const s = clone(MOCK_SEED); try { (s.timeline || []).forEach(ensureTimelineNodes); } catch (e) {} return s; }
+// First boot (empty storage) loads the fictional demo dataset; mockSeed stays
+// the test seed behind resetToSeedData(). Set to 'mock' to boot the old seed.
+const BOOT_DATASET = 'demo';
+export function demoState() { const s = buildDemoState(Date.now()); try { (s.timeline || []).forEach(ensureTimelineNodes); } catch (e) {} return s; }
+function bootState() { return BOOT_DATASET === 'demo' ? demoState() : seedState(); }
 export function readLocal() {
   let raw = null;
   try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
@@ -55,7 +61,7 @@ export function readLocal() {
     } catch (e) {}
   }
   if (raw == null || raw === '') {
-    const seed = seedState();
+    const seed = bootState();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(seed)); } catch (e) {}
     return seed;
   }
@@ -69,7 +75,7 @@ export function readLocal() {
     return { clients: [], projects: [], timeline: [], notes: [], archived: [] };
   }
     let seededCache = null;
-    const seedField = (k) => { try { if (!seededCache) seededCache = seedState(); return clone(seededCache[k]); } catch (e) { return []; } };
+    const seedField = (k) => { try { if (!seededCache) seededCache = bootState(); return clone(seededCache[k]); } catch (e) { return []; } };
     if (parsed.projects == null) parsed.projects = seedField('projects');
     if (parsed.timeline == null) parsed.timeline = [];
     if (parsed.notes == null) parsed.notes = [];
@@ -442,6 +448,7 @@ class FailoverDB {
     writeLocal(seed);
     return seed;
   }
+  async resetToDemoDataset() { return resetToDemoDataset(); }
   subscribe(fn) {
     const h = () => { try { fn(readLocal()); } catch (e) {} };
     window.addEventListener('onion:db-update', h);
@@ -454,10 +461,24 @@ export async function resetToSeedData() {
   writeLocal(seed);
   return seed;
 }
+// Reset Demo Dataset: clears every local key that holds data or in-progress
+// work, then writes a fresh demo state. API keys and model settings are kept.
+// Callers reload the page so React state (project, filters) starts clean too.
+const DEMO_RESET_KEYS = [STORAGE_KEY, ...LEGACY_KEYS, 'onion_projects', 'onion_review_queue', 'onion_vector_queue'];
+export async function resetToDemoDataset() {
+  try {
+    DEMO_RESET_KEYS.forEach((k) => localStorage.removeItem(k));
+    Object.keys(localStorage).filter((k) => k.indexOf('onion_review_draft_') === 0).forEach((k) => localStorage.removeItem(k));
+  } catch (e) {}
+  const state = demoState();
+  writeLocal(state);
+  try { localStorage.setItem('activePersona', 'Brené'); } catch (e) {}
+  return state;
+}
 export const OnionDB = new FailoverDB();
 try {
   const bootRaw = localStorage.getItem(STORAGE_KEY);
-  if (bootRaw == null || bootRaw === '') localStorage.setItem(STORAGE_KEY, JSON.stringify(seedState()));
+  if (bootRaw == null || bootRaw === '') localStorage.setItem(STORAGE_KEY, JSON.stringify(bootState()));
   window.OnionDB = OnionDB;
 } catch (err) {}
 export default OnionDB;

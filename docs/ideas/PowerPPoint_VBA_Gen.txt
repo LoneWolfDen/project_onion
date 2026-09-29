@@ -657,6 +657,137 @@ Requirements:
 	HAndover
 PRovide exact records and ordering.
 
-Document all Files that beed to be created or modified
-Do not geenrate code yet.
-Produce a detailed implementation plan first.
+Document all Files that need to be created or modified
+Do not geenrate code yet or make changes.
+Produce a detailed implementation plan first and any recommendation to address demonstration impact
+
+
+
+Claudes output:
+Written for: your hackathon team, the people implementing the reset and the presenters. Judges may also read the data.
+
+I've written the two documents and haven't changed any code:
+- [docs/HACKATHON_DEMO_DATA.md](docs/HACKATHON_DEMO_DATA.md) is the dataset, the 10 scenarios, the Client 360 test data, the reset plan, the list of files to change and the implementation plan.
+- [docs/Demo_Walkthrough_Dataset.md](docs/Demo_Walkthrough_Dataset.md) is the 5-minute live script, with the exact records, the input to paste and a fallback table.
+
+The expected results aren't estimates. I copied the app's matching, evidence, Handover, Key Moments and Client 360 rules into a scratch script and ran every card and pasted input through it. Every input lands on its intended card, and the percentages and Handover moves are the computed ones. It hasn't been run in the app yet; step 6 of the plan adds that as a harness test.
+
+**The dataset**
+- **Cast:** three invented clients (Halden Mutual Insurance, Corrin Water Utilities, Brackwater Retail Group) with five projects, one of them archived. All domains end in `.example`, which can never point to a real site.
+- **Size:** 29 cards and 2 notes, spread evenly across Brené, Malcolm, Walter and Daniel (7–8 cards each, each with at least one "Only me" note).
+- **Coverage:** all 10 scenarios you listed, each with the nine fields you asked for.
+
+**How it avoids the weak areas**
+- **Matching:** every pasted update contains one reference ID (such as `AP-4410`) that appears on exactly one card, so the match is always the certain "Strong match: both mention AP-4410". Loose keyword matching and Chroma are never reached.
+- **Ownership:** only the card's owner sees "Share update with team", so each update is pasted by the owner of its target card.
+- **Privacy:** "Only me" notes carry no IDs and no tags.
+- **Cross-project:** knowledge from another project (Scenario 9) is found by reading Client 360 and the archived project, never by appending across projects.
+- **Wording:** card text avoids words that would put a card in the wrong Handover category or make the Share button appear by mistake.
+
+**The walkthrough:** the story is Scenario 2, "why is claim status not real-time?". Brené asks the assistant, opens the five-month-old original text, then pastes the client's new email. It matches, becomes a draft, and when she shares it the evidence goes from 74% Medium to 85% High. Handover then lists the decision as Closed, and Client 360 shows Ingrid Vale on 3 projects.
+
+**Problems I found while reviewing** (fixes are in the plan):
+- Client 360 opens on a hard-coded "Acme Corp" until someone clicks a project, so it would be empty with the new data ([App.js:61](modules/experience-pwa/static/js/components/App.js#L61)). Until that's fixed, the script has a pre-flight step to click the project first.
+- The current reset doesn't clear the review queue, the vector queue or the screen state. The new "Reset Demo Dataset" clears all of those, keeps your API key and reloads the page. A second click confirms it.
+- Pages judges might open still mention McKinsey and Contoso ([GuideData.js](modules/experience-pwa/static/docs/guide-app/GuideData.js) and two other files), and `acme.com` is a real domain.
+
+**Decisions for you:**
+1. Should a first-time visitor see the demo data instead of the Acme data (recommendation R-1)? It's a one-line switch, and the existing tests are unaffected.
+2. Live AI key or offline for the demo? Both work end to end. Offline, the "summary" is just the first 220 characters of the pasted text, with a badge saying so; live is clearly better if the venue Wi-Fi is reliable.
+3. Can the Client 360 "Know-how" section use each project's existing SharePoint links field? That avoids adding a new data field, which the project rules forbid.
+
+The implementation is about half a day, including a harness test that checks every number in the dataset document.
+
+-----
+
+Assume tomorrow's demo is the priority
+Reduce the implementation plan to the minimum required
+
+Goal:
+Demonstrate all key Continuum capabilities
+USe safe, curated demo data 
+Support a basic Reset to Demo Data action 
+
+For tomorrow:
+Demo Dataset 
+Reset to Demo Data
+Safe fictional projects 
+PRedictable scenario ordering 
+
+
+Avoid Validation harness, dataset auditing, Client 360 enhancements, automated scenario verification, automation, regression testing, Dataset consistency framework and non-essential improvements.
+
+Create: MINIMUM_HACKATHON_DATASET_PLAN.md
+
+Classify each task as:
+Must HAve
+Nice to HAvePost-hackathon
+---
+Follow-up prompt:
+
+Approved.
+Implement only M-1 through M-5
+Use the button label "Reset Demo Dataset"
+
+Do not implement Nice to have items.
+Do not implement post-hackathon items 
+
+After implementation:
+List files changed
+Explan how Reset Demo Dataset works - so I can reset as needed
+
+Daat file location: yes generate and add to the repo.
+
+Do not implement additional enhancements
+----
+
+Claude output:
+M-1 to M-5 are done, and the demo data and **"↺ Reset Demo Dataset"** both work in a real browser (WebKit test run, no page errors).
+
+I ran the walkthrough end to end on the reset data and every result matched the plan:
+- **Landing:** the app opens on Beacon-201 as Brené, with no Acme, Apollo or NovaTech text on screen. Key Moments shows the expected top 5.
+- **Client 360:** shows Halden Mutual Insurance with 3 projects, 5 contacts and 11 themes. Ingrid Vale is marked "on 3 projects".
+- **Smart Append:** pasting the walkthrough email gives "Strong match: both mention AP-4410" and "Impact: Key moment (0.90)".
+- **Evidence:** while the update is a draft it stays at 74% Medium and says "1 draft update not counted until shared". After sharing it reads "High (85%) … RAID Log Excel, Teams Chat, Data Park Dropzone".
+- **Handover:** Beacon-201 goes from 9 Open / 1 Closed to 8 Open / 2 Closed.
+
+**Files changed**
+
+| File | Change |
+|---|---|
+| `static/js/data/demoDataset.js` (new) | The fictional dataset: 3 clients, 5 projects, 29 cards and 2 notes. I generated it from the data file checked earlier, so nothing was retyped. |
+| `static/js/core/FailoverDB.js` | Adds `resetToDemoDataset()`. First boot with empty storage now loads the demo data. `mockSeed.js` and `resetToSeedData()` are unchanged, so the existing tests still work. |
+| `static/js/components/HarvesterPanel.js` | The button now reads "↺ Reset Demo Dataset", calls the new reset, then reloads the page. |
+| `static/js/components/App.js` | Removed the two hard-coded "Acme Corp" defaults, so Client 360 follows the active project's client. |
+| `static/index.html` | Cache version bumped (`main.js?v=demodata1`). |
+
+I also made one documentation fix. In the browser run, "Share update with team" only appeared after the card was expanded; that's existing behaviour. Step 5 of `Demo_Walkthrough_Dataset.md` now says to expand the card first.
+
+Nothing else was changed. Smart Append, similarity, Chroma, confidence, approval, Handover and the old seed are untouched, and no Nice to Have or post-hackathon items were implemented.
+
+**How "↺ Reset Demo Dataset" works**
+1. Click **🪶 Open Harvester Control** (bottom left), then the ⚙️ button (AI configuration). The button is at the bottom of that panel.
+2. Click it once. There is no confirmation step, since that was a Nice to Have.
+3. It deletes the saved app data, any review queue items and drafts, and the pending vector-upload queue. It keeps your API key and model settings.
+4. It writes a fresh copy of the demo dataset. Dates are recalculated from today, so "2 days ago" is always correct.
+5. It sets the persona to Brené and shows "Demo dataset restored ✅ — reloading…".
+6. It reloads the page, which opens on Beacon-201 as Brené with nothing selected or filtered.
+
+It's safe to click as often as you like. Every reset produces the same state, so use it before each judging slot. A browser that has never opened the app gets the demo data automatically, without needing the button.
+
+**One-time step after deploying:** the service worker serves cached files first. Reload the page **twice** once, so every browser picks up the new code. After that the button's own reload is enough.
+
+============================
+
+http://localhost:8002/app
+
+
+curl https://openrouter.ai/api/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -d '{
+    "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "messages": [{"role":"user","content":"Hello"}]
+  }'
+  
+

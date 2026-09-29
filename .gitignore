@@ -168,3 +168,7 @@ modules/vector-service/chroma_data/
 **/fixed-backups/
 **/*notFullyWorking*
 docs/fixed-backups/
+modules/vector-service/chroma_data/
+**/*_bak.js
+**/*.bak.js
+**/fixed-backups/

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Continuum Guide — Isolated Test</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+  <script src="../../js/vendor/react.production.min.js"></script>
+  <script src="../../js/vendor/react-dom.production.min.js"></script>
+  <script src="../../js/vendor/htm.umd.js"></script>
+</head>
+<body>
+  <div id="guide-root"><p style="padding:16px;font-family:sans-serif;">Loading guide…</p></div>
+  <script type="module">
+    import { InteractiveGuide } from './InteractiveGuide.js';
+    try {
+      const root = window.ReactDOM.createRoot(document.getElementById('guide-root'));
+      root.render(window.React.createElement(InteractiveGuide));
+    } catch (err) {
+      document.getElementById('guide-root').innerHTML =
+        '<div style="margin:12px;padding:12px;border:1px solid #fecdd3;background:#FFE4E6;border-radius:10px;font:13px Inter,system-ui">Guide render failed: ' + String((err && err.message) || err) + '</div>';
+      throw err;
+    }
+  </script>
+</body>
+</html>

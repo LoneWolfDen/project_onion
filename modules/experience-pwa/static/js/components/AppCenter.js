@@ -1,5 +1,6 @@
 // AppCenter.js — CENTER column (UX polish; htm-safe: child VNodes precomputed in JS, templates stay flat).
 import { piiScreen } from '../core/PiiGate.js';
+import { cardAge, formatWhen } from '../core/timeAgo.js';
 const htmlC = window.htm.bind(window.React.createElement);
 function getGdpId(a) {
   if (!a) return '';
@@ -65,7 +66,8 @@ function centerMatch(t, proj) {
   if (!t || !proj) return false;
   return t.Project_ReferenceID === proj.Project_ReferenceID || t.project_name === proj.project_name || t.projectId === proj.project_name;
 }
-function centerAge(m) { return String((m && (m.timestamp || m.age)) || ''); }
+// A11: age from real dates (updated / processed / created); stored text only as fallback.
+function centerAge(m) { return cardAge(m).label; }
 function centerTitle(m) { return String((m && (m.title || m.synthesizedText || m.content || m.detail)) || 'Untitled'); }
 function centerKeyIcon(m) {
   const hay = [centerTitle(m), String((m && m.type) || ''), String((m && m.source) || '')].join(' ').toLowerCase();
@@ -104,12 +106,30 @@ export function AppCenter(p) {
     const c360Domains = (p.domains || []).map((d) => htmlC`<span key=${d} className="px-3 py-1 rounded-full bg-[#f0f7ff] border border-[#bfdbfe] text-[11px]">${d}</span>`);
     const c360Cards = c360Projs.map((pr) => htmlC`<button key=${pr.Project_ReferenceID} onClick=${() => { if (p.onPickProject) p.onPickProject(pr.Project_ReferenceID); }} className="text-left rounded-[16px] bg-white border border-[#e5e7eb] p-4 shadow-sm hover:shadow-md transition"><div className="font-semibold text-[13px]">${pr.project_name}</div><div className="mt-1 text-[11px] text-[#6b7280] break-all">${pr.Project_ReferenceID}</div><div className="mt-2 text-[11px]">${c360Count(p.timeline, p.notes, pr)} timeline / Data Park assets</div><div className="mt-2 text-[11px] text-[#1e40af] underline">Open project</div></button>`);
     const c360Grid = c360Cards.length ? c360Cards : [htmlC`<div className="rounded-[16px] bg-white border border-dashed p-4 text-[12px]">No projects found for this client.</div>`];
-    const c360DirRows = c360Dir.map((c) => htmlC`<div key=${c.email || c.name} className="p-2 rounded-[12px] bg-[#f9fafb] border"><div className="text-[12px]"><a href=${'mailto:' + c.email} className="font-medium text-[#1e40af] underline">${c.email || c.name}</a><span className="ml-2 text-[11px]">${c.role}</span></div><div className="mt-1 text-[11px] text-[#6b7280]">${c.name}</div><div className="mt-1 flex flex-wrap gap-1">${c.projects.map((pn) => htmlC`<span key=${pn} className="px-2 py-0.5 rounded-full bg-[#D6E8FF] border text-[10px]">${pn}</span>`)}</div></div>`);
-    const c360DirBody = c360DirRows.length ? c360DirRows : [htmlC`<div className="text-[11px] italic">No contacts yet.</div>`];
+    const c360DirRows = c360Dir.map((c) => htmlC`<div key=${c.email || c.name} className="p-2 rounded-[12px] bg-[#f9fafb] border"><div className="text-[12px]"><a href=${'mailto:' + c.email} className="font-medium text-[#1e40af] underline">${c.email || c.name}</a><span className="ml-2 text-[11px]">${c.role}</span></div><div className="mt-1 text-[11px] text-[#6b7280]">${c.name}${c.projects.length > 1 ? htmlC`<span className="c360-multi">on ${c.projects.length} projects</span>` : null}</div><div className="mt-1 flex flex-wrap gap-1">${c.projects.map((pn) => htmlC`<span key=${pn} className="px-2 py-0.5 rounded-full bg-[#D6E8FF] border text-[10px]">${pn}</span>`)}</div></div>`);
+    const c360DirBody = c360DirRows.length ? c360DirRows : [htmlC`<div className="text-[11px] italic">No contacts yet — they appear here as project cards list client contacts.</div>`];
     const c360ThemeChips = c360ThemeArr.map((t) => htmlC`<span key=${t.tag} className="px-3 py-1 rounded-full bg-[#FFF5D6] border text-[11px]">${t.tag}<span className="ml-1">x${t.n}</span></span>`);
-    const c360ThemeBody = c360ThemeChips.length ? c360ThemeChips : [htmlC`<div className="text-[11px] italic">No AI tags yet.</div>`];
+    const c360ThemeBody = c360ThemeChips.length ? c360ThemeChips : [htmlC`<div className="text-[11px] italic">No themes yet — they appear as AI tags repeat across this client's cards.</div>`];
     const c360Arts = c360Artefacts(c360Name).map((a) => htmlC`<a key=${a.title} href="#" onClick=${(e) => { if (e && e.preventDefault) e.preventDefault(); }} className="flex gap-2 p-2 rounded-[12px] bg-[#f9fafb] border"><span className="text-[#1e40af]">↗</span><span><span className="block text-[12px] text-[#1e40af] underline">${a.title}</span><span className="block text-[11px] text-[#6b7280]">${a.desc}</span></span></a>`);
-    return htmlC`<div className="flex-1 min-w-0 bg-[#fbfdfb]"><div className="p-4 lg:p-5 space-y-4"><div className="flex flex-wrap items-center gap-3"><button onClick=${p.onBack} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text-[12px]">← ${c360Back}</button><div><h2 className="text-[18px] font-semibold">${c360Name} — Client 360</h2><div className="text-[11px] text-[#6b7280]">${c360Projs.length} projects • ${c360Dir.length} contacts • ${c360ThemeArr.length} themes</div></div></div><div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4"><div className="font-medium text-[13px]">Client Domains</div><div className="mt-2 flex gap-2 flex-wrap">${c360Domains}</div></div><div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4"><div className="font-semibold text-[13px]">Active Projects</div><div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">${c360Grid}</div></div><div className="grid grid-cols-1 xl:grid-cols-2 gap-4"><div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4"><div className="font-semibold text-[13px]">Global Client Directory</div><div className="mt-3 space-y-2">${c360DirBody}</div></div><div className="space-y-4"><div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4"><div className="font-semibold text-[13px]">Trending Client Themes</div><div className="mt-3 flex flex-wrap gap-2">${c360ThemeBody}</div></div><div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4"><div className="font-semibold text-[13px]">Global Client Artefacts</div><div className="mt-3 space-y-2">${c360Arts}</div></div></div></div></div></div>`;
+    // Layout only (no data changes): know-how first, then people, projects and
+    // patterns. Every list, count and handler above is used exactly as before.
+    const c360Stat = (n, label) => htmlC`<div className="c360-stat"><b>${n}</b><span>${label}</span></div>`;
+    const c360Head = (icon, title, hint) => htmlC`<div className="c360-head"><span className="c360-icon">${icon}</span><div><div className="font-semibold text-[13px]">${title}</div><div className="c360-hint">${hint}</div></div></div>`;
+    return htmlC`<div className="flex-1 min-w-0 bg-[#fbfdfb] onion-c360"><div className="p-4 lg:p-5 space-y-4">
+<div className="c360-hero">
+  <div className="flex flex-wrap items-center gap-3"><button onClick=${p.onBack} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text-[12px]">← ${c360Back}</button><div><h2 className="text-[18px] font-semibold">${c360Name} — Client 360</h2><div className="c360-hint">One place for what the team has learned about ${c360Name}: how things work here, who to ask, and which projects are running.</div></div></div>
+  <div className="c360-stats">${c360Stat(c360Projs.length, 'projects')}${c360Stat(c360Dir.length, 'contacts')}${c360Stat(c360ThemeArr.length, 'themes')}${c360Stat(c360Arts.length, 'artefacts')}</div>
+</div>
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+  <div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4 c360-sec c360-know">${c360Head('📚', 'Know-how & artefacts', 'Guides and playbooks for working with this client: access, ordering, escalation.')}<div className="c360-sample">Sample content</div><div className="mt-3 space-y-2">${c360Arts}</div></div>
+  <div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4 c360-sec c360-people">${c360Head('👥', 'Who to contact', 'Client contacts gathered from every project; people on several projects are marked.')}<div className="mt-3 space-y-2">${c360DirBody}</div></div>
+</div>
+<div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4 c360-sec c360-projects">${c360Head('🗂️', 'Projects for this client', 'Open a project to see its status cards and timeline.')}<div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">${c360Grid}</div></div>
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+  <div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4 c360-sec c360-themes">${c360Head('🔁', 'Recurring themes', 'Topics that keep coming up across this client\'s projects.')}<div className="mt-3 flex flex-wrap gap-2">${c360ThemeBody}</div></div>
+  <div className="rounded-[16px] bg-white border border-[#e5e7eb] p-4 c360-sec c360-domains">${c360Head('🌐', 'Client domains', 'Email and web domains recorded for this client.')}<div className="mt-2 flex gap-2 flex-wrap">${c360Domains}</div></div>
+</div>
+</div></div>`;
   }
   if (!active) return htmlC`<div className="flex-1 min-w-0 bg-[#fbfdfb]"><div className="p-4 text-[12px]">No project selected</div></div>`;
   const gdpId = getGdpId(active);
@@ -186,11 +206,14 @@ export function AppCenter(p) {
     });
     const historyToShow = sortedHistory.length? sortedHistory : [{kind:'', text: preview, at: m.updated_at || m.created_at || '', fullText: preview}];
     //return htmlC`<div key=${key} className="rounded- bg-white border border-[#E6EAF2]"><button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]:!prev[key] }))} className="w-full text-left px-2.5 py-1.5 text- text-[#475569] truncate" title=${title}>${open? '▾ ' : '▸ '}heard about: ${title} <span class="ml-1 text- text-[#94A3B8]">(${nodes.length||1})</span></button>${open? htmlC`<div className="px-2.5 pb-2 space-y-1 max-h- overflow-y-auto">${historyToShow.map((n, idx) => htmlC`<div key=${idx} className="flex gap-2 text- border-b border-[#F1F5F9] py-1 last:border-0"><span className="shrink-0 text- text-[#94A3B8]">${String(n.at || n.appended_at || '').slice(0,16).replace('T',' ')}</span><span className="shrink-0 font-bold text-[#1E293B]">${String(n.kind||'').toUpperCase()}</span><span className="flex-1 min-w-0 break-words text-[#334155]">${String(n.fullText || n.text || '').slice(0,400)}</span></div>`)}</div>` : null}</div>`;
-    return htmlC`<div key=${key} className="rounded-lg bg-white border border-[#E6EAF2]">
-  <button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]:!prev[key] }))} className="w-full text-left px-2.5 py-1.5 text- text-[#475569] truncate" title=${title}>
-    ${open? '▾ ' : '▸ '}heard about: ${title} <span class="ml-1 text-[14px] text-[#94A3B8]">(${nodes.length||1})</span>
+    // Display only: source · age · entry count on the right of the title.
+    const entries = nodes.length || 1;
+    const infoMeta = [String(m.source || m.type || ''), cardAge(m).label, entries + (entries === 1 ? ' entry' : ' entries')].filter(Boolean).join(' · ');
+    return htmlC`<div key=${key} className="rounded-lg bg-white border border-[#E6EAF2] onion-info-item">
+  <button onClick=${() => setInfoOpen((prev) => Object.assign({}, prev, { [key]:!prev[key] }))} className="onion-info-head" title=${title}>
+    <span className="onion-info-title">${open? '▾ ' : '▸ '}${title}</span><span className="onion-info-meta">${infoMeta}</span>
   </button>
-  ${open? htmlC`<div className="px-2.5 pb-2 space-y-1 max-h- overflow-y-auto">
+  ${open? htmlC`<div className="onion-info-list">
     ${[...(historyToShow||[])].sort((a,b)=>{
       // newest first, then AI before RAW for same timestamp
       const ta = String(a.at||a.appended_at||'');
@@ -200,17 +223,22 @@ export function AppCenter(p) {
       const kb = String(b.kind||'').toUpperCase();
       if (ka===kb) return 0;
       return ka==='AI' ? -1 : 1;
-    }).map((n, idx) => {
+    }).map((n, idx, rows) => {
       const isRaw = String(n.kind||'').toUpperCase()==='RAW';
-      return htmlC`<div key=${idx} className=${"flex gap-2 border-b border-[#F1F5F9] py-1 last:border-0 " + (isRaw ? "ml-6 pl-2 border-l-2 border-l-[#E2E8F0] opacity-70" : "")}>
-        <span className="shrink-0 text-[12px] text-[#94A3B8]">${String(n.at || n.appended_at || '').slice(0,16).replace('T',' ')}</span>
-        <span className=${"shrink-0 font-bold " + (isRaw ? "text-[7px] text-[#94A3B8] italic" : "text-[7px] text-[#1E40AF]")}>${String(n.kind||'').toUpperCase()}</span>
-        <span className=${"flex-1 min-w-0 break-words " + (isRaw ? "text-[7px] italic text-[#64748B]" : "text-[7px] text-[#1E293B] font-medium")}>${String(n.fullText || n.text || '').slice(0,400)}</span>
+      // Display only: a RAW row sharing its AI row's time leaves the time cell
+      // blank, so each pair reads as one update.
+      const at = n.at || n.appended_at || '';
+      const prev = idx > 0 ? rows[idx - 1] : null;
+      const sameAsPrev = prev && String(prev.at || prev.appended_at || '') === String(at);
+      return htmlC`<div key=${idx} className=${'onion-info-row' + (isRaw ? ' is-raw' : '')}>
+        <span className="onion-info-time">${sameAsPrev ? '' : formatWhen(at)}</span>
+        <span className="onion-info-kind">${String(n.kind||'').toUpperCase()}</span>
+        <span className="onion-info-text">${String(n.fullText || n.text || '').slice(0,400)}</span>
       </div>`;
     })}
     </div>` : null}
   </div>`;
-  }) : [htmlC`<div className="text- italic text-[#64748B]">No informational updates.</div>`];
+  }) : [htmlC`<div className="text- italic text-[#64748B]">No routine updates.</div>`];
   const keyRows = centerTop5.length ? centerTop5.map((m) => {
     const age = centerAge(m);
     const title = centerTitle(m);
@@ -218,7 +246,7 @@ export function AppCenter(p) {
     const key = String(m.id || m.title || title);
     return htmlC`<button key=${key} onClick=${() => scrollToTimelineCard(m.id)} className="w-full text-left flex items-center gap-3 p-2.5 rounded-[12px] bg-white border border-[#E6EAF2] hover:border-[#A8C6F0] hover:shadow-sm transition"><span className="w-7 h-7 rounded-full bg-[#E8F2FF] border border-[#A8C6F0] flex items-center justify-center text-[12px] font-bold text-[#1F4A7A] shrink-0">${icon}</span><span className="text-[11px] font-semibold text-[#64748B] min-w-[52px] shrink-0">${age}</span><span className="text-[13px] text-[#1E293B] flex-1 min-w-0 truncate" title=${title}>${title}</span><span className="text-[11px] text-[#1F4A7A] font-medium shrink-0">→ View Card</span></button>`;
   }) : [htmlC`<div className="p-2.5 rounded-[12px] bg-white border border-[#E6EAF2] text-[12px] text-[#64748B]">No key moments yet — run Harvester Control to ingest.</div>`];
-  const keyMoments = htmlC`<div className="mt-4 rounded-[16px] bg-[#EEF6FF] border border-[#dbeafe] p-4 px-4"><div className="flex items-center justify-between gap-2 flex-wrap"><h3 className="text-[13px] font-semibold">Key Moments — Last 5</h3><span className="text-[11px] px-2 py-0.5 rounded-full bg-white border border-[#A8C6F0] text-[#1F4A7A]">Top 5 by impact — noise filtered</span></div><div className="mt-3 px-4"><div className="text-[11px] font-semibold text-[#1F4A7A] mb-1">Timeline Events</div><div className="space-y-2.5">${keyRows}</div></div><div className="mt-3 px-4"><div className="text-[11px] font-semibold text-[#64748B] mb-1">Informational Updates</div><div className="space-y-1.5">${infoRows}</div></div></div>`;
+  const keyMoments = htmlC`<div className="mt-4 rounded-[16px] bg-[#EEF6FF] border border-[#dbeafe] p-4 px-4"><div className="flex items-center justify-between gap-2 flex-wrap"><h3 className="text-[13px] font-semibold">Key Moments</h3><span className="text-[11px] px-2 py-0.5 rounded-full bg-white border border-[#A8C6F0] text-[#1F4A7A]">Top 5 by impact — noise filtered</span></div><div className="mt-3 px-4"><div className="text-[11px] font-semibold text-[#1F4A7A] mb-1">Timeline Events</div><div className="space-y-2.5">${keyRows}</div></div><div className="mt-3 px-4"><div className="text-[11px] font-semibold text-[#64748B] mb-1">Routine updates <span className="onion-info-sub">Low-impact items, kept for context</span></div><div className="space-y-1.5">${infoRows}</div></div></div>`;
   const statusFeed = slotNotes.length || centerScoped.length ? p.timelineSlot : null;
   // Collapse All + hide YOUR NOTES inside the Status Cards feed (YOUR NOTES is now
   // extracted above the Status Cards header per offline UX directive).
@@ -254,7 +282,7 @@ export function AppCenter(p) {
   const visibleNotes = cNotes.filter(canSeeNote);
   const privateNotes = visibleNotes.filter(isPrivateNote);
   const teamNotes = visibleNotes.filter((d) => !isPrivateNote(d));
-  const onForceSync = async () => { try { const api = (typeof window !== 'undefined' && window.OnionDB) || null; if (api && api.forceSync) { const r = await api.forceSync(); setNoteMsg('Force Sync: ' + (r.synced || 0) + ' item(s) marked synced'); } } catch (e) {} };
+  const onForceSync = async () => { try { const api = (typeof window !== 'undefined' && window.OnionDB) || null; if (api && api.forceSync) { const r = await api.forceSync(); setNoteMsg('Marked ' + (r.synced || 0) + ' item(s) as uploaded (demo, no server call).'); } } catch (e) {} };
   const onEditNote = (d) => { try { setNoteDraft(String(d.original || d.title || d.content || '')); } catch (e) {} };
   // Task 3 helper: vector sync icon (NOT local syncStatus).
   const vecSynced = (d) => String((d && d.vectorSyncStatus) || '') === 'synced';
@@ -266,10 +294,10 @@ export function AppCenter(p) {
   // to 'synced'). Count the SAME field the button acts on so 0 actually means
   // "nothing left to sync" instead of being permanently stuck.
   const pendingVec = (Array.isArray(visibleNotes) ? visibleNotes : []).filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
-  const syncLabel = pendingVec > 0 ? ('Force Sync ☁️ (' + pendingVec + ' pending)') : 'All synced ✅';
+  const syncLabel = pendingVec > 0 ? ('Mark uploaded (demo) ☁️ (' + pendingVec + ' pending)') : 'Nothing pending ✅';
   const privateCols = privateNotes.length ? privateNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No private notes.</div>`];
   const teamCols = teamNotes.length ? teamNotes.map(noteRow) : [htmlC`<div className="py-1.5 text-[11px] italic text-[#64748B]">No team notes.</div>`];
-  const yourNotes = htmlC`<div className="mt-4 rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-[13px]">YOUR NOTES</h3><span className="flex items-center gap-2"><button onClick=${onForceSync} title="Flip pending_upload to synced for offline/online UI test" className="text-[10px] underline text-[#1F4A7A]">${syncLabel}</button></span></div><div className="mt-3 flex gap-2 flex-wrap items-center"><span title=${'Viewing as ' + (p.activePersona || 'User')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold shrink-0" style=${{ width: '32px', height: '32px', fontSize: '13px' }}>${String(p.activePersona || 'U')[0]}</span><input value=${noteDraft} onInput=${(e) => setNoteDraft(e.target.value)} placeholder="Add a note..." className="flex-1 min-w-[180px] bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" /><button onClick=${() => submitNote('Private')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-white border border-[#111827] text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#fff', color: '#111827', border: '1px solid #111827' }}>🔒 Add as Private (Only Me)</button><button onClick=${() => submitNote('Team Shared')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-black text-white text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#111827', color: '#fff', border: '1px solid #111827' }}>👥 Add as Team Shared</button></div>${noteMsg ? htmlC`<div className="mt-2 text-[11px] italic text-[#64748B]">${noteMsg}</div>` : null}<div className="mt-3 flex flex-row gap-4"><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1E293B]">Private Notes (${privateNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${privateCols}</div></div><div className="flex-1 min-w-0"><div className="text-[11px] font-bold text-[#1F4A7A]">Team Shared Notes (${teamNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${teamCols}</div></div></div></div>`;
+  const yourNotes = htmlC`<div className="mt-4 rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4 onion-sec-notes"><div className="flex items-center justify-between"><h3 className="font-semibold text-[13px]">YOUR NOTES</h3><span className="flex items-center gap-2"><button onClick=${onForceSync} title="Demo only: marks local items as uploaded. No server is contacted." className="text-[10px] underline text-[#1F4A7A]">${syncLabel}</button></span></div><div className="mt-3 flex gap-2 flex-wrap items-center"><span title=${'Viewing as ' + (p.activePersona || 'User')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold shrink-0 onion-avatar" style=${{ width: '32px', height: '32px', fontSize: '13px' }}>${String(p.activePersona || 'U')[0]}</span><input value=${noteDraft} onInput=${(e) => setNoteDraft(e.target.value)} placeholder="Add a note..." className="flex-1 min-w-[180px] bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" /><button onClick=${() => submitNote('Private')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-white border border-[#111827] text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#fff', color: '#1F4A7A', border: '1px solid #A8C6F0' }}>🔒 Add for only me</button><button onClick=${() => submitNote('Team Shared')} disabled=${noteSaving} className="px-3 py-2 rounded-full bg-black text-white text-[11px] font-bold" style=${{ borderRadius: '9999px', padding: '5px 12px', fontSize: '11px', fontWeight: 700, background: '#D6E8FF', color: '#1F4A7A', border: '1px solid #A8C6F0' }}>👥 Add for team</button></div>${noteMsg ? htmlC`<div className="mt-2 text-[11px] italic text-[#64748B]">${noteMsg}</div>` : null}<div className="mt-3 flex flex-row gap-4"><div className="flex-1 min-w-0 onion-notes-col is-private"><div className="text-[11px] font-bold text-[#1E293B]">🔒 Only me (${privateNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${privateCols}</div></div><div className="flex-1 min-w-0 onion-notes-col is-team"><div className="text-[11px] font-bold text-[#1F4A7A]">👥 Team (${teamNotes.length})</div><div className="mt-1 max-h-[132px] overflow-y-auto no-scrollbar">${teamCols}</div></div></div></div>`;
   const archivedRows = (p.archived || []).map((a) => htmlC`<div key=${a.Project_ReferenceID} className="p-2 rounded-[8px] bg-[#f3f4f6] border text-[11px]">${a.project_name} — ${a.archived_justification || ''}</div>`);
   return htmlC`<div className="flex-1 min-w-0 bg-[#fbfdfb]"><div className="p-4 lg:p-5 space-y-5 relative"><div className="rounded-[16px] bg-white border border-[#e5e7eb] shadow-sm p-4 relative"><div className="flex flex-wrap items-center gap-2"><div className="min-w-0 flex flex-wrap items-center gap-2"><h2 className="text-[16px] font-semibold leading-tight">${active.project_name}</h2>${oppChips}${projChips}${personaBadge}</div><div className="ml-auto flex gap-2"><button onClick=${p.onEdit} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px] font-medium">Edit Project Details</button><button onClick=${p.onDetails} className="px-3 py-1 rounded-full bg-[#f0f7ff] border border-[#bfdbfe] text-[11px]">${p.detailsOpen ? 'Collapse' : 'Expand'}</button></div></div><div className="mt-1 text-[11px] text-[#6b7280]">${active.Project_ReferenceID} • Created ${p.fmt(active.created_at)} • Last updated ${p.fmt(active.updated_at || active.created_at)}</div>${p.editSlot}${detailsBody}${keyMoments}${yourNotes}<div className="mt-4"><div className="flex items-center gap-2"><div className="text-[13px] font-semibold">Status Cards</div><button onClick=${() => setCollapseAllTrigger((v) => v + 1)} className="ml-auto px-3 py-1 rounded-full bg-[#FFF5D6] border border-[#fde68a] text-[11px] font-medium">Collapse All</button></div><div className="mt-2">${statusFeedWithCollapse}</div></div></div><div className="mt-3 p-2 rounded-[8px] bg-[#f3f4f6] border border-dashed text-[11px]">Archived (${(p.archived || []).length})</div><div className="mt-2 space-y-1">${archivedRows}</div></div></div>`;
 }

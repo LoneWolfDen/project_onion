@@ -115,3 +115,164 @@ body { font-family: Inter, system-ui, sans-serif; background: #fafcfe; color: #1
 .ho-btn:disabled{opacity:.45;cursor:not-allowed;}
 .ho-status{padding:8px 12px;border-radius:10px;background:#EEF6FF;border:1px solid #A8C6F0;font-size:12px;color:#1E293B;}
 .ho-meta-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:#64748B;}
+
+
+/* ===== BLOCK 4: colour utilities the ESM components use but the frozen Tailwind build above never compiled =====
+   Without these the classes were silently ignored (white banners, white-on-white Save button).
+   Colour only: tiny font sizes such as text-[7px] are deliberately NOT added, so text stays readable. */
+.bg-\[\#0f2040\]{background-color:#0F2040}
+.bg-\[\#1E293B\]{background-color:#1E293B}
+.bg-\[\#1F4A7A\]{background-color:#1F4A7A}
+.bg-\[\#991b1b\]{background-color:#991B1B}
+.bg-\[\#E8F2FF\]{background-color:#E8F2FF}
+.bg-\[\#ECFDF5\]{background-color:#ECFDF5}
+.bg-\[\#EEF6FF\]{background-color:#EEF6FF}
+.bg-\[\#F0E6FF\]{background-color:#F0E6FF}
+.bg-\[\#F0F7FF\]{background-color:#F0F7FF}
+.bg-\[\#F5F3FF\]{background-color:#F5F3FF}
+.bg-\[\#F8FAFC\]{background-color:#F8FAFC}
+.bg-\[\#FEF2F2\]{background-color:#FEF2F2}
+.bg-\[\#FFF2E8\]{background-color:#FFF2E8}
+.bg-\[\#FFFBEB\]{background-color:#FFFBEB}
+.bg-\[\#f8fafc\]{background-color:#F8FAFC}
+.bg-\[\#fffbeb\]{background-color:#FFFBEB}
+.bg-blue-100{background-color:#DBEAFE}
+.bg-blue-50{background-color:#EFF6FF}
+.bg-green-50{background-color:#F0FDF4}
+.bg-red-50{background-color:#FEF2F2}
+.border-\[\#0f2040\]{border-color:#0F2040}
+.border-\[\#111827\]{border-color:#111827}
+.border-\[\#A7F3D0\]{border-color:#A7F3D0}
+.border-\[\#A8C6F0\]{border-color:#A8C6F0}
+.border-\[\#C4B5FD\]{border-color:#C4B5FD}
+.border-\[\#D9C7FF\]{border-color:#D9C7FF}
+.border-\[\#E6EAF2\]{border-color:#E6EAF2}
+.border-\[\#F1F5F9\]{border-color:#F1F5F9}
+.border-\[\#FCD34D\]{border-color:#FCD34D}
+.border-\[\#FDE68A\]{border-color:#FDE68A}
+.border-\[\#FECACA\]{border-color:#FECACA}
+.border-\[\#FFC9A8\]{border-color:#FFC9A8}
+.border-\[\#dbeafe\]{border-color:#DBEAFE}
+.border-\[\#f59e0b\]{border-color:#F59E0B}
+.border-\[\#fcd34d\]{border-color:#FCD34D}
+.border-blue-100{border-color:#DBEAFE}
+.border-blue-300{border-color:#93C5FD}
+.border-green-200{border-color:#BBF7D0}
+.border-red-100{border-color:#FEE2E2}
+.border-red-200{border-color:#FECACA}
+.hover\:bg-\[\#15355a\]:hover{background-color:#15355A}
+.hover\:bg-\[\#EDE9FE\]:hover{background-color:#EDE9FE}
+.hover\:bg-\[\#F8FAFC\]:hover{background-color:#F8FAFC}
+.hover\:bg-\[\#f0f7ff\]:hover{background-color:#F0F7FF}
+.hover\:bg-\[\#f1f5f9\]:hover{background-color:#F1F5F9}
+.hover\:bg-\[\#fef3c7\]:hover{background-color:#FEF3C7}
+.hover\:bg-blue-100:hover{background-color:#DBEAFE}
+.hover\:bg-red-50:hover{background-color:#FEF2F2}
+.hover\:border-\[\#A8C6F0\]:hover{border-color:#A8C6F0}
+.hover\:border-\[\#bfdbfe\]:hover{border-color:#BFDBFE}
+.hover\:text-\[\#1E293B\]:hover{color:#1E293B}
+.text-\[\#065F46\]{color:#065F46}
+.text-\[\#1E293B\]{color:#1E293B}
+.text-\[\#1E40AF\]{color:#1E40AF}
+.text-\[\#1F4A7A\]{color:#1F4A7A}
+.text-\[\#334155\]{color:#334155}
+.text-\[\#475569\]{color:#475569}
+.text-\[\#5B21B6\]{color:#5B21B6}
+.text-\[\#5B2EBF\]{color:#5B2EBF}
+.text-\[\#64748B\]{color:#64748B}
+.text-\[\#7A3E1F\]{color:#7A3E1F}
+.text-\[\#92400E\]{color:#92400E}
+.text-\[\#92400e\]{color:#92400E}
+.text-\[\#94A3B8\]{color:#94A3B8}
+.text-\[\#991B1B\]{color:#991B1B}
+.text-blue-100{color:#DBEAFE}
+.text-blue-600{color:#2563EB}
+.text-blue-700{color:#1D4ED8}
+.text-green-600{color:#16A34A}
+.text-green-700{color:#15803D}
+.text-red-600{color:#DC2626}
+.text-red-700{color:#B91C1C}
+.border-green-100{border-color:#DCFCE7}
+.hover\:bg-blue-200:hover{background-color:#BFDBFE}
+
+/* ===== BLOCK 5: Handover modal, softer palette (overrides the .ho-* rules above; delete this block to revert) =====
+   Selected states use a pale-blue fill with brand-blue text instead of solid dark slate. */
+.ho-backdrop{background:rgba(15,23,42,.30)}
+.ho-radio.on,.ho-tab.on,.ho-proj-tab.is-active{background:#D6E8FF;color:#1F4A7A;border-color:#1F4A7A;box-shadow:none;font-weight:700}
+.ho-proj-tab.is-active.is-selected{border-color:#1F4A7A}
+.ho-proj-tab.is-active .ho-count{background:#fff;color:#1F4A7A;border-color:#A8C6F0}
+.ho-add-btn{background:#fff;color:#065F46;border-color:#6EE7B7}
+.ho-add-btn.is-in,.ho-proj-tab.is-active .ho-add-btn.is-in{background:#D6F5E8;color:#065F46;border-color:#34D399}
+.ho-proj-tab.is-active .ho-add-btn{background:#fff;color:#065F46;border-color:#6EE7B7}
+.ho-btn-primary{background:#1F4A7A;border-color:#1F4A7A}
+.ho-btn-green{background:#D6F5E8;color:#065F46;border-color:#6EE7B7}
+.ho-btn-dark{background:#fff;color:#1F4A7A;border-color:#A8C6F0}
+.ho-tile-btn.is-on{outline:2px solid #1F4A7A;box-shadow:0 4px 14px rgba(31,74,122,.18)}
+.ho-sect{background:#FAFCFF;border-left:3px solid #D6E8FF}
+.ho-feed{background:#F5F8FC}
+
+/* ===== BLOCK 6: pastel sections, routine-update rows, Client 360 layout (UI only) =====
+   Four pastels from the app tokens: blue (Key Moments), mint (notes), lavender (know-how), butter (themes).
+   Status cards stay white: they are the reading surface. */
+/* YOUR NOTES: mint panel; private column peach, team column blue */
+.onion-sec-notes{background:#F2FBF6;border-color:#CDEFDD}
+.onion-notes-col{border-radius:12px;padding:8px 10px;border:1px solid transparent}
+.onion-notes-col.is-private{background:#FFF7F0;border-color:#FDE3CF}
+.onion-notes-col.is-team{background:#F3F8FF;border-color:#D6E8FF}
+/* Key Moments: routine updates */
+.onion-info-sub{font-weight:400;color:#94A3B8;margin-left:6px}
+.onion-info-head{width:100%;display:flex;align-items:baseline;gap:10px;padding:7px 10px;text-align:left;font-size:12px;color:#334155}
+.onion-info-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.onion-info-meta{flex-shrink:0;font-size:11px;color:#94A3B8}
+.onion-info-list{padding:2px 10px 8px;max-height:240px;overflow-y:auto}
+.onion-info-row{display:grid;grid-template-columns:104px 38px minmax(0,1fr);gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid #F1F5F9;font-size:12px;line-height:1.45}
+.onion-info-row.is-raw{border-top:0;padding-top:0}
+.onion-info-time{font-size:11px;color:#94A3B8;white-space:nowrap}
+.onion-info-kind{justify-self:start;font-size:10px;font-weight:800;letter-spacing:.04em;padding:1px 6px;border-radius:9999px;background:#E8F2FF;color:#1F4A7A}
+.onion-info-row.is-raw .onion-info-kind{background:#F1F5F9;color:#64748B}
+.onion-info-text{color:#1E293B;word-break:break-word}
+.onion-info-row.is-raw .onion-info-text{color:#64748B;font-style:italic}
+/* Client 360 */
+.onion-c360 .c360-hero{background:linear-gradient(90deg,#EEF6FF 0%,#F3ECFF 100%);border:1px solid #D6E8FF;border-radius:16px;padding:14px 16px}
+.onion-c360 .c360-hint{font-size:11px;color:#64748B;margin-top:2px}
+.onion-c360 .c360-stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.onion-c360 .c360-stat{display:flex;align-items:baseline;gap:6px;background:#fff;border:1px solid #E6EAF2;border-radius:12px;padding:6px 12px;font-size:11px;color:#64748B}
+.onion-c360 .c360-stat b{font-size:18px;color:#1F4A7A}
+.onion-c360 .c360-head{display:flex;gap:10px;align-items:flex-start;margin:-16px -16px 0;padding:12px 16px;border-radius:16px 16px 0 0;border-bottom:1px solid #E6EAF2}
+.onion-c360 .c360-icon{font-size:16px;line-height:1.2}
+.onion-c360 .c360-know .c360-head{background:#F3ECFF}
+.onion-c360 .c360-people .c360-head{background:#EAF8F1}
+.onion-c360 .c360-projects .c360-head{background:#EEF6FF}
+.onion-c360 .c360-themes .c360-head{background:#FFF8E1}
+.onion-c360 .c360-domains .c360-head{background:#F4F6F9}
+.onion-c360 .c360-sample{display:inline-block;margin-top:10px;font-size:10px;font-weight:700;padding:1px 8px;border-radius:9999px;background:#FFFBEB;border:1px solid #FDE68A;color:#92400E}
+.onion-c360 .c360-multi{margin-left:6px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9999px;background:#D6F5E8;color:#065F46}
+.onion-c360 .block{display:block}
+
+/* ===== BLOCK 7: small cosmetic fixes (hooks: onion-avatar, onion-add-project, onion-sec-assistant, onion-btn-soft) =====
+   Scoped on purpose: the frozen build above also lacks inline-flex / px-2.5 / w-9 / h-9, but adding them
+   globally would move every element that uses them. */
+.onion-avatar{display:inline-flex;align-items:center;justify-content:center;line-height:1}
+/* Handover feed "View" buttons: px-2.5 was never compiled, so the label clipped inside the pill */
+.ho-shell .px-2\.5{padding-left:.75rem;padding-right:.75rem}
+/* Project search: "+" add button, a little larger, brand pastel instead of dark slate */
+.onion-add-project{width:40px;height:40px;background:#D6E8FF;color:#1F4A7A;border:1px solid #A8C6F0;font-weight:700}
+.onion-add-project:hover{background:#C4DCFB}
+/* Smart Assistant panel: very light lavender so it reads as its own column */
+.onion-sec-assistant{background:#FBF9FF}
+/* Soft primary button (Ask Assistant): brand pastel instead of black */
+.onion-btn-soft{background:#D6E8FF;color:#1F4A7A;border:1px solid #A8C6F0;font-weight:700}
+.onion-btn-soft:hover{background:#C4DCFB}
+
+/* ===== BLOCK 8: status-card readability (CSS only; selectors use the existing class names) ===== */
+/* 1. Timeline pills: kind over date. inline-flex was never compiled, so "RAW" and "29/09" ran together. */
+button.inline-flex.flex-col.rounded-\[6px\]{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+/* 2. Evidence box: p-2.5 was never compiled, so the text sat against the border. */
+.p-2\.5.bg-\[\#F8FAFC\]{padding:.625rem .75rem}
+/* 3. Card footer: 10px italic grey -> 11px upright. */
+.text-\[10px\].italic.text-\[\#94A3B8\].flex-wrap{font-size:11px;font-style:normal;row-gap:4px}
+/* 4. RAW / AI legend above each card's timeline strip */
+.onion-strip-legend{margin-top:6px;font-size:10px;color:#94A3B8;letter-spacing:.01em;white-space:nowrap}
+/* 8. Source chips read as links; hashtag chips read as labels */
+.onion-chip-source{color:#1F4A7A;font-style:normal;border-color:#D6E8FF;background:#F3F8FF}
+.onion-chip-tag{text-decoration:none;font-style:normal;color:#64748B;background:#F1F5F9;border-color:#E2E8F0}

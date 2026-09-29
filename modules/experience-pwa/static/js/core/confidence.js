@@ -11,10 +11,18 @@ export function confidenceClass(pct) {
   return 'onion-conf-low';
 }
 // evidence: array of {origin, label}. More distinct origins + rows → higher confidence.
+// The rule is a corroboration count, not a model output. confidenceBreakdown
+// returns each term so the card can show exactly how the number was reached.
+export const CONFIDENCE_RULE = { base: 55, perSource: 8, maxSources: 32, perExtraRow: 3, maxRows: 9, cap: 97 };
+export function confidenceBreakdown(evidence = [], sourceRowCount = 1) {
+  const R = CONFIDENCE_RULE;
+  const origins = [...new Set((evidence || []).map((e) => (e && e.origin) || 'Unknown'))];
+  const extraRows = Math.max(sourceRowCount - 1, 0);
+  const originBoost = Math.min(origins.length * R.perSource, R.maxSources);
+  const rowBoost = Math.min(extraRows * R.perExtraRow, R.maxRows);
+  const pct = Math.min(R.base + originBoost + rowBoost, R.cap);
+  return { pct, base: R.base, origins, originBoost, extraRows, rowBoost, capped: R.base + originBoost + rowBoost > R.cap };
+}
 export function calcConfidence(evidence = [], sourceRowCount = 1) {
-  const origins = new Set((evidence || []).map((e) => (e && e.origin) || 'Unknown'));
-  const base = 55;
-  const originBoost = Math.min(origins.size * 8, 32); // max +32
-  const rowBoost = Math.min(Math.max(sourceRowCount - 1, 0) * 3, 9); // max +9
-  return Math.min(base + originBoost + rowBoost, 97);
+  return confidenceBreakdown(evidence, sourceRowCount).pct;
 }

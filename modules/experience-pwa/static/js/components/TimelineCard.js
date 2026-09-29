@@ -1,6 +1,9 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
-import { calcConfidence, confidenceTier } from '../core/confidence.js';
+import { confidenceBreakdown, confidenceTier } from '../core/confidence.js';
+import { aiEngineLabel } from '../core/AiClient.js';
+import { cardAge, formatWhen, toDate } from '../core/timeAgo.js';
+import { matchSentence } from '../core/matchExplain.js';
 import { piiScreen } from '../core/PiiGate.js';
 const html = window.htm.bind(window.React.createElement);
 export function matchRef(t, p) {
@@ -63,6 +66,29 @@ function getCumulativeAiText(nodes, idx) {
       .join('\n\n');
   } catch (e) { return ''; }
 }
+// One timeline/provenance item per card node. Carries the node's own source
+// (PV-2) and, for AI nodes, the engine that wrote it, so the node viewer can
+// say where the words came from.
+function nodeItem(m, nodesArr, i) {
+  const n = nodesArr[i];
+  const kind = String((n && n.kind) || 'EV').toUpperCase();
+  const ownText = String((n && n.text) || '');
+  const fullText = kind === 'AI'? (getCumulativeAiText(nodesArr, i) || ownText) : ownText;
+  const isAppended = !!(n && n.appended_at);
+  return {
+    kind,
+    label: ownText.slice(0, 28) || kind,
+    fullText,
+    author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'Unknown author'),
+    // First real date wins: appended nodes carry at:'Just now' but a valid appended_at.
+    at: String([n && n.at, n && n.appended_at, n && n.timestamp].find((v) => toDate(v)) || (n && (n.at || n.appended_at || n.timestamp)) || m.timestamp || 'Just now'),
+    stagedAppend:!!(n && n.stagedAppend),
+    source: String((n && n.source) || (m && (m.source || m.type)) || ''),
+    // Appended AI nodes carry their own engine; the card's own AI node uses the card's.
+    aiEngine: kind === 'AI' ? String((n && n.aiEngine) || (isAppended ? '' : (m && m.aiEngine)) || '') : '',
+    aiModel: kind === 'AI' ? String((n && n.aiModel) || (isAppended ? '' : (m && m.aiModel)) || '') : '',
+  };
+}
 function miniTimelineFor(m) {
   if (m && Array.isArray(m.timeline) && m.timeline.length) {
     // was slice(0,10) — return ALL so new appends are visible
@@ -70,26 +96,14 @@ function miniTimelineFor(m) {
       kind: String((t && t.kind) || 'EV').toUpperCase(),
       label: String((t && t.label) || (t && t.kind) || ''),
       fullText: String((t && (t.text || t.content || t.detail || t.label)) || ''),
-      author: String((t && (t.author || t.contributor)) || m.author || m.contributor || 'System'),
+      author: String((t && (t.author || t.contributor)) || m.author || m.contributor || 'Unknown author'),
       at: String((t && (t.at || t.timestamp || t.created_at)) || m.timestamp || 'Just now'),
       stagedAppend:!!(t && t.stagedAppend),
     }));
   }
   if (m && Array.isArray(m.nodes) && m.nodes.length) {
     const nodesArr = m.nodes; // no slice — show all, so Append pills appear
-    return nodesArr.map((n, i) => {
-      const kind = String((n && n.kind) || 'EV').toUpperCase();
-      const ownText = String((n && n.text) || '');
-      const fullText = kind === 'AI'? (getCumulativeAiText(nodesArr, i) || ownText) : ownText;
-      return {
-        kind,
-        label: ownText.slice(0, 28) || kind,
-        fullText,
-        author: String((n && (n.author || n.contributor)) || m.author || m.contributor || 'System'),
-        at: String((n && (n.at || n.appended_at || n.timestamp)) || m.timestamp || 'Just now'),
-        stagedAppend:!!(n && n.stagedAppend),
-      };
-    });
+    return nodesArr.map((n, i) => nodeItem(m, nodesArr, i));
   }
   var srcs = [];
   if (m && m.source) srcs.push(String(m.source));
@@ -238,6 +252,7 @@ function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
   if (!items.length) return null;
   
   return html`<div className="w-full max-w-full min-w-0 overflow-x-auto pb-3 mb-1" style=${{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="onion-strip-legend">RAW = what the source said · AI = Continuum's summary</div>
     <div className="mt-2 relative w-max min-w-full" title="Timeline">
       <div className="absolute left-0 right-0" style=${{ top: '22px', height: '2px', background: '#E6EAF2' }}></div>
       <div className="relative flex items-center gap-2 flex-nowrap w-max">
@@ -245,9 +260,9 @@ function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
           const ref = String(t.kind || 'EV').slice(0, 3).toUpperCase();
           const isActive = selectedNode && selectedNode.kind === t.kind && selectedNode.at === t.at && selectedNode.fullText === t.fullText;
           return html`<span key=${t.kind + '-' + i + '-' + t.at} className="flex items-stretch shrink-0">
-            <button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '56px', background: isActive ? '#1F4A7A' : (t.stagedAppend ? '#fef3c7' : '#E8F2FF'), borderColor: isActive ? '#1F4A7A' : (t.stagedAppend ? '#f59e0b' : '#A8C6F0'), color: isActive ? '#fff' : (t.stagedAppend ? '#92400e' : '#1F4A7A'), lineHeight: '1.1' }}>
+            <button type="button" onClick=${() => onSelectNode && onSelectNode(t)} title=${t.label} aria-label=${(t.kind === 'RAW' ? 'Original source text' : t.kind === 'AI' ? 'AI summary' : t.kind) + ', ' + realPillDate(t.at) + (t.stagedAppend ? ', draft' : '')} aria-pressed=${isActive ? 'true' : 'false'} className="inline-flex flex-col items-center justify-center rounded-[6px] border px-2 py-1 cursor-pointer transition-all hover:scale-105 shadow-sm" style=${{ minWidth: '56px', background: isActive ? '#1F4A7A' : (t.stagedAppend ? '#fef3c7' : '#E8F2FF'), borderColor: isActive ? '#1F4A7A' : (t.stagedAppend ? '#f59e0b' : '#A8C6F0'), color: isActive ? '#fff' : (t.stagedAppend ? '#92400e' : '#1F4A7A'), lineHeight: '1.1' }}>
               <span className="text-[10px] font-bold">${ref}</span>
-              <span className="text-[10px]" style=${{ color: isActive ? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend ? html`<span className="text-[10px] font-bold" style=${{ color: '#92400e' }}>staged</span>` : null}
+              <span className="text-[10px]" style=${{ color: isActive ? '#dbeafe' : '#64748B' }}>${realPillDate(t.at)}</span>${t.stagedAppend ? html`<span className="text-[10px] font-bold" style=${{ color: '#92400e' }}>🔒 draft</span>` : null}
             </button>
           </span>`;
         })}
@@ -266,7 +281,7 @@ function pendingAppendsBanner(m, open, onToggle) {
     if (!list || !list.length) return null;
     const n = list.length;
     const fn = (typeof onToggle === 'function') ? onToggle : (() => {});
-    return html`<button type="button" onClick=${fn} title=${open ? 'Collapse staged updates' : 'Expand staged updates'} aria-expanded=${open ? 'true' : 'false'} className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#fffbeb] border border-[#fcd34d] text-[10px] text-[#92400e] cursor-pointer hover:bg-[#fef3c7]">🔗 Smart Append: ${n} staged update(s) appended as horizontal RAW/AI nodes — private / pending review <span className="ml-1 font-bold">${open ? '▾ collapse' : '▸ expand'}</span></button>`;
+    return html`<button type="button" onClick=${fn} title=${open ? 'Collapse staged updates' : 'Expand staged updates'} aria-expanded=${open ? 'true' : 'false'} className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#fffbeb] border border-[#fcd34d] text-[10px] text-[#92400e] cursor-pointer hover:bg-[#fef3c7]">🔗 ${n === 1 ? '1 draft update' : n + ' draft updates'} added to this card — visible only to you until shared <span className="ml-1 font-bold">${open ? '▾ collapse' : '▸ expand'}</span></button>`;
   } catch (e) { return null; }
 }
 /*function appendedNodesBlock(m, isOwner) {
@@ -279,7 +294,7 @@ function pendingAppendsBanner(m, open, onToggle) {
     const nodes = Array.isArray(m.nodes)? m.nodes : [];
     const list = nodes.filter((x) => x && typeof x === 'object' && x.stagedAppend);
     if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
-    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">draft · only you until shared</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
   } catch (e) { return null; }
 } */
 function appendedNodesBlock(m) {
@@ -295,8 +310,24 @@ function appendedNodesBlock(m) {
       return 0;
     });
     if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
-    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">staged append • private / pending review</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">draft · only you until shared</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
   } catch (e) { return null; }
+}
+// RA-2 / A3: which engine wrote this card's summary. Live is green; mock and
+// fallback are amber so an offline demo is never mistaken for live AI. Cards
+// from before engine tracking (seed data) show no badge rather than a guess.
+function engineBadge(m) {
+  const label = aiEngineLabel(m && m.aiEngine, m && m.aiModel);
+  if (!label) return null;
+  const live = m.aiEngine === 'live';
+  const tip = m.aiFallbackReason ? 'Live AI failed, offline summary used: ' + m.aiFallbackReason : 'Engine that wrote this summary';
+  return html`<span title=${tip} className=${'inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ' + (live ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#065F46]' : 'bg-[#FFFBEB] border-[#FCD34D] text-[#92400E]')}>AI · ${label}</span>`;
+}
+function nodeViewerTitle(n) {
+  if (!n) return '';
+  if (n.kind === 'RAW') return 'RAW · original text' + (n.source ? ' from ' + n.source : '');
+  if (n.kind === 'AI') return 'AI summary · all updates so far' + (aiEngineLabel(n.aiEngine, n.aiModel) ? ' · ' + aiEngineLabel(n.aiEngine, n.aiModel) : '');
+  return n.kind + ' node';
 }
 function sourceListFor(m) {
   const out = [];
@@ -322,71 +353,62 @@ function provenanceEntriesFor(m) {
       const label = String((n && n.source) || (m && m.source) || (m && m.type) || 'Timeline');
       return {
         key: 'prov-' + i + '-' + String((n && n.kind) || ''),
+        index: i,
         label,
         kind: String((n && n.kind) || 'EV').toUpperCase(),
-        author: String((n && (n.author || n.contributor)) || (m && (m.author || m.contributor)) || 'System'),
+        author: String((n && (n.author || n.contributor)) || (m && (m.author || m.contributor)) || 'Unknown author'),
         at: String((n && (n.at || n.appended_at || n.timestamp)) || (m && m.timestamp) || 'Just now'),
         snippet: String((n && n.text) || '').slice(0, 90),
       };
     });
   } catch (e) { return []; }
 }
-// P2 Fix (Backlog #7 / Q7) — Model confidence detailed sentence was dead
-// code: confText/structEntries were computed but never referenced in the
-// returned JSX. Build a real sentence from the card's own mergeHint +
-// structured fields + distinct source chips, e.g. "High — 3 sources fused,
-// validated via Milestone: Sprint 1, Amount: $45k. Sources: Email + Teams".
-function buildConfidenceText(m, chips, tier) {
-  try {
-    const structured = (m && m.structured && typeof m.structured === 'object') ? m.structured : null;
-    const structBits = structured ? Object.keys(structured).map((k) => k + ': ' + String(structured[k])).join(', ') : '';
-    const sourceCount = Math.max(1, (chips || []).length);
-    const sourcesLabel = (chips && chips.length) ? chips.slice(0, 4).join(' + ') : String((m && (m.source || m.type)) || 'Timeline');
-    const mergeHint = (m && m.mergeHint) ? String(m.mergeHint) : '';
-    let sentence = String(tier || 'Medium') + ' — ' + sourceCount + ' source' + (sourceCount === 1 ? '' : 's') + ' fused' + (structBits ? ', validated via ' + structBits : '') + '.';
-    sentence += ' Sources: ' + sourcesLabel;
-    if (mergeHint) sentence += ' — ' + mergeHint;
-    return sentence;
-  } catch (e) { return String((m && m.confidence) || 'Medium — fused from cross-referenced sources.'); }
+// Evidence strength (CF-1, CF-2, A1). Counts only what a reviewer can check:
+// the card's own source plus the RAW updates already shared onto it. Hashtags,
+// AI summaries and draft (staged) updates are not evidence, so they add nothing.
+// The number comes from core/confidence.js; the breakdown shows every term.
+function evidenceFor(m) {
+  const cardSource = String((m && (m.source || m.type)) || 'Timeline');
+  const nodes = Array.isArray(m && m.nodes) ? m.nodes : [];
+  const isRaw = (n) => n && String(n.kind || '').toUpperCase() === 'RAW';
+  const shared = nodes.filter((n) => isRaw(n) && !n.stagedAppend);
+  const drafts = nodes.filter((n) => isRaw(n) && n.stagedAppend).length;
+  const origins = [cardSource].concat(shared.map((n) => String(n.source || cardSource)));
+  const entries = Math.max(1, shared.length);
+  return Object.assign(confidenceBreakdown(origins.map((o) => ({ origin: o })), entries), { entries, drafts });
 }
-// P2 Fix (Backlog #10a / Q2) — "Similar to client playbook" purple banner.
-// Previously findSmartAppendMatch/buildSmartAppendFor logic only surfaced an
-// amber banner inside the Harvester review queue; a committed card that WAS
-// an append target never showed anything on the main feed. Reuse the same
-// pendingAppends signal (Option A from the assessment: only cards with an
-// active append history) but render a distinct purple variant with a
-// "Review & Merge" CTA that scrolls to the Harvester slide-out.
-function similarToPlaybookBanner(m, clientName) {
+function evidenceBox(ev, tier) {
+  const n = ev.origins.length;
+  const count = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+  return html`<div className="mt-2 p-2.5 rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF2] text-[11px] text-[#334155]">
+    <div><span className="font-semibold text-[#1E293B]">Evidence strength: ${tier}</span> (${ev.pct}%) — based on ${count(n, 'independent source', 'independent sources')}: ${ev.origins.join(', ')} · ${count(ev.entries, 'source entry', 'source entries')}.${ev.drafts ? ' ' + count(ev.drafts, 'draft update', 'draft updates') + ' not counted until shared.' : ''}</div>
+    <details className="mt-1"><summary className="cursor-pointer text-[#1F4A7A]">How is this calculated?</summary>
+      <div className="mt-1 text-[#475569]">${ev.base} base + ${ev.originBoost} (${count(n, 'source', 'sources')} × 8, max 32) + ${ev.rowBoost} (${count(ev.extraRows, 'extra entry', 'extra entries')} × 3, max 9) = ${ev.pct}%${ev.capped ? ' (capped at 97)' : ''}. High ≥ 85, Medium ≥ 60. Hashtags, AI summaries and unshared drafts are not counted.</div>
+    </details>
+  </div>`;
+}
+// Pending-review banner (purple): shown while a card has Smart Append updates
+// waiting for review. States the count and, in plain words, why the update
+// matched this card. Review opens the staged updates on this card.
+function similarToPlaybookBanner(m, clientName, onReview) {
   try {
     if (!m || typeof m !== 'object') return null;
     const pendingList = Array.isArray(m.pendingAppends) ? m.pendingAppends : [];
-    const stagedNodes = Array.isArray(m.nodes) ? m.nodes.filter((n) => n && n.stagedAppend) : [];
     const hasPending = pendingList.length > 0;
-    // BUG 3 fix: previously this only ever checked pendingAppends.length, so
-    // once merged (pendingAppends cleared by the approve flow but the
-    // stagedAppend RAW/AI node pair remains on the card) the banner either
-    // vanished with no confirmation, or — if a stale re-click re-triggered a
-    // merge — kept showing "Review & Merge" forever, inviting duplicate
-    // clicks/duplicate nodes. Now distinguish "still pending" (purple, CTA)
-    // from "already merged" (green, no CTA) so a second click can't re-fire.
-    const isMerged = !hasPending && stagedNodes.length > 0;
-    if (!hasPending && !isMerged) return null;
-    if (isMerged) {
-      const mergedCount = Math.max(1, Math.round(stagedNodes.length / 2));
-      return html`<div className="mt-2 w-full px-2 py-1 rounded-[8px] bg-[#F0FDF4] border border-[#BBF7D0] text-[10px] text-[#065F46]">✅ Merged — ${mergedCount} update(s) merged as private / pending-review nodes</div>`;
-    }
+    // No banner once nothing is pending: the old green "✅ Merged … pending
+    // review" state contradicted itself.
+    if (!hasPending) return null;
     const last = pendingList[pendingList.length - 1];
-    const reasons = Array.isArray(last && last.reasons) ? last.reasons : [];
-    const reasonText = reasons.length ? reasons.slice(0, 2).join(' · ') : 'extension details overlap';
-    const label = clientName ? ('Similar to client playbook in ' + clientName) : 'Similar to client playbook';
-    const onReviewMerge = (e) => {
+    const why = matchSentence(last || {});
+    const n = pendingList.length;
+    const label = n === 1 ? '1 update waiting for your review' : n + ' updates waiting for your review';
+    // Review opens the staged updates on this card; the Harvester item they
+    // came from has already been cleared, so sending the reviewer there was a dead end.
+    const onReviewHere = (e) => {
       try { if (e && e.stopPropagation) e.stopPropagation(); if (e && e.preventDefault) e.preventDefault(); } catch (e2) {}
-      try {
-        const el = document.getElementById('harvester-control-panel');
-        if (el) { el.classList.add('open'); if (el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-      } catch (e3) {}
+      if (typeof onReview === 'function') onReview();
     };
-    return html`<button type="button" onClick=${onReviewMerge} title="Review the matched Harvester staging item" className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#F5F3FF] border border-[#C4B5FD] text-[10px] text-[#5B21B6] cursor-pointer hover:bg-[#EDE9FE]">⚡ ${label} — ${reasonText} <span className="ml-1 font-bold underline">Review & Merge</span></button>`;
+    return html`<button type="button" onClick=${onReviewHere} title=${why.tooltip} className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#F5F3FF] border border-[#C4B5FD] text-[10px] text-[#5B21B6] cursor-pointer hover:bg-[#EDE9FE]">⚡ ${label} — ${why.sentence} <span className="ml-1 font-bold underline">Review</span></button>`;
   } catch (e) { return null; }
 }
 export function TimelineCard(props) {
@@ -459,7 +481,7 @@ export function TimelineCard(props) {
   };
   const onAddNote = async (text, privacyVal, reset) => { const v = String(text || '').trim(); if (!v || !project) return; const screened = piiScreen(v); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; const payload = { project_name: project.project_name, Project_ReferenceID: project.Project_ReferenceID, projectId: project.project_name, original: screened.text, title: v.slice(0, 80), content: screened.text, rephrased: screened.text, privacy: privacyVal || 'Team Shared', piiStatus: screened.flag, syncStatus: 'pending_upload', author: props.activePersona || activePersona || 'Brené', refs: [], updates: [] }; try { if (!dbApi || !dbApi.saveNote) { setNoteMsg('Save failed — kept as draft'); return; } await dbApi.saveNote(payload); setNoteMsg('Saved locally (pending_upload)'); } catch (e2) { setNoteMsg('Save failed — kept as draft'); return; } if (reset) reset(''); else setDraft(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || note.privacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; try { if (dbApi && dbApi.updateCardPrivacy) { await dbApi.updateCardPrivacy(note.id, next); return; } if (dbApi && dbApi.updateNotePrivacy) { await dbApi.updateNotePrivacy(note.id, next); } } catch (e) {} };
-  const onForceSyncTc = async () => { try { const a = (typeof window !== 'undefined' && window.OnionDB) || null; if (a && a.forceSync) { const r = await a.forceSync(); setNoteMsg('Force Sync: ' + (r.synced || 0) + ' item(s) synced'); } } catch (e) {} };
+  const onForceSyncTc = async () => { try { const a = (typeof window !== 'undefined' && window.OnionDB) || null; if (a && a.forceSync) { const r = await a.forceSync(); setNoteMsg('Marked ' + (r.synced || 0) + ' item(s) as uploaded (demo, no server call).'); } } catch (e) {} };
   const isPrivateCard = (m) => {
     // Task 1/2 — strict local privacy gate, spec-exact:
     // - Team Shared (or undefined/empty/unknown) => shared => MUST render.
@@ -494,7 +516,6 @@ export function TimelineCard(props) {
   // Collapse All: force-close every expanded card whenever AppCenter bumps the trigger.
   window.React.useEffect(() => { if (collapseAllTrigger) setOpenProv(new Set()); }, [collapseAllTrigger]);
   const activePersona = props.activePersona || '';
-  const onProvenanceClick = () => alert('That interest to review AI optimised content for the actual source is the definition of Human in the loop! (This is test data)');
   const focusId = props.focusId || null;
   const impactOf = (m) => {
     if (m && typeof m.impactScore === 'number') return m.impactScore;
@@ -543,22 +564,13 @@ export function TimelineCard(props) {
       return false;
     } catch (e) { return true; }
   };
-  // P2 Fix (Backlog #2/#8) — Confidence was always 63% because calcConfidence
-  // was fed a SYNTHETIC single-origin array ([{origin: m.source||m.type||'Timeline'}])
-  // and a hardcoded sourceRowCount of 1, no matter how much real evidence the
-  // card actually had. Feed calcConfidence REAL evidence instead: every
-  // distinct provenance chip (sourceListFor: source/type/tags) counts as a
-  // distinct "origin", and the row count reflects the actual cross-referenced
-  // node + pendingAppends volume, so cards genuinely vary (71%, 84%, 92%...).
+  // Evidence strength per card: see evidenceFor(). Only the card's source and
+  // its shared RAW updates count, so a single-source card honestly reads 63%
+  // (Medium) and the number rises when a second system's update is shared.
   const allMoments = timeline.filter((t) => matchRef(t, project)).filter(canSeeCard).map((m) => {
     const s = piiScreen(m.synthesizedText || m.content || m.detail || '');
-    const evidenceChips = sourceListFor(m);
-    const evidence = (evidenceChips.length ? evidenceChips : ['Timeline']).map((c) => ({ origin: c }));
-    const nodeCount = Array.isArray(m.nodes) ? m.nodes.length : 0;
-    const provenanceCount = Array.isArray(m.pendingAppends) ? m.pendingAppends.length : 0;
-    const sourceRowCount = Math.max(1, nodeCount + provenanceCount);
-    const pct = calcConfidence(evidence, sourceRowCount);
-    return { raw: m, clean: s.text, flag: s.flag, pct };
+    const ev = evidenceFor(m);
+    return { raw: m, clean: s.text, flag: s.flag, pct: ev.pct, ev };
   });
   // P2 Fix (Backlog #13/#12) — Sort order: modified/appended-to cards must
   // bubble to the top (updated_at desc), with any card carrying an active
@@ -611,13 +623,13 @@ export function TimelineCard(props) {
       return all.filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
     } catch (e) { return 0; }
   })();
-  const syncLabelTc = pendingVecLive > 0 ? ('Force Sync ☁️ (' + pendingVecLive + ')') : 'All synced ✅';
+  const syncLabelTc = pendingVecLive > 0 ? ('Mark uploaded (demo) ☁️ (' + pendingVecLive + ')') : 'Nothing pending ✅';
   const tcPrivRows = projNotes.filter((d) => isPrivTc(d)).map((d) => tcNoteRow(d, true));
   const tcTeamRows = projNotes.filter((d) => !isPrivTc(d)).map((d) => tcNoteRow(d, false));
   const renderYourNotesFallback = () => {
     if (props.hideYourNotes) return null;
     return html`<div className="rounded-[16px] bg-white border border-[#E6EAF2] shadow-sm p-4">
-      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2"><span title=${'Active persona: ' + String(activePersona || '')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold" style=${{ width: '24px', height: '24px', fontSize: '12px' }}>${String(activePersona || 'B').slice(0, 1).toUpperCase()}</span>YOUR NOTES<button onClick=${onForceSyncTc} title="Flip pending_upload to synced" className="text-[10px] underline text-[#1F4A7A] font-normal">${syncLabelTc}</button></h3></div>
+      <div className="flex items-center justify-between"><h3 className="font-semibold text-[13px] flex items-center gap-2"><span title=${'Active persona: ' + String(activePersona || '')} className="inline-flex items-center justify-center rounded-full bg-[#1F4A7A] text-white font-bold" style=${{ width: '24px', height: '24px', fontSize: '12px' }}>${String(activePersona || 'B').slice(0, 1).toUpperCase()}</span>YOUR NOTES<button onClick=${onForceSyncTc} title="Demo only: marks local items as uploaded. No server is contacted." className="text-[10px] underline text-[#1F4A7A] font-normal">${syncLabelTc}</button></h3></div>
 
       ${notesOpen ? html`<div className="mt-3 space-y-3">
         <div className="flex gap-2 flex-wrap"><input value=${draft} onInput=${(e) => setDraft(e.target.value)} placeholder="Add a note..." className="flex-1 bg-white border border-[#E6EAF2] rounded-[10px] px-3 py-2 text-[12px] text-[#1E293B]" />
@@ -634,8 +646,9 @@ export function TimelineCard(props) {
     const m = d.raw;
     const label = categoryFor(m);
     const pill = categoryPill(label);
-    const age = String(m.timestamp || m.age || '');
-    const dot = ageDotColor(age);
+    const ageInfo = cardAge(m);
+    const age = ageInfo.label;
+    const dot = ageInfo.color || ageDotColor(age);
     const privacy = String(m.privacy || 'Team Shared');
     const isPrivate = privacy === 'Private' || privacy === 'My Notes (Private)' || privacy === 'My Notes';
     const author = String(m.author || '');
@@ -666,15 +679,10 @@ export function TimelineCard(props) {
         return false;
       } catch (e) { return false; }
     })();
-    // P2 Fix (Backlog #7/#8) — confText was dead code computed from a static
-    // literal and never rendered. Now derived from the SAME real confidence
-    // tier (d.pct via calcConfidence real evidence above) + the card's own
-    // mergeHint/structured/chips, and actually wired into the floor below.
     const confTier = confidenceTier(d.pct);
-    const confText = buildConfidenceText(m, chips, confTier);
     const provenanceEntries = provenanceEntriesFor(m);
     const hasPendingAppends = isOwner && (/private/i.test(JSON.stringify(m.nodes || [])) || /private/i.test(JSON.stringify(m.timeline || [])) || (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some(function (n) { return n && n.stagedAppend; })));
-    const approveCta = hasPendingAppends ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve Updates & Share</button>` : (((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved) ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve redacted share</button>` : html`<button type="button" disabled className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Approved for Team Share</button>`);
+    const approveCta = hasPendingAppends ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold" style=${{ background: '#1F4A7A', color: '#fff', border: '1px solid #1F4A7A' }}>Share update with team</button>` : (((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved) ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve redacted share</button>` : html`<button type="button" disabled className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Approved for Team Share</button>`);
     const open = openProv.has(m.id) || (focusId && String(focusId) === String(m.id));
     const key = String(m.id || m.title || label);
     const menuOpen = menuOpenId && String(menuOpenId) === String(m.id);
@@ -700,6 +708,17 @@ export function TimelineCard(props) {
     const toggleNode = (n) => {
       if (selectedNode && selectedNode.at===n.at && selectedNode.kind===n.kind && selectedNode.fullText===n.fullText) setSelectedNode(null);
       else setSelectedNode(n);
+    };
+    // PV-1: provenance opens the original words in the node viewer (no alert).
+    // With no index, the first RAW node is shown. Draft (staged) nodes stay
+    // closed to non-contributors, the same rule the timeline strip applies.
+    const cardNodes = Array.isArray(m.nodes) ? m.nodes : [];
+    const openSource = (idx) => {
+      const isRawVisible = (n) => n && String(n.kind || '').toUpperCase() === 'RAW' && (!n.stagedAppend || isOwner);
+      const i = typeof idx === 'number' ? idx : cardNodes.findIndex(isRawVisible);
+      const n = cardNodes[i];
+      if (!n || (n.stagedAppend && !isOwner)) return;
+      setSelectedNode(nodeItem(m, cardNodes, i));
     };
     // Task 2 — banner toggle is independent of card expand: appendsOpen tracks the
     // banner's own toggle only (NOT `open`), so collapsed cards still reveal
@@ -733,12 +752,13 @@ export function TimelineCard(props) {
             <button type="button" disabled=${!isOwner} onClick=${() => onDeleteCard(m.id)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
           </div>` : null}
         </div>
-        <button onClick=${() => flip(setOpenProv, m.id)} title=${open ? 'Collapse' : 'Expand'} aria-label=${open ? 'Collapse' : 'Expand'} className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">${open ? '-' : '+'}</button>
+        <button onClick=${() => flip(setOpenProv, m.id)} title=${open ? 'Collapse' : 'Expand'} aria-label=${open ? 'Collapse card' : 'Expand card'} aria-expanded=${open ? 'true' : 'false'} className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">${open ? '-' : '+'}</button>
       </div>
       <div className="flex items-start gap-2 flex-wrap pr-10">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
           <span className="text-[13px] font-semibold text-[#1E293B]">${m.title}</span>
-          ${age ? html`<span className="inline-flex items-center gap-1 text-[11px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B]"><span style=${{ width: '6px', height: '6px', borderRadius: '999px', background: dot, display: 'inline-block' }}></span>${age}</span>` : null}
+          ${age ? html`<span title=${ageInfo.title} className="inline-flex items-center gap-1 text-[11px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B]"><span style=${{ width: '6px', height: '6px', borderRadius: '999px', background: dot, display: 'inline-block' }}></span>${age}</span>` : null}
+          ${engineBadge(m)}
         </div>
       </div>
       <div className="mt-2 text-[13px] leading-relaxed text-[#1E293B]" style=${open ? null : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>${body}</div>
@@ -748,49 +768,45 @@ export function TimelineCard(props) {
         <div className="mt-3 flex items-center gap-3">
           <button type="button" onClick=${() => onSaveEditCard(m.id)} className="px-4 py-1.5 rounded-full bg-[#1F4A7A] text-white text-[12px] font-bold hover:bg-[#15355a] transition-colors">Save Changes</button>
           <button type="button" onClick=${() => { try { setEditingId(null); setEditDraft(''); } catch (e) {} }} className="px-4 py-1.5 rounded-full bg-white border border-[#A8C6F0] text-[12px] font-medium hover:bg-[#f1f5f9] transition-colors">Cancel</button>
-          ${isOwner ? html`<button type="button" onClick=${() => onFlipPrivacy && onFlipPrivacy(m)} className="ml-auto text-[11px] font-medium text-[#1F4A7A] hover:underline flex items-center gap-1"><span>${isPrivate ? '👥 Share with Team' : '🔒 Make Private'}</span></button>` : null}
+          ${isOwner ? html`<button type="button" onClick=${() => onFlipPrivacy && onFlipPrivacy(m)} className="ml-auto text-[11px] font-medium text-[#1F4A7A] hover:underline flex items-center gap-1"><span>${isPrivate ? '👥 Share with team' : '🔒 Make only me'}</span></button>` : null}
         </div>
       </div>` : null}
       
       
       ${timelineStrip(m, isOwner, selectedNode, toggleNode)}
-      ${selectedNode? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${selectedNode.kind} Node Content</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'System'} • ${selectedNode.at || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
+      ${selectedNode? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${nodeViewerTitle(selectedNode)}</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'Unknown author'} • ${formatWhen(selectedNode.at) || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
+      ${similarToPlaybookBanner(m, m.client_name, () => setAppendOpen((prev) => Object.assign({}, prev, { [m.id]: true })))}
       ${pendingAppendsBanner(m, appendsOpen, toggleAppends)}
-      ${similarToPlaybookBanner(m, m.client_name)}
       ${hasAppends &&!!appendOpen[m.id]? appendedNodesBlock(m) : null}
 
-      ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${onProvenanceClick} title="Review source" className="text-[10px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B] underline cursor-pointer">${c}</button>`)}</div>` : null}
+      ${!open && chips.length ? html`<div className="mt-2 flex flex-wrap gap-1.5">${chips.map((c) => html`<button type="button" key=${c} onClick=${() => openSource()} title="Show the original source text" className=${'text-[10px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B] underline cursor-pointer' + (String(c).charAt(0) === '#' ? ' onion-chip-tag' : ' onion-chip-source')}>${c}</button>`)}</div>` : null}
       ${open ? html`<div className="mt-3 bg-[#f8fafc] rounded-[12px] p-3 space-y-2">
       
         <!--
-        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Full Provenance — ${provenanceEntries.length || chips.length} link(s)</div><div className="max-h-40 overflow-y-auto no-scrollbar space-y-1">${(provenanceEntries.length ? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title}</span></div>`))}</div></div>
+        <div className="p-2 rounded-[10px] bg-white border"><div className="text-[11px] font-semibold mb-1">Full Provenance — ${provenanceEntries.length || chips.length} link(s)</div><div className="max-h-40 overflow-y-auto no-scrollbar space-y-1">${(provenanceEntries.length ? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${() => openSource(pe.index)} title="Show the original text" className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[11px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '12px' }}>${iconForSource(c)}</span><button type="button" onClick=${() => openSource()} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[#64748B] truncate">${m.title}</span></div>`))}</div></div>
         -->
-        <div className="p-2 rounded-[10px] bg-white border"><button type="button" onClick=${() => setProvOpen(p=>Object.assign({},p,{[m.id]:!p[m.id]}))} className="w-full flex items-center justify-between text-[10px] font-semibold mb-1 text-[#475569] hover:text-[#1E293B]"><span>Full Provenance — ${provenanceEntries.length || chips.length} link(s)</span><span className="text-[10px] bg-[#F8FAFC] border border-[#E6EAF2] rounded-full px-2 py-0.5">${provOpen[m.id]? '▾ Collapse' : '▸ Expand'}</span></button>${provOpen[m.id]? html`<div className="max-h-40 overflow-y-auto no-scrollbar space-y-1 mt-2">${(provenanceEntries.length? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[10px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text[10px] text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[10]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(c)}</span><button type="button" onClick=${onProvenanceClick} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[10px] text-[#64748B] truncate">${m.title}</span></div>`))}</div>` : null}</div>
+        <div className="p-2 rounded-[10px] bg-white border"><button type="button" onClick=${() => setProvOpen(p=>Object.assign({},p,{[m.id]:!p[m.id]}))} className="w-full flex items-center justify-between text-[10px] font-semibold mb-1 text-[#475569] hover:text-[#1E293B]"><span>Full Provenance — ${provenanceEntries.length || chips.length} link(s)</span><span className="text-[10px] bg-[#F8FAFC] border border-[#E6EAF2] rounded-full px-2 py-0.5">${provOpen[m.id]? '▾ Collapse' : '▸ Expand'}</span></button>${provOpen[m.id]? html`<div className="max-h-40 overflow-y-auto no-scrollbar space-y-1 mt-2">${(provenanceEntries.length? provenanceEntries.slice().reverse().map((pe) => html`<div key=${pe.key} className="flex items-center gap-2 text-[10px]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(pe.label)}</span><button type="button" onClick=${() => openSource(pe.index)} title="Show the original text" className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${pe.label} — ${pe.kind}</button><span className="text[10px] text-[#64748B] truncate">${pe.snippet || m.title}</span></div>`) : chips.slice().reverse().map((c) => html`<div key=${c} className="flex items-center gap-2 text-[10]"><span className="inline-flex items-center justify-center rounded-full bg-[#F8FAFC] border border-[#E6EAF2]" style=${{ width: '22px', height: '22px', fontSize: '10px' }}>${iconForSource(c)}</span><button type="button" onClick=${() => openSource()} className="font-medium text-[#1F4A7A] underline cursor-pointer text-left">${c}</button><span className="text-[10px] text-[#64748B] truncate">${m.title}</span></div>`))}</div>` : null}</div>
         ${approveCta}
       </div>` : null}
       <div className="mt-3 pt-2 border-t border-[#E6EAF2] flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[10px] italic text-[#94A3B8] flex-wrap">
           <span className="font-bold text-[#1E293B] not-italic flex items-center gap-1.5 bg-[#f8fafc] px-2 py-0.5 rounded-full border border-[#E6EAF2]">
             <span className="w-4 h-4 rounded-full bg-[#1F4A7A] text-white flex items-center justify-center text-[8px] font-bold shadow-sm">${initials || 'U'}</span>
-            <span class="truncate max-w-[100px]">${author || 'System'}</span>
+            <span class="truncate max-w-[100px]">${author || 'Unknown author'}</span>
           </span>
           <span>•</span>
-          <span className="font-medium">${isPrivate ? '🔒 Private' : '👥 Team Shared'}</span>
+          <span className="font-medium">${isPrivate ? '🔒 Only me' : '👥 Team'}</span>
           <span>•</span>
-          <span>Local: ${String(m.syncStatus || 'synced') === 'pending_upload' ? html`<button type="button" onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); if (props.onSync) props.onSync(m.id); }} className="text-[#1F4A7A] underline cursor-pointer font-bold">☁️ Sync</button>` : '✅'} | Vector: ${String(m.vectorSyncStatus || 'synced') === 'pending' ? '☁️' : '✅'}</span>
+          <span title="Local: saved in this browser (☁️ = not yet uploaded). Vector: ✅ = in team search, ☁️ = waiting to upload.">Local: ${String(m.syncStatus || 'synced') === 'pending_upload' ? html`<button type="button" onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); if (props.onSync) props.onSync(m.id); }} className="text-[#1F4A7A] underline cursor-pointer font-bold">☁️ Sync</button>` : '✅'} | Vector: ${String(m.vectorSyncStatus || 'synced') === 'pending' ? '☁️' : '✅'}</span>
           <span>•</span>
           <div className="flex items-center gap-1">${chips.map((c) => html`<span key=${c} title=${c} className="leading-none text-[12px]">${iconForSource(c)}</span>`)}</div>
-          <span>•</span>
-          <span>${d.pct}% Confidence (${confTier})</span>
           <span>•</span>
           <span>PII: ${effPii}</span>
           <span>•</span>
           <span>${createdDate}</span>
         </div>
       </div>
-      <div className="mt-2 p-2.5 rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF2] text-[11px] text-[#334155]">
-        <span className="font-semibold text-[#1E293B]">Model confidence:</span> ${confText}
-      </div>
+      ${evidenceBox(d.ev, confTier)}
     </div>`;
   });
   return html`<div className="space-y-5">

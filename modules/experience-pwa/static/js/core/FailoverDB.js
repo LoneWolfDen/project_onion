@@ -310,6 +310,10 @@ class FailoverDB {
       // author/contributor (never blank it), else default persona.
       author: (aiResult && (aiResult.author || aiResult.contributor)) || (t && t.author) || getDefaultPersona(),
       contributor: (aiResult && (aiResult.contributor || aiResult.author)) || (t && t.contributor) || getDefaultPersona(),
+      // Which engine wrote synthesizedText ('live' | 'mock' | 'fallback'), shown on the card.
+      aiEngine: (aiResult && aiResult.aiEngine) || '',
+      aiModel: (aiResult && aiResult.aiModel) || '',
+      aiFallbackReason: (aiResult && aiResult.aiFallbackReason) || '',
     };
     if (patch.title === undefined) delete patch.title;
     if (patch.smartAppend === undefined) delete patch.smartAppend;
@@ -394,7 +398,8 @@ class FailoverDB {
         is_private: true, isPrivate: true,
         privacy: effPrivacy, appendPrivacy: effPrivacy,
         appendSyncStatus: 'pending_review',
-        appended_at: nowIso, fullText: n.text
+        appended_at: nowIso, fullText: n.text,
+        source: String(n.source || (meta && meta.source) || ''), aiEngine: String(n.aiEngine || ''), aiModel: String(n.aiModel || ''), // PV-2: node keeps its own origin
       });
     };
     pushNode(stagedAiNode);

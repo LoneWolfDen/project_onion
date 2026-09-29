@@ -1,35 +1,39 @@
 // js/core/AiClient.js — Hybrid OpenRouter / Mock AI integration (Failover-safe, zero-install).
 // Live Mode: OPENROUTER_API_KEY in localStorage → real fetch to OpenRouter.
 // Fallback/Mock Mode: no key → 1200ms latency + beautifully formatted mock JSON.
-// Returns: { synthesizedText, tags, impactScore } — never throws to caller (always resolves).
+// Returns: { synthesizedText, tags, impactScore, aiEngine, aiModel?, aiFallbackReason? }
+// — never throws to caller (always resolves). aiEngine is 'live' | 'mock' | 'fallback'
+// so every card can say honestly which engine produced its summary.
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'anthropic/claude-3-haiku';
+
+// Offline keyword rules. Whole words only: a bare substring test made
+// "report", "support" and "opportunity" look like purchase orders.
+const MOCK_RULES = {
+  invoice: /\b(po|invoices?|invoiced|invoicing|payments?|billing)\b/,
+  risk: /\b(risks?|raid|overruns?|delay|delays|delayed|blockers?)\b/,
+  milestone: /\b(payroll|milestones?|sow|contracts?)\b/,
+  furlough: /\bfurlough/,
+  impact: /\b(po|invoices?|invoicing|risks?|overruns?|milestones?|payroll)\b/,
+};
 
 function mockResult(text, type) {
   const clean = String(text || '').slice(0, 220);
   const lower = String(text || '').toLowerCase();
-  const tags = ['#Auto_Tagged'];
-  if (/po|invoice|invoic|payment|billing/.test(lower)) tags.push('#Invoice_Resolved');
-  if (/risk|raid|overrun|delay|blocker/.test(lower)) tags.push('#Risk_Watch');
-  if (/payroll|milestone|sow|contract/.test(lower)) tags.push('#Milestone_Tracked');
-  if (/furlough/.test(lower)) tags.push('#Furlough_Flag');
-  const impactScore = /po|invoice|risk|overrun|milestone|payroll/.test(lower) ? 0.9 : 0.35;
-  const isInvoice = /po|invoice|invoic|payment|billing/.test(lower);
-  const isRisk = /risk|raid|overrun|delay|blocker|blocked/.test(lower);
-  // BUG 2 fix: previously appended a static marketing suffix ("AI Synthesis
-  // (Type): ... — Key entities preserved; noise stripped; next action
-  // inferred for timeline.") to every card regardless of content. Return the
-  // clean synthesized text only — no boilerplate wrapper.
+  // Tags only say what the text mentions, never an outcome it does not state.
+  const tags = ['#Mock_Tagged'];
+  if (MOCK_RULES.invoice.test(lower)) tags.push('#Invoice_Mentioned');
+  if (MOCK_RULES.risk.test(lower)) tags.push('#Risk_Watch');
+  if (MOCK_RULES.milestone.test(lower)) tags.push('#Milestone_Tracked');
+  if (MOCK_RULES.furlough.test(lower)) tags.push('#Furlough_Flag');
+  const impactScore = MOCK_RULES.impact.test(lower) ? 0.9 : 0.35;
+  // No mergeHint or structured fields: the mock has not compared anything or
+  // extracted any values, so it must not claim to have (trust rule CF-3).
   return {
     synthesizedText: (clean || 'No input provided.') + (clean && clean.length >= 220 ? '…' : ''),
     tags,
     impactScore,
-    mergeHint: isInvoice
-      ? 'Similar to existing RAID log — details overlap'
-      : (isRisk ? 'Similar to existing RAID log — details overlap' : 'Aggregated from ' + String(type || 'general') + ' + RAID log — requires human validation'),
-    structured: isInvoice
-      ? { Milestone: 'Sprint 1', Amount: '$45k', Status: 'Blocked' }
-      : { Milestone: 'Sprint 1', Amount: '$45k', Status: impactScore >= 0.5 ? 'Needs Review' : 'Tracked' },
+    aiEngine: 'mock',
   };
 }
 
@@ -136,11 +140,13 @@ async function callOpenRouter(input, kind, enrichWithAggregation) {
     if (!res.ok) throw new Error('OpenRouter HTTP ' + res.status);
     const data = await res.json();
     const raw = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
-    return enrichWithAggregation(parseAiJson(raw, input, kind));
+    return enrichWithAggregation(Object.assign(parseAiJson(raw, input, kind), { aiEngine: 'live', aiModel: model }));
   } catch (err) {
     await new Promise((r) => setTimeout(r, 1200));
     const fb = mockResult(input, kind);
     fb.tags = (fb.tags || []).concat(['#Mock_Fallback']);
+    fb.aiEngine = 'fallback';
+    fb.aiFallbackReason = 'OpenRouter: ' + String((err && err.message) || err).slice(0, 120);
     return fb;
   }
 }
@@ -171,28 +177,37 @@ async function callAnthropic(input, kind, enrichWithAggregation) {
     if (!res.ok) throw new Error('Anthropic HTTP ' + res.status);
     const data = await res.json();
     const raw = (data && Array.isArray(data.content) && data.content[0] && data.content[0].text) || '';
-    return enrichWithAggregation(parseAiJson(raw, input, kind));
+    return enrichWithAggregation(Object.assign(parseAiJson(raw, input, kind), { aiEngine: 'live', aiModel: 'claude-3-5-sonnet-20241022' }));
   } catch (err) {
     // Anthropic failed (network/HTTP/parse) — retry via the existing OpenRouter
     // path before ever falling all the way through to the mock safety net.
-    return callOpenRouter(input, kind, enrichWithAggregation);
+    const out = await callOpenRouter(input, kind, enrichWithAggregation);
+    if (out && out.aiEngine === 'mock') {
+      out.aiEngine = 'fallback';
+      out.aiFallbackReason = 'Anthropic: ' + String((err && err.message) || err).slice(0, 120);
+    }
+    return out;
   }
+}
+
+// Human-readable engine label for cards and the review queue. Empty when the
+// card predates engine tracking (seed data), so nothing is claimed either way.
+export function aiEngineLabel(engine, model) {
+  const e = String(engine || '');
+  if (e === 'live') return 'Live AI' + (model ? ' · ' + String(model).split('/').pop() : '');
+  if (e === 'mock') return 'Offline mock AI';
+  if (e === 'fallback') return 'Mock fallback · live AI failed';
+  return '';
 }
 
 export async function processWithAI(text, type) {
   const input = String(text || '');
   const kind = String(type || 'general');
+  // Defaults only for fields that carry no claim. mergeHint and structured
+  // are never filled in here: a placeholder "Similar to existing RAID log" or
+  // "Amount: $45k" would present invented facts as findings (trust rule CF-3).
   const enrichWithAggregation = (base) => {
     const out = Object.assign({}, base);
-    if (!out.mergeHint) {
-      const l = String(input || '').toLowerCase();
-      out.mergeHint = (/po|invoice|risk|raid|overrun|delay|block/.test(l))
-        ? 'Similar to existing RAID log — details overlap'
-        : 'Aggregated from ' + kind + ' + RAID log — requires human validation';
-    }
-    if (!out.structured || typeof out.structured !== 'object') {
-      out.structured = { Milestone: 'Sprint 1', Amount: '$45k', Status: 'Blocked' };
-    }
     if (out.privacy == null) out.privacy = 'Team Shared';
     return out;
   };
@@ -300,4 +315,4 @@ export async function askSmartAssistant(question, contextCards, privacyMode, act
   await new Promise((r) => setTimeout(r, 900));
   return mockQaFallback(q, scoped, mode, persona);
 }
-export default { processWithAI, askSmartAssistant, privacyMatchesCard };
+export default { processWithAI, askSmartAssistant, privacyMatchesCard, aiEngineLabel };

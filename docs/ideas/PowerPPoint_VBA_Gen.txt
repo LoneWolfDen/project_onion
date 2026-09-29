@@ -1,0 +1,662 @@
+To achieve the exact web aesthetic (off-white backgrounds, crisp white rounded cards with soft drop shadows, and deep navy text) directly in PowerPoint, we bypass the default slide templates entirely. This script commands PowerPoint to draw the shapes, apply the specific RGB hex colors from your UI, and set the corner radiuses automatically.
+
+How to Run Your First VBA Script
+
+1. Open PowerPoint and create a Blank Presentation.
+2. Press ALT + F11 (or Option + F11 on a Mac) to open the Visual Basic Editor.
+3. In the top menu, click Insert > Module.
+4. Paste the entire code block below into the blank white window.
+5. Press F5 (or click the green "Play" triangle in the toolbar) to run the script.
+6. Close the editor. Your fully styled, 8-slide deck will be ready.
+
+Sub GenerateStyledContinuumDeck()
+    Dim pres As Presentation
+    Set pres = ActivePresentation
+    
+    ' Force 16:9 Widescreen format
+    pres.PageSetup.SlideSize = ppSlideSizeOnScreen16x9
+    
+    ' Delete any default blank slides
+    While pres.Slides.Count > 0
+        pres.Slides(1).Delete
+    Wend
+    
+    ' Slide 1: Title
+    Dim sld1 As Slide
+    Set sld1 = pres.Slides.Add(1, ppLayoutBlank)
+    StyleTitleSlide sld1, "Continuum", "Know-how that stays." & vbCrLf & "Transforming transient delivery data into institutional intelligence."
+    
+    ' Slide 2: The Reality
+    Dim sld2 As Slide
+    Set sld2 = pres.Slides.Add(2, ppLayoutBlank)
+    StyleContentSlide sld2, "The Reality of Modern Delivery", _
+        "The friction we accept every day:" & vbCrLf & _
+        "• The Context Gap: We document what happened, but the 'why' stays in heads or isolated inboxes." & vbCrLf & _
+        "• Duplicate Effort: Multiple units create identical delivery playbooks blindly." & vbCrLf & _
+        "• Client Fatigue: Repeatedly asking clients how to navigate their ecosystems." & vbCrLf & _
+        "• Alignment Blindspots: Lacking a unified view to verify logical closure on decisions."
+        
+    ' Slide 3: The Symptom
+    Dim sld3 As Slide
+    Set sld3 = pres.Slides.Add(3, ppLayoutBlank)
+    StyleContentSlide sld3, "A £11,700 question nobody could answer", _
+        "The symptom of isolated knowledge:" & vbCrLf & _
+        "• A milestone variance surfaced months after initial agreement." & vbCrLf & _
+        "• Four delivery leaders searched five systems of record." & vbCrLf & _
+        "• The rationale was buried in a departed manager's email." & vbCrLf & _
+        "• The Lesson: Handovers transfer tasks, not context. Systems record outcomes, not rationale."
+        
+    ' Slide 4: The Solution
+    Dim sld4 As Slide
+    Set sld4 = pres.Slides.Add(4, ppLayoutBlank)
+    StyleContentSlide sld4, "The Continuum Solution", _
+        "Capture without friction. Share with control." & vbCrLf & _
+        "• Automated Context: Intelligently reviews scattered digital exhaust." & vbCrLf & _
+        "• Absolute Contributor Control: Privacy toggles ensure information remains strictly private until explicitly shared." & vbCrLf & _
+        "• Zero-Friction Capture: No forms. The system learns from the work already happening."
+        
+    ' Slide 5: The Multiplier
+    Dim sld5 As Slide
+    Set sld5 = pres.Slides.Add(5, ppLayoutBlank)
+    StyleContentSlide sld5, "The Intelligence Multiplier", _
+        "Isolated information becomes shared knowledge, which compounds into institutional intelligence:" & vbCrLf & _
+        "• Level 1: Information. Raw signals, emails, and chat messages captured securely." & vbCrLf & _
+        "• Level 2: Knowledge. Information refined and verified by the human-in-the-loop." & vbCrLf & _
+        "• Level 3: Intelligence. Shared knowledge compounding across the organization."
+        
+    ' Slide 6: Value
+    Dim sld6 As Slide
+    Set sld6 = pres.Slides.Add(6, ppLayoutBlank)
+    StyleContentSlide sld6, "Immediate Day-One Value", _
+        "Immediate ROI for the individual and the enterprise:" & vbCrLf & _
+        "• Instant Handover Generation: Transforms months of context into structured documents in minutes." & vbCrLf & _
+        "• Automated Status Reporting: Generates weekly reports backed by verifiable provenance." & vbCrLf & _
+        "• Expertise Routing: Instantly connects teams with the exact person who previously solved a challenge."
+        
+    ' Slide 7: Architecture
+    Dim sld7 As Slide
+    Set sld7 = pres.Slides.Add(7, ppLayoutBlank)
+    StyleContentSlide sld7, "Enterprise-Grade by Design", _
+        "Architecture that respects corporate boundaries:" & vbCrLf & _
+        "• Zero IT Friction: Delivered as a PWA. Runs natively in the browser with no installation." & vbCrLf & _
+        "• Bring Your Own Key (BYOK): Architected to integrate securely with existing security models." & vbCrLf & _
+        "• Highly Agile: Built on a lightweight framework for rapid deployment and iteration."
+        
+    ' Slide 8: Conclusion
+    Dim sld8 As Slide
+    Set sld8 = pres.Slides.Add(8, ppLayoutBlank)
+    StyleTitleSlide sld8, "Continuum", "Systems will always tell you what was decided." & vbCrLf & "Continuum keeps the reason, and the person who knew it."
+
+End Sub
+
+Sub StyleTitleSlide(sld As Slide, titleText As String, subText As String)
+    ' Deep Navy Background
+    sld.FollowMasterBackground = msoFalse
+    sld.Background.Fill.ForeColor.RGB = RGB(15, 32, 64)
+    
+    ' Title Text
+    Dim shpTitle As Shape
+    Set shpTitle = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, 50, 180, 860, 100)
+    With shpTitle.TextFrame.TextRange
+        .Text = titleText
+        .Font.Name = "Arial"
+        .Font.Size = 60
+        .Font.Bold = msoTrue
+        .Font.Color.RGB = RGB(214, 245, 232) ' Mint Green
+        .ParagraphFormat.Alignment = ppAlignCenter
+    End With
+    
+    ' Subtitle Text
+    Dim shpSub As Shape
+    Set shpSub = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, 100, 280, 760, 100)
+    With shpSub.TextFrame.TextRange
+        .Text = subText
+        .Font.Name = "Arial"
+        .Font.Size = 24
+        .Font.Color.RGB = RGB(255, 255, 255) ' White
+        .ParagraphFormat.Alignment = ppAlignCenter
+    End With
+End Sub
+
+Sub StyleContentSlide(sld As Slide, titleText As String, bodyText As String)
+    ' Light Gray/Off-White Web Background
+    sld.FollowMasterBackground = msoFalse
+    sld.Background.Fill.ForeColor.RGB = RGB(252, 251, 249)
+    
+    ' Deep Navy Title
+    Dim shpTitle As Shape
+    Set shpTitle = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, 50, 30, 860, 60)
+    With shpTitle.TextFrame.TextRange
+        .Text = titleText
+        .Font.Name = "Arial"
+        .Font.Size = 32
+        .Font.Bold = msoTrue
+        .Font.Color.RGB = RGB(15, 32, 64)
+    End With
+    
+    ' White Rounded Card with Soft Shadow
+    Dim shpCard As Shape
+    Set shpCard = sld.Shapes.AddShape(msoShapeRoundedRectangle, 50, 110, 860, 380)
+    With shpCard
+        .Fill.ForeColor.RGB = RGB(255, 255, 255)
+        .Line.Visible = msoFalse
+        .Adjustments.Item(1) = 0.04 ' Corner radius
+        .Shadow.Type = msoShadow21 ' Soft drop shadow
+        .Shadow.Transparency = 0.8
+        .Shadow.Size = 100
+        .Shadow.Blur = 15
+    End With
+    
+    ' Body Text Inside Card
+    Dim shpBody As Shape
+    Set shpBody = sld.Shapes.AddTextbox(msoTextOrientationHorizontal, 80, 140, 800, 320)
+    With shpBody.TextFrame
+        .WordWrap = msoTrue
+        With .TextRange
+            .Text = bodyText
+            .Font.Name = "Arial"
+            .Font.Size = 20
+            .Font.Color.RGB = RGB(47, 49, 62) ' Dark Slate Gray
+            .ParagraphFormat.SpaceAfter = 12
+            .ParagraphFormat.LineRuleWithin = msoTrue
+            .ParagraphFormat.SpaceWithin = 1.3 ' 1.3 line spacing
+        End With
+    End With
+End Sub
+
+-----------
+29Sep:
+Claude prompts:
+
+Review the curent Status card experience and related implementation
+
+Context:
+You have already reviewed:
+Relationship Model V5
+Runtime Architecture
+Domain Architecture
+HAndover dashboard
+ChromaDB integration 
+Vector sync
+Smart AppendPRovenance tracking 
+Confidence scoring
+
+STATUS CARD is the core user experience of Continuum.
+
+The current pipeline is:
+RAW Input > AI Processing > Simialrity Detection > Smart Append > Confidence > PRovenance > Human Review > TEam Memory
+
+Goals:
+Improve user understanding
+Improve Trust and Explainability
+Improve demo impact for hackathon judges (both leaders and Architects)
+Identify any logic weakness or implementation risk
+Identify anything confusing, misleading, incompelte or inconsistent
+
+Do NOT modify code.
+
+Geenrate: STATUS_CARD_UX_RECOMMENDATIONS.md with two separate sections:
+
+## A. UX / Experience Improvements 
+Focus on:
+Confidence explanation
+PRovenance explanation
+smart Appends Explanation 
+Simialrity and merge explanation
+Human review explanation 
+Visual hierarchy
+Hackathin judges impact 
+
+
+Rank: 
+High Imapct/Low effort
+High Imapct / Medium efort
+Nice to have
+
+## B. Logic /Implementation Observations:
+REview:
+Smart Append Behaviour
+Simialrity MAtching
+Confidence Calcualtion
+PRovenance Generation
+Timeline behaviour 
+RAW vs AI node behaviour
+Chroma interaction
+Local storage interaction
+
+Identify:
+Possible bugs
+Edge cases 
+Hidden assumptions
+Confusing behaviour 
+Trust risks 
+Areas where the implementation does not match the intended design
+
+Do not process code changes yet.
+Only identify findigns and recommendations.
+
+--------------------------
+
+
+project_onion git:(feature/relationship-model-v5) ✗ git status
+On branch feature/relationship-model-v5
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   .gitignore
+        modified:   modules/experience-pwa/static/docs/Project-Onion-Relationship-Model.html
+        modified:   modules/experience-pwa/static/docs/guide.html
+        modified:   modules/vector-service/chroma_data/chroma.sqlite3
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        docs/RELATIONSHIP_MODEL_V5_Scope.md
+        docs/Relationship_Model_v5_concept.md
+        docs/STATUS_CARD_UX_RECOMMENDATIONS.md
+        docs/ideas/PowerPPoint_VBA_Gen.txt
+        modules/experience-pwa/static/docs/Continuum-V4-Final.html
+        modules/experience-pwa/static/docs/guide-app/
+        modules/experience-pwa/static/docs/relationship-v5/
+
+no changes added to commit (use "git add" and/or "git commit -a")
+➜  project_onion git:(feature/relationship-model-v5) ✗ git branch            
+* feature/relationship-model-v5
+  feature/v018
+  feature/v018-full
+  feature/v019
+  feature/v020-clean
+  feature/v020clean-hdd
+  feature/v17-1-edit-overlay-old-collar-ALL-clients-breadcrumb-fix
+  fix/p0-white-screen
+  fix/p1-privacy-pii
+  fix/p2-confidence-provenance
+  main
+➜  project_onion git:(feature/relationship-model-v5) ✗ pwd    
+
+
+*****
+
+git add docs/RELATIONSHIP_MODEL_V5_Scope.md
+git add docs/Relationship_Model_v5_concept.md
+git add docs/STATUS_CARD_UX_RECOMMENDATIONS.md
+git add modules/experience-pwa/static/docs/relationship-v5/
+git add modules/experience-pwa/static/docs/Project-Onion-Relationship-Model.html
+
+Commited - feature/relationship-model-v5
+----------------------
+Claude findings - Status Cards:
+
+These are the five changes I'd make before the demo. Each is a contained UI or wording fix of 5–40 lines in files you already know. None needs any of the excluded redesigns, and each fixes something a judge could see or ask about.
+
+| Rank | Change | Fixes | Files | Effort | Risk | Demo impact |
+|---|---|---|---|---|---|---|
+| **1** | Stop the mock AI inventing facts | RA-1, CF-3 | `AiClient.js` | ~10 lines | Very low | **Highest** |
+| **2** | Make provenance clickable: show the original text instead of the `alert()` | PV-1 (+ PV-2 one-liner) | `TimelineCard.js` (+1 line `FailoverDB.js`) | ~15 lines | Low | Very high |
+| **3** | Make confidence honest and explained ("Evidence strength") | CF-1, CF-2, CF-5, A1 | `TimelineCard.js` | ~25 lines | Low–medium | Very high |
+| **4** | Show which AI engine produced each card | RA-2, A3 | `AiClient.js`, `HarvesterPanel.js`, `FailoverDB.js`, `TimelineCard.js` | ~20 lines | Low | High |
+| **5** | Fix the approval states and wording | SA-4 (UI only), A6, A7, TL-1 | `TimelineCard.js` | ~20 lines | Low | High |
+
+### 1. Stop the mock AI inventing facts
+- **Change:**
+  - Use whole-word matching in the mock keyword rules, so "report", "support" and "opportunity" stop triggering the invoice rule.
+  - Rename the mock tags to neutral ones, e.g. `#Mock_Tagged`.
+  - Stop filling in the placeholder `structured` fields (`Sprint 1 / $45k / Blocked`) and the fixed "Similar to existing RAID log" hint when the AI didn't return them.
+- **Why first:** a judge can type anything and get "Invoice resolved, $45k". One invented number seen on stage undermines everything else. This is the smallest change with the largest effect.
+- **Watch:** the seed card `apollo-daniel-01` has the same placeholder `structured` value hard-coded in `mockSeed.js:56`. Delete it there too, or its confidence sentence will still say "validated via $45k".
+
+### 2. Make provenance clickable
+- **Change:**
+  - Clicking a provenance row or source chip opens the node viewer the card already has (RAW text, author, date), instead of `alert("…test data")`.
+  - One extra line in `pushNode` stores the real source on appended nodes. Otherwise a Teams update appended to an email card is listed as "Outlook Mail".
+- **Why:** "click any claim, see the original words" is the strongest trust moment for both judge groups, and the viewer is already built.
+
+### 3. Make confidence honest and explained
+- **Change:**
+  - Only count distinct source systems from the card and its reviewed RAW nodes. Hashtags, AI nodes and pending drafts no longer count.
+  - Rename "Model confidence" to **Evidence strength**.
+  - Replace the sentence with *"Based on 2 sources: Outlook Mail, Jira"*.
+  - Remove the duplicate percentage in the footer.
+- **Watch:** most seed cards have one source, so they will all read about 63% (Medium). That is a better story, because the number visibly rises when a second system confirms the card during the Smart Append demo. Rehearse that moment.
+- **Not included:** changing the formula's floor, so "Low" becomes reachable. That changes the scoring behaviour and is post-demo.
+
+### 4. Show which AI engine produced each card
+- **Change:**
+  - `processWithAI` returns an engine value: `live · <model>`, `offline mock`, or `fallback`.
+  - The value is carried through the review queue into `markProcessed` and shown as a small badge on the card.
+  - Seed cards have no value and show nothing, or "seed data".
+- **Why:** architects will ask whether it's real. A visible "offline mock" badge turns the failover design into a strength instead of something that looks hidden.
+
+### 5. Fix the approval states and wording
+- **Change:**
+  - The Approve button's visibility checks the `stagedAppend` / `pendingAppends` fields instead of searching the node text for "private". This fixes the button that never goes away.
+  - The timeline strip hides nodes based on `stagedAppend`, not on "pending" or "private" appearing in the text.
+  - Rename the buttons:
+    - Harvester: **"Add to card (private draft)"**
+    - Card: **"Share update with team"**, blue instead of red
+  - Replace "Similar to client playbook" with **"1 update waiting for your review"**.
+  - Remove the contradictory "✅ Merged … pending review" banner.
+- **Risk note:** this changes the display only. The underlying privacy fields and the Chroma behaviour (CH-1) are not touched.
+
+### Just outside the top 5 (also under 10 lines each)
+- Match reasons in plain words, e.g. "both mention FW-REQ-4471" (A4).
+- Relabel "Force Sync" to "Mark uploaded (demo)" (A12).
+- Compute "2h ago" from real dates (A11).
+
+### Avoid these on stage, since they stay unfixed
+- Don't have one persona append to another persona's **private** card and then approve it. That path can share the private card (SA-2, HR-1).
+- Don't show Chroma or semantic search *after* an append: the appended card stays private there (CH-1).
+- Stage fragments that contain a specific ID such as FW-REQ-4471. Very loose keyword matches can land on an arbitrary card (SM-2, SM-3).
+
+If you approve, I'll implement 1 → 5 in order and re-test each change in the browser harness before moving to the next.
+
+-------------------------
+
+
+
+
+Implement only recommendations 1-4 from the approved shortlist:
+1. RA-1 + CF-3
+2. PV-1 + One-line PV-2
+3. CF-1 + CF-2 + CF-5 + A1
+4. RA-2 + A3
+
+Do not implement recommendation 5 yet.
+
+Do not change:
+Smart Append logica
+Simialrity logica
+Chroma logic
+Local storage logic 
+Approval logic 
+
+Foucs Only on:
+TrustExplainability
+Transparency
+demo impact
+After implementation:
+PRovide a summary of files changed and hot to test each change
+
+
+Claude Output:
+Recommendations 1–4 are implemented and tested in the running PWA. Recommendation 5 is not touched.
+
+I tested in a WebKit harness running the real PWA through `service.py`: all four changes work end to end with no page errors and no alerts, and I reviewed the screenshots. Chrome isn't installed on this Mac, so Chrome is untested.
+
+**Changes, by recommendation**
+
+- **1. Mock AI no longer invents facts (RA-1, CF-3)**
+  - The mock keyword rules match whole words only, so "report", "support" and "opportunity" no longer count as a PO.
+  - Mock tags are neutral: `#Mock_Tagged`, and `#Invoice_Mentioned` instead of `#Invoice_Resolved`.
+  - The placeholder "Sprint 1 / $45k / Blocked" fields and the fixed "Similar to existing RAID log" hint are gone, from the mock, the live-AI defaults and the two seed cards.
+- **2. Provenance opens the original text (PV-1, PV-2)**
+  - The `alert()` is gone. Provenance rows and source chips open the existing node viewer.
+  - The viewer title says "RAW · original text from Outlook Mail" or "AI summary · Offline mock AI".
+  - Appended nodes now keep their own source.
+  - Draft nodes still don't open for people who aren't contributors.
+- **3. Confidence is now "Evidence strength" (CF-1, CF-2, CF-5, A1)**
+  - It counts only the card's source plus updates already shared onto it. Hashtags, AI summaries and drafts no longer count.
+  - It shows the sources by name, plus a "How is this calculated?" breakdown with the actual numbers.
+  - The duplicate percentage in the footer is removed.
+  - The formula is unchanged: 63, 82 and 96 give the same results as before.
+- **4. Engine badge (RA-2, A3)**
+  - Each AI result records `live`, `mock` or `fallback`, plus the model and the failure reason.
+  - The Harvester review queue and the card header show it: green for live, amber for mock or fallback.
+  - Seed cards show no badge, because their engine was never recorded.
+
+**Files changed**
+
+| File | Changes |
+|---|---|
+| [core/AiClient.js](modules/experience-pwa/static/js/core/AiClient.js) | Honest mock; engine tagging; `aiEngineLabel()` |
+| [data/mockSeed.js](modules/experience-pwa/static/js/data/mockSeed.js) | Placeholder fields removed from 2 seed cards |
+| [core/confidence.js](modules/experience-pwa/static/js/core/confidence.js) | `confidenceBreakdown()`; same scores |
+| [components/TimelineCard.js](modules/experience-pwa/static/js/components/TimelineCard.js) | Evidence box, provenance clicks, viewer titles, engine badge |
+| [components/HarvesterPanel.js](modules/experience-pwa/static/js/components/HarvesterPanel.js) | Engine carried through the review queue; queue badge |
+| [core/FailoverDB.js](modules/experience-pwa/static/js/core/FailoverDB.js) | Field pass-through only: engine on processed cards, source and engine on appended nodes |
+
+No Smart Append, similarity, Chroma, storage or approval logic changed.
+
+**How to test.** Start `python3 modules/experience-pwa/service.py` and open http://localhost:8002. First, open ⚙️ in the Data Park and click **↺ Reset to Hackathon Demo Data**. Cards saved before this change keep their old fields until you reset.
+
+1. **Honest mock.**
+   - Paste `Weekly report: support opportunity review` → Stage → Run AI.
+     - **Expect** in the queue: `#Mock_Tagged` and "Offline mock AI" only; no invoice tag and no $45k.
+     - After approval, the card lands in Informational Updates, because routine updates are filtered.
+   - Paste `Client escalation: payroll milestone slipping`.
+     - **Expect:** impact 0.90 and `#Risk_Watch #Milestone_Tracked`.
+2. **Provenance.**
+   - On "UAT deploy blocked — FW-REQ-4471", click a grey source chip.
+     - **Expect:** the viewer opens "RAW · original text from Outlook Mail".
+   - Expand the card (+) → Full Provenance → click each row.
+     - **Expect:** the matching RAW or AI text, and no pop-up.
+3. **Evidence strength.**
+   - Every seed card reads **Medium (63%) — 1 independent source**, and "How is this calculated?" shows 55 + 8 + 0.
+   - Stage `Teams: firewall FW-REQ-4471 approved by Infosec, UAT retry scheduled` → Run AI → Approve.
+     - **Expect** on the matched card: still 63%, "1 draft update not counted until shared".
+   - Then click **Approve Updates & Share**.
+     - **Expect:** **74% — 2 independent sources**. This is the demo moment where the score visibly rises.
+4. **Engine badge.**
+   - With no API key, the queue shows amber "Offline mock AI".
+   - A new card shows **AI · Offline mock AI** next to its title, and an appended AI node's viewer shows "AI summary · Offline mock AI".
+   - With a valid key: green "Live AI · claude-3-haiku".
+   - With an invalid key: amber "Mock fallback · live AI failed", and the tooltip gives the reason.
+
+**Things to know for the demo**
+- **Avoid the payroll/milestone wording on stage.** In testing, the "Client escalation: payroll milestone…" text, typed as Brené in Apollo-123, was matched and appended into **Malcolm's private NovaTech card**. That is existing behaviour (SM-1), not something these changes introduced, and it's outside what you allowed me to change. The FW-REQ-4471 message in step 3 is the safe one to use.
+- **The Data Park counts as its own source.** Updates pasted there show their source as "Data Park Dropzone", so the rise to 74% reads "Outlook Mail, Data Park Dropzone". That's truthful, but say "pasted from Teams" out loud when you present it.
+- **The target card's title changes** to the new text when the append is staged (SA-1, existing behaviour). Expect it on the matched card.
+
+
+
+===============================================
+Claude prompt:
+
+Implement only the following:
+
+5. Fix the approval states and wording - PARTIAL DO NOT refactor APPROVAL Logic
+	Change:
+	Rename the buttons:
+	Card: "Share update with team", blue instead of red
+	Replace "Similar to client playbook" with "1 update waiting for your review".
+	Remove the contradictory "✅ Merged … pending review" banner.
+	Risk note: this changes the display only. The underlying privacy fields and the Chroma behaviour (CH-1) are not touched.
+
+and,
+ - Match reasons in plain words, e.g. "both mention FW-REQ-4471" (A4).
+- Relabel "Force Sync" to "Mark uploaded (demo)" (A12).
+- Compute "2h ago" from real dates (A11).
+
+Do not change:
+Smart Append logica
+Simialrity logica
+Chroma logic
+Local storage logic 
+Approval logic 
+
+Foucs Only on:
+TrustExplainability
+Transparency
+demo impact
+After implementation:
+PRovide a summary of files changed and hot to test each change
+
+
+Claude Output:
+
+All eight changes are in, in the suggested order. In the WebKit test harness against the real PWA, every check passed with zero page errors, and I reviewed the screenshots. Chrome isn't installed on this Mac, so Chrome is untested. No functional logic changed: no conditions, state handling, data, handlers or privacy rules. Clicks still work, including Client 360 → Open project.
+
+**Files changed this round (all four on the approved list)**
+
+| File | What changed |
+|---|---|
+| `static/css/styles.css` | 3 new blocks appended; the existing rules are untouched |
+| `static/js/components/TimelineCard.js` | Two lines swapped: the banner order |
+| `static/js/components/AppCenter.js` | Text, class names and layout in Routine updates, YOUR NOTES and Client 360 |
+| `static/index.html` | `styles.css?v=demo2`, so browsers and the service worker load the new CSS |
+
+`git status` also shows the files from the earlier rounds (still uncommitted) and `guide.html`, which was already modified before this session.
+
+**What changed**
+
+1. **Missing colours (CSS only).** I added the 72 colour classes the components use but the frozen CSS never compiled. This fixes:
+   - the purple banner, which now renders purple;
+   - the Edit → **Save Changes** button, now blue with white text;
+   - the Key Moments pastel blue;
+   - the Evidence box and engine badge colours.
+
+   Tiny font sizes were deliberately not added.
+2. **Banner order.** The cards now read: purple *"1 update waiting for your review — why"* → amber toggle → staged details, directly beneath it.
+3. **Handover (CSS only).**
+   - Selected tabs, radios and the active project use a pale-blue fill with brand-blue text instead of solid dark slate.
+   - The backdrop is lighter (55% → 30%).
+   - Buttons use the brand blue and a mint green.
+   - Sections have a soft left accent.
+4. **Routine updates.**
+   - Renamed from Informational Updates, with the subtitle "Low-impact items, kept for context".
+   - "heard about:" is gone. Each row shows the title on the left and *Teams Chat · 2h ago · 2 entries* on the right.
+   - Expanded rows use aligned columns: time · AI/RAW badge · text, at 12px. The RAW row sits muted under its AI row with the time left blank, so each pair reads as one update. Times read "29 Sep, 22:40".
+5. **Pastel sections.** YOUR NOTES is mint, with a peach Private column and a light-blue Team column. Status cards stay white.
+6. **Client 360 layout.** Same data and handlers, reorganised:
+   - **Header:** purpose line plus an at-a-glance count strip (projects · contacts · themes · artefacts).
+   - **Know-how & artefacts** (lavender) first, since it's the reason the page exists, next to **Who to contact** (mint).
+   - **Projects for this client** (blue).
+   - **Recurring themes** (butter) and **Client domains** (grey).
+   - Each section has an icon, a one-line purpose and an empty state that says how it fills up.
+   - Contacts shared across projects get an "on N projects" badge.
+
+**Worth knowing**
+- **The artefacts are sample content.** The Client 360 artefacts are three hard-coded entries with links that go nowhere, so I added a **"Sample content"** tag rather than present them as real contributions. When contributor-created artefacts exist, the tag can go.
+- **Contacts shows 0 on the seed data**, because the seed projects have no contact lists. Add a contact via Edit Project Details before the demo if you want that section populated.
+- **Not changed (existing, and outside the approved files):**
+  - The "B" avatar in YOUR NOTES sits slightly off-centre.
+  - The round **View** buttons in the Handover feed clip their text.
+  - The Smart Assistant panel lives in `AppRight.js`, which wasn't on the list.
+
+  Each is a small CSS/markup fix if you want them.
+- **Before the demo:** reload once so the new `?v=demo2` stylesheet loads, then use ⚙️ → **Reset to Hackathon Demo Data**.
+
+
+-----
+All 13 items are in and tested in the running PWA. There were no page errors, and each flow they touch still works:
+- the Only me / Team / Both filter still filters (10 → 2 → 10 cards);
+- adding a note still saves, and its stored value is still `Team Shared`;
+- the Harvester → draft → review path runs as before;
+- source chips and pills still open the viewer.
+
+**The 13 items**
+
+| # | Change | How | Verified in the browser |
+|---|---|---|---|
+| 1 | Timeline pills show the kind above the date ("RAW" / "29/09") | CSS | Stacked |
+| 2 | Evidence box gets inner padding | CSS | 10px 12px |
+| 3 | Card footer 11px, not italic | CSS | 11px normal |
+| 4 | Legend above each strip: "RAW = what the source said · AI = Continuum's summary" | Text | Shown on every card |
+| 5 | Staged pills read **🔒 draft** | Text | Both draft pills |
+| 6 | Title is now **"Key Moments"** | Text | Done |
+| 7 | AI viewer title: **"AI summary · all updates so far"** | Text | Done |
+| 8 | Source chips look like links; hashtags look like plain labels | Class name + CSS | `#Risk_Watch` no longer underlined |
+| 9 | Review queue shows **"Impact: Key moment (0.90)"** or **"Routine (0.35)"** | Text | Done |
+| 10 | Tooltip on the Local / Vector footer icons explaining ✅ and ☁️ | Tooltip | Done |
+| 11 | One privacy vocabulary on screen: **🔒 Only me** / **👥 Team** | Labels only | See below |
+| 12 | "Unknown author" instead of "System" when the author is missing | Display text | "System" no longer appears |
+| 13 | Screen-reader labels and states on pills, the expand button and the filter buttons | Accessibility attributes | e.g. "Original source text, 29/09, draft" |
+
+Item 11 covers the card footer, the note buttons ("Add for only me" / "Add for team"), the note columns, the Harvester privacy buttons and the Smart Assistant filter ("Only me · Team · Both"). The same pass also rewrote the draft banner as "1 draft update added to this card — visible only to you until shared".
+
+**Two decisions I made:**
+- **Items 4–6 are real text, not CSS tricks.** When you first said "CSS only", I built them as stylesheet-generated text. After your follow-up I switched them to real text, which screen readers can read and is easier to maintain.
+- **Item 6 differs from my suggestion.** I suggested "Key Moments — Top 5 by impact", but the badge beside the title already says "Top 5 by impact — noise filtered", so it would read twice. I used "Key Moments" alone; it's a one-word change if you want the longer title.
+
+**Files changed:** `css/styles.css` (Block 8), `TimelineCard.js`, `AppCenter.js`, `HarvesterPanel.js`, `AppRight.js`. I didn't change `index.html` this round, so its stylesheet link is still `?v=demo3`. The service worker serves cached copies first, so **reload twice** to see the new styles and labels. Then use ⚙️ → **Reset to Hackathon Demo Data** before you present.
+
+I haven't implemented anything from your backlog notes.
+==============================================================================
+
+Claude Prompt - Demo data:
+
+Review the current implementation including:
+	Relationship_Model_v5
+	Status card experience
+	Your Notes and Key moments
+	HAndover dashboard
+	Smart Append
+	Simialrity Matching
+	Confidence / Evidence Strength
+	ProvenanceChroma / Vector Storage
+	TEam shared vs Private flows
+
+Goal: Create a complete HAckathon Demonstration Dataset.
+
+Requirements:
+Generate realistic but fictional data (relevant to technology consulting and delivery)
+No real clients, projects, people, companies, emails, URLs, project codes or references
+Data must be safe for public demonstration
+Every scenarion must intentionally demonstrate a specific Continuum capability 
+Avoid scenarios that rely on currently known weak areas:
+	Private card ownership edge cases
+	Chroma scope edge cases
+	loose keyword matching 
+	semantic merge ambiguity
+
+Assume judges may inspect the data.
+
+Create a new demo dataset and supporting assets
+
+Output: HACKATHON_DEMO_DATA.md
+For each scenario provide:
+	Scenario name
+	Business situation
+	Sample raw inputs 
+	Expected AI summary 
+	Expencted Smart Append behaviour
+	Expected Provenance chain
+	ExpectedEvidence Strength result
+	ExpectedHAndover outcome
+	Why judges will find it interesting
+
+Create at least:
+	PRoject HAndover 
+	Lost Decision Rationale
+	RAID Escalation
+	Fiancial Milestone Discussion
+	Resource Transistion 
+	Architecture Decision REcord
+	Operational Runbook Recovery
+	Customer Issue Resolution
+	Cross-Team Knowledge Discovery
+	Lessons Learned Reuse
+
+Distribute them across existing personas, so each user will have balanced content.
+
+Secondly, Create test data for client360
+
+
+
+
+Next, Recommend how the demo dataset should be loaded:
+Update reset via: 'Reset to Hackathon Demo Data' (Change name of the button to 'Reset Demo Dataset' )
+REquirements:
+	Seperate from existing seed data
+	One-click reset
+	REcreates the full demonstration state
+	PRedictable and Repeatable
+	Safe to use repeatedly during judging
+
+
+Additionally:
+Create a "Demo_Walkthrough_Dataset.md" specifically designed for live presentation
+Requirements:
+	Works end-to-end in under 5minutes
+	Demonstrates:
+	RAW inputs
+	AI summary 
+	Simialrity detection
+	Smart Append
+	Evidence StrengthProvanance
+	Team MEmory
+	HAndover
+PRovide exact records and ordering.
+
+Document all Files that beed to be created or modified
+Do not geenrate code yet.
+Produce a detailed implementation plan first.

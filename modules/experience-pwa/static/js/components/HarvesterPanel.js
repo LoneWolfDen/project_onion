@@ -6,7 +6,8 @@
 // → processWithAI() → mark processed + dispatch onion:db-update.
 import { projectIdEquals } from '../core/schema.js';
 import { piiScreen } from '../core/PiiGate.js';
-import { processWithAI } from '../core/AiClient.js';
+import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
+import { matchSentence } from '../core/matchExplain.js';
 import { PERSONAS, getDefaultPersona } from '../constants/personas.js';
 const html = window.htm.bind(window.React.createElement);
 export function toPayload(o, persona) {
@@ -115,6 +116,19 @@ export function findSmartAppendMatch(stagedText, stagedTitle) {
   if (!best) return null;
   return { card: best, score: bestScore, reasons: bestReasons, privacy: best.privacy || 'Team Shared' };
 }
+// Display only (A4): the words a review item and its matched card both use,
+// so the reason can name them. Same tokenizer as the matcher; the match itself
+// is unchanged.
+function sharedWordsFor(item) {
+  try {
+    const sa = item && item.smartAppend;
+    const target = sa && readAllTimelineCards().find((c) => c && String(c.id) === String(sa.targetCardId));
+    if (!target) return [];
+    const cHay = [target.title, target.detail, target.content, target.synthesizedText, (target.tags || []).join(' ')].join(' ');
+    const theirs = new Set(topicTokens(cHay));
+    return [...new Set(topicTokens(String(item.content || '') + ' ' + String(item.title || '')))].filter((w) => theirs.has(w));
+  } catch (e) { return []; }
+}
 export function buildSmartAppendFor(fullText, stagedTitle, ai, fallbackText) {
   try {
     const hit = findSmartAppendMatch(String(fullText || '') + ' ' + String(stagedTitle || ''), stagedTitle);
@@ -189,6 +203,7 @@ export function HarvesterPanel(props) {
         impactScore: (typeof s.impactScore === 'number') ? s.impactScore : 0.7,
         mergeHint: s.mergeHint || '', structured: (s.structured && typeof s.structured === 'object') ? s.structured : {},
         privacy: s.privacy || 'Team Shared', smartAppend: s.smartAppend || null,
+        aiEngine: s.aiEngine || '', aiModel: s.aiModel || '', aiFallbackReason: s.aiFallbackReason || '',
       }));
       if (mapped.length) { setParsedReviewQueue((prev) => (Array.isArray(prev) ? prev : []).concat(mapped)); setParkMsg('Staged ' + mapped.length + ' item(s) ready for review below.'); }
     } catch (e) {}
@@ -330,6 +345,7 @@ export function HarvesterPanel(props) {
           impactScore: (ai && typeof ai.impactScore === 'number') ? ai.impactScore : 0.7,
           mergeHint: (ai && ai.mergeHint) || '',
           structured: (ai && ai.structured && typeof ai.structured === 'object') ? ai.structured : {},
+          aiEngine: (ai && ai.aiEngine) || '', aiModel: (ai && ai.aiModel) || '', aiFallbackReason: (ai && ai.aiFallbackReason) || '',
           // PRIVACY FIX: clipboard path — preserve payload/ai privacy (no forced default).
           privacy: normalizePrivacy(clipSmart ? 'My Notes (Private)' : (payload.privacy || (ai && ai.privacy) || 'Team Shared')),
           smartAppend: clipSmart,
@@ -524,6 +540,7 @@ export function HarvesterPanel(props) {
           impactScore: (ai && typeof ai.impactScore === 'number') ? ai.impactScore : 0.7,
           mergeHint: (ai && ai.mergeHint) || '',
           structured: (ai && ai.structured && typeof ai.structured === 'object') ? ai.structured : {},
+          aiEngine: (ai && ai.aiEngine) || '', aiModel: (ai && ai.aiModel) || '', aiFallbackReason: (ai && ai.aiFallbackReason) || '',
           privacy: finalPriv,
           smartAppend: smartAppend,
           author: currentAuthor,
@@ -618,7 +635,7 @@ export function HarvesterPanel(props) {
               const updated = await api.smartAppendToCard(
                 card.smartAppend.targetCardId,
                 { kind: 'RAW', text: String(card.content || card.synthesizedText || card.title || ''), author: card.author, at: card.timestamp },
-                { kind: 'AI', text: String(card.synthesizedText || card.content || card.title || ''), author: 'Onion AI', at: card.timestamp },
+                { kind: 'AI', text: String(card.synthesizedText || card.content || card.title || ''), author: 'Onion AI', at: card.timestamp, aiEngine: card.aiEngine, aiModel: card.aiModel },
                 { title: card.title, synthesizedText: card.synthesizedText, source: card.source, reasons: card.smartAppend.matchReasons, score: card.smartAppend.matchScore, stagedId: card.sourceId, author: card.author, contributor: card.contributor, privacy: effPrivacy }
               );
               //if (updated && updated.id) appendSuccess = true;
@@ -634,7 +651,7 @@ export function HarvesterPanel(props) {
             continue;
           } else {
             // If append logic failed, fallback to new card to prevent data loss
-            const aiResult = { title: card.title, synthesizedText: card.synthesizedText, tags: card.tags, impactScore: card.impactScore, privacy: effPrivacy, author: card.author };
+            const aiResult = { title: card.title, synthesizedText: card.synthesizedText, tags: card.tags, impactScore: card.impactScore, privacy: effPrivacy, author: card.author, aiEngine: card.aiEngine, aiModel: card.aiModel, aiFallbackReason: card.aiFallbackReason };
             if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
             done++;
           }
@@ -649,7 +666,10 @@ export function HarvesterPanel(props) {
             structured: card.structured,
             privacy: effPrivacy,
             author: card.author,
-            contributor: card.contributor
+            contributor: card.contributor,
+            aiEngine: card.aiEngine,
+            aiModel: card.aiModel,
+            aiFallbackReason: card.aiFallbackReason
           };
           if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
           done++;
@@ -781,18 +801,19 @@ export function HarvesterPanel(props) {
           <div style=${{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
             ${parsedReviewQueue.map((c, idx) => html`<div key=${String(c.sourceId || '') + '-' + idx} style=${{ background: '#fff', border: '1px solid #ddd6fe', borderRadius: '10px', padding: '8px' }}>
               <div style=${{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style=${{ fontSize: '10px', fontWeight: 800, background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6', borderRadius: '9999px', padding: '1px 8px' }}>impact ${(typeof c.impactScore === 'number' ? c.impactScore.toFixed(2) : '0.70')}</span>
+                <span style=${{ fontSize: '10px', fontWeight: 800, background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6', borderRadius: '9999px', padding: '1px 8px' }}>${'Impact: ' + ((typeof c.impactScore === 'number' ? c.impactScore : 0.7) >= 0.5 ? 'Key moment' : 'Routine') + ' (' + (typeof c.impactScore === 'number' ? c.impactScore.toFixed(2) : '0.70') + ')'}</span>
                 <span style=${{ fontSize: '10px', color: '#6b7280' }}>${(Array.isArray(c.tags) ? c.tags : []).join(' ') || '#Auto_Tagged'}</span>
+                ${aiEngineLabel(c.aiEngine, c.aiModel) ? html`<span title=${c.aiFallbackReason || 'Engine that produced this summary'} style=${{ fontSize: '10px', fontWeight: 700, borderRadius: '9999px', padding: '1px 8px', border: '1px solid ' + (c.aiEngine === 'live' ? '#A7F3D0' : '#FCD34D'), background: c.aiEngine === 'live' ? '#ECFDF5' : '#FFFBEB', color: c.aiEngine === 'live' ? '#065F46' : '#92400E' }}>${aiEngineLabel(c.aiEngine, c.aiModel)}</span>` : null}
                 <button type="button" title="Discard noisy card" onClick=${() => discardReviewCard(idx)} style=${{ marginLeft: 'auto', background: '#fff', border: '1px solid #fecaca', borderRadius: '9999px', width: '24px', height: '24px', cursor: 'pointer', fontSize: '12px' }}>🗑️</button>
               </div>
-              ${c.smartAppend ? html`<div style=${{ marginTop: '6px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '8px', padding: '6px 8px', fontSize: '10px', color: '#92400e' }}>🔗 <b>Smart Append match</b> → “${String(c.smartAppend.targetCardTitle || '').slice(0, 60)}” <span style=${{ color: '#6b7280' }}>(${(c.smartAppend.matchReasons || []).join(' · ') || 'contextual overlap'} · score ${c.smartAppend.matchScore})</span><br/>On approve: appends as horizontal <b>RAW/AI</b> nodes on that card’s timeline strip — staged <b>private / pending review</b>, no new standalone card.</div>` : html`<div style=${{ marginTop: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '6px 8px', fontSize: '10px', color: '#065f46' }}>✨ <b>New card</b> — no contextual overlap found; will stage as a new card on approve.</div>`}
+              ${c.smartAppend ? html`<div style=${{ marginTop: '6px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '8px', padding: '6px 8px', fontSize: '10px', color: '#92400e' }}>🔗 <b>Smart Append match</b> → “${String(c.smartAppend.targetCardTitle || '').slice(0, 60)}” <span title=${matchSentence(c.smartAppend, sharedWordsFor(c)).tooltip} style=${{ color: '#6b7280' }}>(${matchSentence(c.smartAppend, sharedWordsFor(c)).sentence})</span><br/>On approve: appends as horizontal <b>RAW/AI</b> nodes on that card’s timeline strip — staged <b>private / pending review</b>, no new standalone card.</div>` : html`<div style=${{ marginTop: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '6px 8px', fontSize: '10px', color: '#065f46' }}>✨ <b>New card</b> — no contextual overlap found; will stage as a new card on approve.</div>`}
               <div style=${{ fontSize: '10px', fontWeight: 700, marginTop: '6px', color: '#4c1d95' }}>Title</div>
               <input value=${c.title} onInput=${(e) => updateReviewCard(idx, { title: e.target.value })} style=${{ width: '100%', marginTop: '2px', background: '#f9fafb', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }} />
               <div style=${{ fontSize: '10px', fontWeight: 700, marginTop: '6px', color: '#4c1d95' }}>Synthesized text</div>
               <textarea rows="3" value=${c.synthesizedText} onInput=${(e) => updateReviewCard(idx, { synthesizedText: e.target.value })} style=${{ width: '100%', marginTop: '2px', background: '#f9fafb', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}></textarea>
               <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                ${(c.smartAppend && String(c.smartAppend.targetCardPrivacy || '').trim().toLowerCase() === 'team shared') ? null : html`<button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'My Notes (Private)')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'My Notes (Private)' ? '#111827' : '#fff', color: c.privacy === 'My Notes (Private)' ? '#fff' : '#111827', border: '1px solid #111827' }}>🔒 Private (Only Me)</button>`}
-                <button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'Team Shared')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'Team Shared' ? '#111827' : '#fff', color: c.privacy === 'Team Shared' ? '#fff' : '#111827', border: '1px solid #111827' }}>👥 Team Shared</button>
+                ${(c.smartAppend && String(c.smartAppend.targetCardPrivacy || '').trim().toLowerCase() === 'team shared') ? null : html`<button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'My Notes (Private)')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'My Notes (Private)' ? '#111827' : '#fff', color: c.privacy === 'My Notes (Private)' ? '#fff' : '#111827', border: '1px solid #111827' }}>🔒 Only me</button>`}
+                <button type="button" onClick=${() => setReviewPrivacyAndSave(idx, 'Team Shared')} style=${{ flex: 1, borderRadius: '9999px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', background: c.privacy === 'Team Shared' ? '#111827' : '#fff', color: c.privacy === 'Team Shared' ? '#fff' : '#111827', border: '1px solid #111827' }}>👥 Team</button>
               </div>
             </div>`)}
           </div>

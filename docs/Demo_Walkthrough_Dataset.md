@@ -51,7 +51,7 @@ If a rehearsal has already used the dataset, **reset again** (P-3). Each input m
 AP-4410 approved again: nightly batch sync stays for claim status in release 2. Priya Okafor (Halden architecture) confirmed today that the core policy system still caps reads at 200 requests a minute and the vendor API upgrade has moved to next year, so the why behind AP-4410 still holds. Last night's load test finished the batch in 2h 10m inside the 3h window. No new risk to the release 2 plan.
 ```
 
-The first 80 characters, `AP-4410 approved again: nightly batch sync stays for claim status in release 2.`, become the card title. They contain the reference ID that makes the match certain.
+The first 80 characters, `AP-4410 approved again: nightly batch sync stays for claim status in release 2.`, become the card title when the update is shared. They contain the reference ID that makes the match certain.
 
 ---
 
@@ -98,25 +98,25 @@ The first 80 characters, `AP-4410 approved again: nightly batch sync stays for c
 **Expected on the card:**
 - A new **🔒 draft** pill.
 - The banner "🔗 1 draft update added to this card — visible only to you until shared".
-- The title is now "AP-4410 approved again: nightly batch sync stays for claim status in release 2."
+- The title and summary **don't change yet**: the draft is private until shared.
 - The evidence **stays at 74%**, with the draft shown as not counted.
 
 **Say:** "Continuum recognised this email belongs to the existing decision because both mention AP-4410, so it didn't create a duplicate card. It's still a draft only I can see, and the draft doesn't raise the confidence number."
 
-> **Do not switch persona between this step and step 5.** The new title is visible to others before sharing; that's a known limit.
+> **Optional:** switch to Walter or Daniel now. They see the card exactly as before: no draft pill, no purple or amber bar, and no Share button. Switch back to Brené for step 5.
 
 ### Step 5 · Share with the team (2:50–3:30)
 
 **Do:** expand the card (the expand button at its top right, or "▸ expand" in the draft banner), then click **Share update with team** once. The button only shows on an expanded card.
 
 **Expected:**
-- The draft pill becomes a normal RAW pill.
+- The draft pill becomes a normal RAW pill, and the title becomes "AP-4410 approved again: nightly batch sync stays for claim status in release 2."
 - Evidence reads **"Evidence strength: High (85%) — based on 3 independent sources: RAID Log Excel, Teams Chat, Data Park Dropzone · 3 source entries."**
 - Open the newest RAW pill. The author is Brené, and it's dated today.
 
 **Say:** "When I share it, it becomes team memory. The same decision now has three people, three sources and five months of history, and the confidence went up because a human added evidence."
 
-*(The button stays visible after sharing. Don't click it again.)*
+*(The Share button disappears once nothing is left to share.)*
 
 ### Step 6 · Privacy, optional (3:30–4:00)
 

@@ -965,5 +965,101 @@ git push
 ==============================================================================
 
 
+Demo_Walkthrough_dataset.md testing:
+
+On step4 testing the staged(Amber) pills are visibile to other co-contributors as they are also the owners of the card.
+
+
+Calude analysis:
+
+Yes, a draft should be visible only to the person who staged it, which is Brené here. You've found two real display bugs. The new dataset exposed them because the AP-4410 card has updates from several people, whereas the old seed cards had one author each.
+
+**Why Malcolm and Walter see Brené's draft pills, but Daniel doesn't**
+- The card decides who counts as an "owner" in [TimelineCard.js:669](modules/experience-pwa/static/js/components/TimelineCard.js#L669). The rule includes **anyone who contributed any update to the card**.
+- On AP-4410, Walter wrote the Teams chat update and Malcolm the RAID log update, so both count as owners. Draft pills are shown to owners ([TimelineCard.js:236-243](modules/experience-pwa/static/js/components/TimelineCard.js#L236-L243)), so they see Brené's draft. Daniel contributed nothing, so it stays hidden from him.
+- **It's worse than the pills:** the same rule decides who gets "Share update with team" ([TimelineCard.js:684](modules/experience-pwa/static/js/components/TimelineCard.js#L684)). Walter or Malcolm could therefore publish Brené's draft for her.
+
+**Why Daniel still sees the purple and amber bars**
+- The purple "1 update waiting for your review" bar and the amber "1 draft update added" bar ([TimelineCard.js:274](modules/experience-pwa/static/js/components/TimelineCard.js#L274), [TimelineCard.js:393](modules/experience-pwa/static/js/components/TimelineCard.js#L393)) don't check the persona at all. They appear for **everyone** whenever the card has a pending draft.
+
+**Proposed fix: visibility only, in one file (`TimelineCard.js`)**
+1. **Draft pills and draft text:** show a draft only when its author is the current persona. This applies to the timeline strip, the source viewer and the expanded draft list.
+2. **Purple and amber bars:** count only the current persona's own pending drafts. Other people see nothing until the update is shared.
+3. **"Share update with team":** show it only to someone who has their own draft on the card. As a side effect this also fixes the button staying visible after sharing (SA-4 in the status-card review), because that's the same check.
+
+**What wouldn't change:** Smart Append, matching, approval and sharing, storage, and the evidence numbers (drafts already don't count). The broad owner rule would still control edit, delete and privacy switching, which you didn't ask about.
+
+**What this fix won't cover:** the card title still changes for everyone as soon as a draft is staged. That's the known limit; fixing it means changing how staging stores the title.
+
+**For the demo either way:** the script already says not to switch persona between Approve and Share, so following it avoids this bug. The fix makes it safe if a judge asks you to switch.
+
+It's about 15–20 minutes, plus a browser check as each persona. Shall I go ahead?
+
+
+------
+Follow-up to Claude: got it, the broad owner rule would still control edit, delete and privacy switching? means even though the current draft update is not contributed by other Co-contributors of the card, they would still be able to edit and change privacy?
+
+how big and risky a change to fix all above? could you list in detial. do not implement yet just plan the fixes and files it touch and any imapct to otehr logic like Smart Append, matching, storage etc.,
+
+-----
+Caluse output: and fix plan:
+
+Yes. Under the current rule, anyone who has contributed any update to a card counts as its owner: Walter and Malcolm on AP-4410, for example. Staging a single draft on someone else's card also makes you an owner. Every owner can do all of the following:
+- **Edit:** rewrite the card's headline and text for everyone ([TimelineCard.js:468](modules/experience-pwa/static/js/components/TimelineCard.js#L468)).
+- **Delete:** remove the whole card for everyone, including other people's updates, from local storage and from the vector store ([FailoverDB.js:211](modules/experience-pwa/static/js/core/FailoverDB.js#L211)).
+- **Switch privacy:** "Make only me" turns the team card private. Private cards are visible only to the card's author, so if Walter clicks it, the card vanishes for him and the whole team; only Brené still sees it.
+- **Share someone else's draft:** "Share update with team" publishes **every** draft on the card, whoever wrote it ([App.js:130](modules/experience-pwa/static/js/components/App.js#L130)).
+
+I also found a second leak while tracing this. When a draft is staged, the card's **summary text** is overwritten, as well as its title ([FailoverDB.js:431-432](modules/experience-pwa/static/js/core/FailoverDB.js#L431-L432)). The card body shows that summary, so everyone sees the draft's content before it's shared.
+
+## Proposed fixes
+
+| # | Fix | File (where) | Size | Risk |
+|---|---|---|---|---|
+| **A** | **Show a draft only to its author.** This covers the draft pills, the source viewer, the expanded draft list, the "Full provenance" list and the "1 draft update not counted" note. The rule becomes: a draft node is visible if its author is the current persona. | `TimelineCard.js`: timeline strip (line 236), source viewer (lines 717–720), draft list, provenance list, evidence note | ~15 lines | Low: display only |
+| **B** | **Purple and amber bars count only your own pending drafts.** Others see nothing until the update is shared. | `TimelineCard.js`: the two banner functions (lines 274, 393) plus their call sites | ~6 lines | Low: display only |
+| **C** | **"Share update with team" appears only if you have your own draft on the card.** Side effect: the button no longer stays visible after sharing (SA-4). | `TimelineCard.js` line 684 | ~3 lines | Low: changes who sees the button; what it does is unchanged |
+| **D** | **Edit, Delete and the privacy switch are for the card's author only.** Co-contributors keep what they need: seeing their own drafts (A) and sharing them (C). | `TimelineCard.js` lines 751, 752, 771 | ~5 lines | Low–medium: co-contributors lose edit, delete and privacy on other people's cards, which is the point |
+| **E** | **Staging stops overwriting the card's title and summary.** Sharing already sets both ([App.js:133-143](modules/experience-pwa/static/js/components/App.js#L133-L143)), so the change becomes visible only when it's shared. This fixes the known title leak and the summary leak. | `FailoverDB.js` lines 431–432 (remove 2 lines) | 2 lines | Medium: touches the staging write |
+| **F** | **Sharing publishes only your own drafts.** Today it publishes everyone's drafts on that card. | `App.js` `handleApproveCard` | ~15 lines | Medium–high: this is approval logic |
+
+## Impact on other parts
+
+| Area | A–D | E | F |
+|---|---|---|---|
+| **Smart Append / matching** | None | Between staging and sharing, the matcher sees the card's original title and text. Every demo card has its reference ID in the original title, so the matches are unchanged. | None |
+| **Storage** | None (display only) | Two fewer fields written at staging. The draft is still saved in the card's updates and pending list, exactly as now. | Sharing unstages only your own drafts; other people's stay pending |
+| **Chroma / vector** | None | Better: the draft's title and summary no longer reach the vector copy before sharing | None |
+| **Evidence strength** | None; drafts are already excluded | None | None |
+| **Approval / share** | C changes who sees the button, not what it does | None | Behaviour changes |
+| **Handover, Key Moments, Ask Assistant** | None | Until shared, they show the card's original title and text, which is correct | None |
+| **Existing tests** (the sc12/sc13 checks) | They check drafts as the author, Brené, so they should still pass | Their "title changed after staging" check would need updating | Not covered by any test |
+| **Walkthrough doc** | None | Step 4: the title no longer changes at staging; it changes at step 5. Handover results are unchanged, because step 7 happens after sharing. | None |
+
+**Found but out of scope:** as soon as any draft is staged, the vector copy of the card is marked private, and it stays private even after sharing ([VectorSync.js:35](modules/experience-pwa/static/js/core/VectorSync.js#L35)). The vector service is off for the demo, so it doesn't affect tomorrow; it's for the backlog.
+
+## Recommendation
+
+- **For tomorrow: A + B + C + D + E.** That's roughly 30 lines across `TimelineCard.js` and `FailoverDB.js`, about 1 hour including a browser check as all four personas. After that, switching persona at any point in the demo is safe, and the "don't switch persona" warning can come out of the script.
+- **Minimum, if time is short: A + B + C + E.** D doesn't come up in the script, so it can wait.
+- **After the hackathon: F.** It only matters when two people have drafts on the same card at the same time, and it's the one change to approval logic.
+
+Which set shall I implement?
+
+-----------
+Claude output:
+
+Both fixes are in `TimelineCard.js`, and I tested them in the browser as all four personas with no page errors.
+
+**Draft AI pill:** after staging, Brené now sees both draft pills, "Original source text, 30/09, draft" and "AI summary, 30/09, draft". Malcolm, Walter and Daniel still see neither, and no bars or Share button. A draft AI summary now counts as yours if it was staged at the same moment as a draft RAW update you wrote. Only what's shown changed; `HarvesterPanel.js` and stored data are untouched.
+
+**Label:** the expanded yellow block now reads **"only visible to you until shared"**. It appeared twice in that block, and both were changed.
+
+I also briefly bumped the cache version in `index.html`, then put it back, since you asked for `TimelineCard.js` changes only. Without the bump, **reload the page twice** to pick up the change.
+
+I noticed you've added both codespace links in `worldOfContinuum.js`, so those footer items are now clickable. Open both codespaces shortly before the demo so the links don't hit a sleeping codespace.
+
+---------
+=======================================================
 
 

@@ -89,6 +89,24 @@ function nodeItem(m, nodesArr, i) {
     aiModel: kind === 'AI' ? String((n && n.aiModel) || (isAppended ? '' : (m && m.aiModel)) || '') : '',
   };
 }
+// Drafts are private to their author. viewForPersona returns a copy of the card
+// without other people's staged updates, so every part of the card that shows
+// drafts (pills, viewer, banners, draft list, provenance, evidence note) only
+// ever sees the viewer's own. Display only: storage is never changed here.
+function draftAuthorIs(x, me) { return String((x && (x.author || x.contributor)) || '').trim().toLowerCase() === me; }
+function viewForPersona(m, persona) {
+  if (!m || typeof m !== 'object') return m;
+  const me = String(persona || '').trim().toLowerCase();
+  // A draft AI summary is saved with the author "Onion AI"; it belongs to whoever
+  // staged the RAW draft at the same moment (both carry the same appended_at).
+  const myDraftTimes = new Set((Array.isArray(m.nodes) ? m.nodes : []).filter((n) => n && n.stagedAppend && !!me && draftAuthorIs(n, me)).map((n) => String(n.appended_at || '')).filter(Boolean));
+  const keep = (x) => !(x && x.stagedAppend) || (!!me && draftAuthorIs(x, me)) || (String(x.kind || '').toUpperCase() === 'AI' && myDraftTimes.has(String(x.appended_at || '')));
+  const out = Object.assign({}, m);
+  if (Array.isArray(m.nodes)) out.nodes = m.nodes.filter(keep);
+  if (Array.isArray(m.timeline)) out.timeline = m.timeline.filter(keep);
+  if (Array.isArray(m.pendingAppends)) out.pendingAppends = m.pendingAppends.filter((a) => !!me && draftAuthorIs(a, me));
+  return out;
+}
 function miniTimelineFor(m) {
   if (m && Array.isArray(m.timeline) && m.timeline.length) {
     // was slice(0,10) — return ALL so new appends are visible
@@ -236,11 +254,8 @@ function realPillDate(at) {
 function timelineStrip(m, isOwner, selectedNode, onSelectNode) {
   const rawItems = miniTimelineFor(m);
   const combinedNodes = Array.isArray(rawItems) ? rawItems : [];
-  const visibleNodes = combinedNodes.filter((n) => {
-    const isPrivateNode = /private/i.test(JSON.stringify(n)) || /pending/i.test(JSON.stringify(n)) || !!(n && n.stagedAppend);
-    if (!isPrivateNode) return true;
-    return !!isOwner;
-  });
+  // Other people's drafts were already removed by viewForPersona.
+  const visibleNodes = combinedNodes;
   
   const items = visibleNodes.slice().sort((a, b) => {
     const dA = new Date(a.at || 0).getTime();
@@ -294,7 +309,7 @@ function pendingAppendsBanner(m, open, onToggle) {
     const nodes = Array.isArray(m.nodes)? m.nodes : [];
     const list = nodes.filter((x) => x && typeof x === 'object' && x.stagedAppend);
     if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
-    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">draft · only you until shared</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">only visible to you until shared</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
   } catch (e) { return null; }
 } */
 function appendedNodesBlock(m) {
@@ -310,7 +325,7 @@ function appendedNodesBlock(m) {
       return 0;
     });
     if (!list.length) return html`<div className="mt-2 p-2 rounded- bg-white border text- text-[#64748B] italic">No staged nodes found (pendingAppends metadata only).</div>`;
-    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">draft · only you until shared</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
+    return html`<div className="mt-2 space-y-2">${list.map((nd, i) => html`<div key=${'app-' + i + '-' + String((nd && nd.kind) || '')} className="p-2 rounded- bg-[#fffbeb] border border-[#fcd34d]"><div className="flex items-center gap-2"><span className="text- font-bold px-2 py-0.5 rounded-full bg-white border border-[#f59e0b] text-[#92400e]">${String((nd && nd.kind) || 'EV')}</span><span className="text- italic text-[#92400e]">only visible to you until shared</span></div><div className="mt-1 text- text-[#1E293B]">${String((nd && nd.text) || '')}</div></div>`)}</div>`;
   } catch (e) { return null; }
 }
 // RA-2 / A3: which engine wrote this card's summary. Live is green; mock and
@@ -567,7 +582,8 @@ export function TimelineCard(props) {
   // Evidence strength per card: see evidenceFor(). Only the card's source and
   // its shared RAW updates count, so a single-source card honestly reads 63%
   // (Medium) and the number rises when a second system's update is shared.
-  const allMoments = timeline.filter((t) => matchRef(t, project)).filter(canSeeCard).map((m) => {
+  const allMoments = timeline.filter((t) => matchRef(t, project)).filter(canSeeCard).map((raw) => {
+    const m = viewForPersona(raw, activePersona);
     const s = piiScreen(m.synthesizedText || m.content || m.detail || '');
     const ev = evidenceFor(m);
     return { raw: m, clean: s.text, flag: s.flag, pct: ev.pct, ev };
@@ -679,9 +695,12 @@ export function TimelineCard(props) {
         return false;
       } catch (e) { return false; }
     })();
+    // Edit, delete and the privacy switch act on the whole card, so only its author gets them.
+    const isCardOwner = (() => { const me = String(props.activePersona || '').trim().toLowerCase(); const o = String(m.author || m.contributor || '').trim().toLowerCase(); return !!me && o === me; })();
     const confTier = confidenceTier(d.pct);
     const provenanceEntries = provenanceEntriesFor(m);
-    const hasPendingAppends = isOwner && (/private/i.test(JSON.stringify(m.nodes || [])) || /private/i.test(JSON.stringify(m.timeline || [])) || (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some(function (n) { return n && n.stagedAppend; })));
+    // Only drafts the viewer wrote survive viewForPersona, so this is "I have a draft here".
+    const hasPendingAppends = (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some((n) => n && n.stagedAppend));
     const approveCta = hasPendingAppends ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold" style=${{ background: '#1F4A7A', color: '#fff', border: '1px solid #1F4A7A' }}>Share update with team</button>` : (((m.piiStatus !== 'Clean' && m.piiStatus !== 'Approved') && !isApproved) ? html`<button type="button" onClick=${() => props.onApprove && props.onApprove(m.id)} className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">Approve redacted share</button>` : html`<button type="button" disabled className="mt-2 px-2 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Approved for Team Share</button>`);
     const open = openProv.has(m.id) || (focusId && String(focusId) === String(m.id));
     const key = String(m.id || m.title || label);
@@ -714,10 +733,10 @@ export function TimelineCard(props) {
     // closed to non-contributors, the same rule the timeline strip applies.
     const cardNodes = Array.isArray(m.nodes) ? m.nodes : [];
     const openSource = (idx) => {
-      const isRawVisible = (n) => n && String(n.kind || '').toUpperCase() === 'RAW' && (!n.stagedAppend || isOwner);
+      const isRawVisible = (n) => n && String(n.kind || '').toUpperCase() === 'RAW';
       const i = typeof idx === 'number' ? idx : cardNodes.findIndex(isRawVisible);
       const n = cardNodes[i];
-      if (!n || (n.stagedAppend && !isOwner)) return;
+      if (!n) return;
       setSelectedNode(nodeItem(m, cardNodes, i));
     };
     // Task 2 — banner toggle is independent of card expand: appendsOpen tracks the
@@ -748,8 +767,8 @@ export function TimelineCard(props) {
         <div className="relative">
           <button type="button" onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); setMenuOpenId(menuOpen ? null : String(m.id)); }} title="Card options" aria-label="Card options" className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">⋯</button>
           ${menuOpen ? html`<div onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} className="absolute right-0 mt-1 w-32 rounded-[10px] bg-white border border-[#E6EAF2] shadow-lg z-20 overflow-hidden">
-            <button type="button" disabled=${!isOwner} onClick=${() => onStartEditCard(m)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isOwner ? 'text-[#1E293B] hover:bg-[#F8FAFC]' : 'text-[#94A3B8] cursor-not-allowed')}>✏️ Edit Details</button>
-            <button type="button" disabled=${!isOwner} onClick=${() => onDeleteCard(m.id)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
+            <button type="button" disabled=${!isCardOwner} onClick=${() => onStartEditCard(m)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-[#1E293B] hover:bg-[#F8FAFC]' : 'text-[#94A3B8] cursor-not-allowed')}>✏️ Edit Details</button>
+            <button type="button" disabled=${!isCardOwner} onClick=${() => onDeleteCard(m.id)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
           </div>` : null}
         </div>
         <button onClick=${() => flip(setOpenProv, m.id)} title=${open ? 'Collapse' : 'Expand'} aria-label=${open ? 'Collapse card' : 'Expand card'} aria-expanded=${open ? 'true' : 'false'} className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">${open ? '-' : '+'}</button>
@@ -768,7 +787,7 @@ export function TimelineCard(props) {
         <div className="mt-3 flex items-center gap-3">
           <button type="button" onClick=${() => onSaveEditCard(m.id)} className="px-4 py-1.5 rounded-full bg-[#1F4A7A] text-white text-[12px] font-bold hover:bg-[#15355a] transition-colors">Save Changes</button>
           <button type="button" onClick=${() => { try { setEditingId(null); setEditDraft(''); } catch (e) {} }} className="px-4 py-1.5 rounded-full bg-white border border-[#A8C6F0] text-[12px] font-medium hover:bg-[#f1f5f9] transition-colors">Cancel</button>
-          ${isOwner ? html`<button type="button" onClick=${() => onFlipPrivacy && onFlipPrivacy(m)} className="ml-auto text-[11px] font-medium text-[#1F4A7A] hover:underline flex items-center gap-1"><span>${isPrivate ? '👥 Share with team' : '🔒 Make only me'}</span></button>` : null}
+          ${isCardOwner ? html`<button type="button" onClick=${() => onFlipPrivacy && onFlipPrivacy(m)} className="ml-auto text-[11px] font-medium text-[#1F4A7A] hover:underline flex items-center gap-1"><span>${isPrivate ? '👥 Share with team' : '🔒 Make only me'}</span></button>` : null}
         </div>
       </div>` : null}
       

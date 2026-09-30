@@ -428,8 +428,8 @@ class FailoverDB {
     });
     target.updated_at = nowIso;
     target.syncStatus = 'pending_upload';
-    if (meta && meta.title) target.title = meta.title;
-    if (meta && meta.synthesizedText) target.synthesizedText = meta.synthesizedText;
+    // Title and summary are not changed here: the draft stays private until
+    // shared, and sharing (App.handleApproveCard) sets both from the draft.
     // Do NOT contaminate parent to Private - keep parent as is, nodes are private
     stampVectorPending(target);
     ensureTimelineNodes(target);

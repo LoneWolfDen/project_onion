@@ -110,6 +110,12 @@ v ? { last: v, age_min: Math.round((Date.now() - iso(v)) / 60000) } : 'Never syn
 ];
 
 export const GUIDE = {
+  // Earlier reference pages, kept reachable from Guide & setup (paths relative to this page).
+  references: [
+    ['Relationship Map (earlier version)', '../Project-Onion-Relationship-Model.html'],
+    ['Data Model', '../Project-Onion-Data-Model.html'],
+    ['Test Flow (stakeholder explainer)', '../RAG-Architecture.html'],
+  ],
   run: [
     ['Start the PWA (serves this page)', 'python3 modules/experience-pwa/service.py'],
     ['Open this page', 'http://localhost:8002/static/docs/relationship-v5/'],

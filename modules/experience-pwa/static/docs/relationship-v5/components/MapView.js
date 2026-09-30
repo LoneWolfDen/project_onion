@@ -31,7 +31,7 @@ export function MapView(p) {
   const chips = TRY_CHIPS[p.viewId];
   return html`<main className="rm5-map" id="main">
     <div className="rm5-toolbar">
-      <span className="rm5-client">Client: <b>Acme Corp</b> · Apollo-123</span>
+      
       <${ViewSwitch} viewId=${p.viewId} onSwitch=${p.onSwitch} />
       <span className="rm5-spacer"></span>
       <button type="button" className="rm5-btn rm5-btn-primary" onClick=${p.onTogglePlay}>

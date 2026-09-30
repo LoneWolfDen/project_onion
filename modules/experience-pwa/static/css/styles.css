@@ -276,3 +276,18 @@ button.inline-flex.flex-col.rounded-\[6px\]{display:inline-flex;flex-direction:c
 /* 8. Source chips read as links; hashtag chips read as labels */
 .onion-chip-source{color:#1F4A7A;font-style:normal;border-color:#D6E8FF;background:#F3F8FF}
 .onion-chip-tag{text-decoration:none;font-style:normal;color:#64748B;background:#F1F5F9;border-color:#E2E8F0}
+
+/* ===== BLOCK 9: "World of Continuum" footer, a quiet strip fixed to the bottom; VY signature in the Guide panel (hooks: woc-*) ===== */
+body{padding-bottom:30px}
+.woc-footer{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:6px;height:26px;padding:0 16px;overflow:hidden;white-space:nowrap;font-family:Inter,system-ui;font-size:10.5px;font-weight:400;color:#94A3B8;background:#F6F7F9;border-top:1px solid #E6E9EE}
+.woc-brand{color:#8B96A8;letter-spacing:.02em}
+.woc-dot,.woc-arrow{color:#CBD2DC}
+.woc-item{color:#94A3B8;text-decoration:none}
+.woc-item i{font-style:italic;color:#B0BAC8}
+a.woc-item:hover{color:#475569;text-decoration:underline;text-underline-offset:2px}
+a.woc-item:focus-visible{outline:1px solid #94A3B8;outline-offset:2px;border-radius:3px}
+.woc-item.is-current{color:#64748B}
+#harvester-open-btn{bottom:40px}
+.woc-sig{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:4px 14px;font-family:Inter,system-ui;font-size:10.5px;font-weight:400;letter-spacing:.08em;color:#94A3B8;border-top:1px solid #E6E9EE;background:rgba(255,255,255,.55);cursor:default}
+.woc-wolf{width:18px;height:18px;display:block}
+@media (max-width:700px){.woc-item i{display:none}}

@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Project Onion — Data Model</title>
+<title>Continuum — Data Model</title>
 <style>
 :root{--blue:#D6E8FF;--mint:#D6F5E8;--peach:#FFE4D6;--lav:#E8DAFF;--yel:#FFF5D6}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
@@ -65,7 +65,7 @@ table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px soli
 <li><b>Card ID</b> — <span class="mono">raid_agg · primary</span> — <span class="mono">hash(sources + description_norm)</span>. Multiple RAID rows → multiple cards.</li>
 <li><b>Opportunity / GDP / Connected</b> — example Opp <span class="mono">O-008891</span>, GDP <span class="mono">8399 / 7189</span>, Salesforce <span class="mono">006Uj00000QOBkvIAH</span>. GDP dates are mutable via <span class="mono">gdp_dash → project_card [DATE_RANGE]</span>.</li></ul></div>
 <div class="card dk"><h2>⚙ Typed-filter enum — the only allowed matching</h2><p class="hint" style="color:#9db8d8">From <span class="mono">reusable_config_pattern.filter_keywords_typed</span>. No free-text parsing anywhere.</p><ul><li><span class="mono">EXACT</span> — Account Name, Project ID, Opportunity ID, GDP ID, Thread normalized</li><li><span class="mono">CONTAINS</span> — Project name tokens, SoW/PO/Contract numbers, RAID Type detection</li><li><span class="mono">DOMAIN</span> — Client email domains, attendee domains in VTT</li><li><span class="mono">DATE_RANGE</span> — Anchor start/end, GDP mutable dates, last_scanned_date delta</li><li><span class="mono">TOKEN_OVERLAP</span> — Project name split tokens vs email/Teams/chatter</li><li><span class="mono">URL_CONTAINS</span> — GDP /project-details/{id}, SharePoint URLs, Connected record ID</li></ul></div></div>
-<p class="hint" style="color:#8ea6cf;text-align:center">Project Onion · Data Model rendered from relationship_model.json v0.11 · Local-first · Privacy-first.</p>
+<p class="hint" style="color:#8ea6cf;text-align:center">Continuum · Data Model rendered from relationship_model.json v0.11 · Local-first · Privacy-first.</p>
 </div>
 <script>
 var NODES_A=[

@@ -149,7 +149,7 @@ body+='<div class="ho-tiles">'+tiles+'</div>';
 body+='<div class="ho-cols"><div class="ho-col"><h4>Active Open Topics ('+g.open.length+')</h4><ul>'+(g.open.length?g.open.map(cardRow).join(''):'<li class="ho-card"><em>No open threads in window.</em></li>')+'</ul></div>';
 body+='<div class="ho-col"><h4>Recently Closed ('+g.closed.length+')</h4><ul>'+(g.closed.length?g.closed.map(cardRow).join(''):'<li class="ho-card"><em>Nothing closed in window.</em></li>')+'</ul></div></div></section>';
 });
-body+='<div class="ho-foot">Project Onion v0.18.0 · Project Continuum Handover Pack · Offline standalone report · Onion Home aesthetic (#1E293B / #1F4A7A / M365 pastels) · Clickable #hashes.</div>';
+body+='<div class="ho-foot">Continuum v0.18.0 · Continuum Handover Pack · Offline standalone report · Continuum Home aesthetic (#1E293B / #1F4A7A / M365 pastels) · Clickable #hashes.</div>';
 return '<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Handover Pack</title><style>'+css+'</style></head><body><div class="ho-wrap">'+body+'</div></body></html>';
 }
 function downloadHtml(){

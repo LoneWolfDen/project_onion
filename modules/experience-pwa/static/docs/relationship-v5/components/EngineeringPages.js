@@ -103,6 +103,9 @@ function Guide({ onBack }) {
       <p className="rm5-source" style=${{ marginTop: '8px' }}>No build step, no npm, no CDN. React and htm load from <code>static/js/vendor/</code>.</p>
     </article>
     <article className="rm5-card"><h3>How to read the map</h3><${KeyValues} rows=${GUIDE.reading} /></article>
+    <article className="rm5-card"><h3>Reference pages</h3>
+      <${KeyValues} rows=${GUIDE.references.map(([k, href]) => [k, html`<a href=${href} target="_blank" rel="noopener">Open ↗</a>`])} />
+    </article>
     <article className="rm5-card"><h3>Keep the Domain view in sync</h3>
       <p style=${{ margin: '0 0 8px' }}>The Domain view is generated from <code>data/seed/relationship_model.json</code>. After editing that file, run:</p>
       <pre className="rm5-code">${GUIDE.regenerate}</pre>

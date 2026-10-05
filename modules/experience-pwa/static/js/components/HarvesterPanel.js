@@ -5,6 +5,7 @@
 // New flow: Stage to Data Park → syncStatus pending_processing → Run AI Processing Engine
 // → processWithAI() → mark processed + dispatch onion:db-update.
 import { projectIdEquals } from '../core/schema.js';
+import { BackupPanel } from './BackupPanel.js';
 import { piiScreen } from '../core/PiiGate.js';
 import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
 import { matchSentence } from '../core/matchExplain.js';
@@ -771,6 +772,7 @@ export function HarvesterPanel(props) {
             <div style=${{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280', marginTop: '4px' }}>No key → 1.2s simulated latency + mock JSON so the demo never fails.</div>
             <button type="button" onClick=${onResetSeed} title="Replace all local data with the fictional hackathon demo dataset (API key settings are kept)" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset Demo Dataset</button>
           </div>` : null}
+          <${BackupPanel} />
           <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>
             <select value=${kind} onChange=${(e) => setKind(e.target.value)} style=${{ background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}>
               ${['Email', 'Excel', 'Scrape', 'Chat'].map((t) => html`<option key=${t} value=${t}>${t}</option>`)}

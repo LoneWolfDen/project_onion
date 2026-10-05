@@ -133,7 +133,6 @@ class RealServiceTests(EnvCase):
         "modules/platform-anchor/service.py",
         "modules/domain-cards-store/service.py",
         "modules/gdp-adapter/service.py",
-        "modules/connected-bookmarklet/service.py",
         "modules/admin-relationship/service.py",
     ]
 

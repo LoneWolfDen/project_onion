@@ -127,5 +127,5 @@ No GDP significance formula. No unmapped fields. DATA_DICTIONARY+Template1/2/3+G
 - docs/PII_AWS_ARCHITECTURE.md production target; client-side regex gate is offline mirror.
 - modules/04-harvester PRD/DECISIONS/API.yaml idempotency hash(url+lastModified+anchor_id), events-only, freshness+HEAD EventBridge 6h.
 - modules/domain-fusion-engine/CONTRACT.md weekly bucket, noise filter, Top-5, confidence display.
-- Bookmarklets on disk: modules/connected-bookmarklet/bookmarklet.js + experience-pwa/static/bookmarklet.js + integrations-connected-adapter/bookmarklet.js.
+- One bookmarklet on disk: experience-pwa/static/bookmarklet.js (IMP-05). It copies visible text to the clipboard only, never expands the page, and is off in the app until a source host is approved. The two earlier bookmarklets were removed.
 *End of HARVESTER_ARCHITECTURE.md — documentation-only; no application code changed.*

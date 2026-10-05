@@ -15,7 +15,7 @@ Reviewed against `main` at `d2012ac` (PR #35 merged, 24/24 unit tests pass local
 |---|---|---|
 | FND-01 secrets/stale files | Partial. Quick pattern scan of the tree found no live keys, but history was not scanned. `.bak` files, many overlapping docs (`docs/BACKLOG_*`, `SUPER-FINAL-MASTER`, `IMPLEMENTATION_MASTER`, `MUSE_AUDIT_LOG`, three registration-field versions) remain. | `components/*.bak.*`, `core/FailoverDB.js.bak.*`, `data/mockSeed.js.bak.*` |
 | FND-02 runtime DB untracked | **Not done.** `.gitignore` lists `chroma_data` but five files are still tracked, so the ignore has no effect. | `git ls-files | grep chroma` → `chroma.sqlite3` + 4 `.bin` |
-| FND-03 machine paths | **Not done.** `/Users/wolf` or `C:\Hackathon` still in 7 files. | `seed_cards.py`, `admin-relationship/service.py`, `platform-anchor/README.md`, `seed_clients.py`, `MUSE_AUDIT_LOG.md`, `docs/TESTING.md`, `docs/DATA_DICTIONARY.md` |
+| FND-03 machine paths | **Not done.** personal absolute paths (macOS home folder, `C:` drive) still in 7 files. | `seed_cards.py`, `admin-relationship/service.py`, `platform-anchor/README.md`, `seed_clients.py`, `MUSE_AUDIT_LOG.md`, `docs/TESTING.md`, `docs/DATA_DICTIONARY.md` |
 | DAT-01 backup/restore | Missing. | no export/import code |
 | DAT-02 storage failures | **Worse than described.** `writeLocal` has an empty `catch` and reports success; `readLocal` returns an empty dataset on JSON parse failure, and the next write overwrites the corrupt original. | `core/FailoverDB.js:51-125` |
 | DAT-03 IndexedDB | Missing. Everything is localStorage plus a `FailoverDB` class that mixes API-or-local access. | no `indexedDB` use |

@@ -5,13 +5,14 @@
 //
 // Rules (PWA-02):
 //  - Versioned cache name; old caches are deleted on activate.
-//  - Explicit precache list (tests/pwa.test.mjs fails if a file is missing or unlisted).
+//  - Explicit precache list, generated: run `node scripts/gen-sw-precache.mjs` after adding files
+//    (tests/pwa.test.mjs fails if the list is stale).
 //  - No unconditional skipWaiting: a new worker waits and the page shows "Update available";
 //    the page sends {type:'SKIP_WAITING'} only when the user accepts.
 //  - Same-origin GETs are network-first (fresh when online, cached copy when offline).
 //  - Card data and the vector API are never cached.
 // Bump SW_VERSION whenever this file's logic or the precache list changes.
-const SW_VERSION = 'continuum-sw-v5';
+const SW_VERSION = 'continuum-sw-v6';
 const CACHE = SW_VERSION;
 const PRECACHE = [
   '/',
@@ -52,9 +53,9 @@ const PRECACHE = [
   '/js/core/importTemplates.js',
   '/js/core/matchExplain.js',
   '/js/core/persistence.js',
-  '/js/core/repo.js',
   '/js/core/pii.js',
   '/js/core/pwa.js',
+  '/js/core/repo.js',
   '/js/core/schema.js',
   '/js/core/source.js',
   '/js/core/storageGuard.js',

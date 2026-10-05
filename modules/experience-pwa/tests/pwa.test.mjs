@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { watchRegistration, applyUpdate } from '../static/js/core/pwa.js';
+import { upToDate } from '../../../scripts/gen-sw-precache.mjs';
 
 const mod = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const staticDir = path.join(mod, 'static');
@@ -19,7 +20,11 @@ test('every precache entry exists and every app file is listed', () => {
   assert.deepEqual(missing, []);
   const app = walk(staticDir).map((f) => f.slice(staticDir.length)).filter((p) => !p.startsWith('/docs/') && !p.includes('.bak') && !p.endsWith('bookmarklet.js'));
   const unlisted = app.filter((p) => !precache.includes(p));
-  assert.deepEqual(unlisted, [], 'add these to PRECACHE in sw.js and bump SW_VERSION');
+  assert.deepEqual(unlisted, [], 'run node scripts/gen-sw-precache.mjs and bump SW_VERSION');
+});
+
+test('PRECACHE matches the generator output (run node scripts/gen-sw-precache.mjs)', () => {
+  assert.ok(upToDate(), 'sw.js PRECACHE is stale: run node scripts/gen-sw-precache.mjs and bump SW_VERSION');
 });
 
 test('manifest is installable', () => {

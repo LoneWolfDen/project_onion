@@ -130,4 +130,13 @@ Still to settle during step 15: how a RAID row is recognised on re-import (propo
 ## 7. Progress (5 Oct)
 
 Release 0 done and merged: FND-02 (#37), FND-03 plus repo hygiene check (#38), DAT-02 (#39), DAT-01 backup and restore (#40), DAT-05 destructive-action protection (#41), PRV-01/02 no-AI default and keys out of storage (#42), PRV-03 loopback-only services (#43), HUI-01 readable typography (#44), DAT-04 persistent storage (#45).
-Next: Release 1, starting with IMP-01/02 (Source record, generic Excel/CSV engine with smart column matching), then IMP-03 RAID, IMP-04 GDP, DAT-03 IndexedDB, PWA-01/02, HND-01..03, PRV-05. Each release runs in its own thread to keep context small; this section is the source of status.
+Release 1 done (5 Oct), thread "Phase 2 Release 1": IMP-01/02 Source record and generic import engine with smart column matching (#47), import wizard with RAID adapter IMP-03 (#48), GDP adapter IMP-04 (#49), PWA-01/02 installable app, versioned precache, update prompt, offline start (#50), HND-01/02/03 approved-only handover with review gate (#51), PRV-05 one screening module (#52), DAT-03 IndexedDB Repo with verified one-time migration (#53).
+
+Known gaps carried into Release 2:
+- Imported RAID and GDP rows do not carry an explicit `category` through the approve/merge step, so they show as Uncategorised in the handover until that is added (KNW-01 is a natural place).
+- Retained PII originals have no viewing screen yet, and typed notes do not retain originals (ids are created in the database layer).
+- RAID re-import diffing (row key = raised date + type + first 80 characters of description) exists as `rowKey` but re-import does not yet append a timeline node or show diff counts.
+- The service worker precache list is manual: add new files to `PRECACHE` in `sw.js` and bump `SW_VERSION` (a unit test fails if the list is stale).
+- Not verified: opening the app from a second device on a real network.
+
+Next: Release 2 (KNW-01/02/04, HND-04, HUI-03, OPS-01/02/03, PRV-04) in a fresh thread.

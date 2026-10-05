@@ -166,7 +166,7 @@ export function mapRows(rows, headerRow, columns, fields, fileName, sheetName) {
   for (let r = headerRow + 1; r < rows.length; r++) {
     const cells = rows[r] || [];
     if (!cells.some((c) => String(c == null ? '' : c).trim() !== '')) continue;
-    const rec = { values: {}, raw: {}, provenance: {} };
+    const rec = { row: r + 1, values: {}, raw: {}, provenance: {} };
     columns.forEach((col) => {
       if (!col.field) return;
       const raw = cells[col.index]; const text = raw == null ? '' : (raw instanceof Date ? raw.toISOString().slice(0, 10) : String(raw).trim());

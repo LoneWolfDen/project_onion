@@ -310,6 +310,27 @@ const scenarios = {
     check('persistence status is shown in plain language', /storage is protected|not protected|cannot tell/.test(t), t);
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'RAID import wizard (IMP-02/03)': async ({ p, errors }) => {
+    await p.click('#harvester-open-btn'); await sleep(p, 600);
+    const csv = (rows) => ({ name: 'raid.csv', mimeType: 'text/csv', buffer: Buffer.from(rows.join('\n')) });
+    const input = p.locator('input[type=file]').nth(1);
+    // Older template: different headers, one row with an impossible RAID type.
+    await input.setInputFiles(csv(['Raised,Category,Risk Description,Likelihood,Owner', '05-10-2026,Risk,Vendor may slip,0.7,Sam', '06-10-2026,Wish,Not a RAID type,0.2,Sam']));
+    await p.waitForSelector('#import-wizard', { timeout: 5000 });
+    await p.waitForSelector('#import-mapping', { timeout: 5000 }).catch(() => {});
+    const map = await p.evaluate(() => (document.getElementById('import-wizard') || {}).innerText || '');
+    check('older headers matched without manual work', /Known variant/.test(map) && await p.locator('#import-missing').count() === 0, map.replace(/\s+/g, ' ').slice(0, 300));
+    check('bad RAID type blocks the whole import', await p.locator('#import-errors').count() === 1 && await p.locator('#import-confirm').isDisabled());
+    await p.click('#import-cancel'); await sleep(p, 300);
+    await input.setInputFiles(csv(['Raised,Category,Risk Description,Likelihood,Owner', '05-10-2026,Risk,Vendor may slip,0.7,Sam']));
+    await p.waitForSelector('#import-wizard');
+    check('AI paste-in shows headers only', await (async () => { await p.click('#import-ai-toggle'); const t = await p.inputValue('#import-ai-prompt'); return t.includes('Likelihood') && !t.includes('Vendor may slip'); })());
+    await p.click('#import-confirm'); await sleep(p, 600);
+    check('wizard closes after staging', await p.locator('#import-wizard').count() === 0);
+    const t = await p.evaluate(() => document.getElementById('harvester-control-panel').innerText);
+    check('rows staged privately with status message', /Staged 1 RAID rows/.test(t) && /private until approved/.test(t), t.slice(0, 80));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
   'readable typography (HUI-01)': async ({ p, errors }) => {
     for (const [w, h] of [[1366, 768], [1920, 1080]]) {
       await p.setViewportSize({ width: w, height: h });

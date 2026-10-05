@@ -14,6 +14,7 @@ import { readLocal } from '../core/FailoverDB.js';
 import { CLEAR_PHRASE, removalSummary, describeRemoval, runGuarded } from '../core/destructive.js';
 import { piiScreen } from '../core/PiiGate.js';
 import { PiiSettings } from './PiiSettings.js';
+import { loadApproved, saveApproved, checkClipboard, normalizeHost } from '../core/bookmarklet.js';
 import { OriginalsPanel } from './OriginalsPanel.js';
 import { getRaw } from '../core/repo.js';
 import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
@@ -294,16 +295,28 @@ export function HarvesterPanel(props) {
   // Bookmarklet clipboard wiring (offline-resilient, same pending_processing flow as Data Park):
   // - Stage clipboard: push parsed clipboard JSON (or raw text) into pending_processing
   // - Run Harvester & Refine: processWithAI(clipboardText) -> parsedReviewQueue
-  const parseClipboardItems = () => {
-    const raw = String(clip || '').trim();
-    if (!raw) return [];
+  // IMP-05: bookmarklet capture is off until a source system (host name) is approved.
+  const [bmHosts, setBmHosts] = window.React.useState(() => { try { return loadApproved(window.localStorage); } catch (e) { return []; } });
+  const [bmDraft, setBmDraft] = window.React.useState('');
+  const addBmHost = () => {
+    const h = normalizeHost(bmDraft);
+    if (!h) return;
+    try { setBmHosts(saveApproved(window.localStorage, bmHosts.concat([h]))); } catch (e) { setBmHosts(bmHosts.concat([h])); }
+    setBmDraft('');
+  };
+  const removeBmHost = (h) => { const next = bmHosts.filter((x) => x !== h); try { saveApproved(window.localStorage, next); } catch (e) {} setBmHosts(next); };
+  const copyBookmarklet = async () => {
     try {
-      const parsed = JSON.parse(raw);
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      return arr.filter((o) => o && typeof o === 'object');
-    } catch (e) {
-      return [{ content: raw }];
-    }
+      const code = await (await fetch('bookmarklet.js')).text();
+      await navigator.clipboard.writeText(code.trim());
+      setParkMsg('Bookmarklet copied. Create a bookmark and paste this as its address.');
+    } catch (e) { setParkMsg('Could not copy the bookmarklet: ' + String((e && e.message) || e)); }
+  };
+  const parseClipboardItems = () => {
+    const chk = checkClipboard(String(clip || '').trim(), bmHosts);
+    if (!chk.ok) { setParkMsg(chk.reason); return []; }
+    if (chk.refused) setParkMsg(chk.refused + ' capture(s) from sources that are not approved were left out.');
+    return chk.items;
   };
   const buildClipboardPayload = (o, idx) => {
     const src = (o && typeof o === 'object') ? o : {};
@@ -338,7 +351,7 @@ export function HarvesterPanel(props) {
     if (!project) { setParkMsg('Select a project first so the clipboard knows the anchor.'); return; }
     try {
       const items = parseClipboardItems();
-      if (!items.length) { setParkMsg('Clipboard is empty — nothing to stage.'); return; }
+      if (!items.length) return;
       const api = dbApi();
       let n = 0;
       for (let i = 0; i < items.length; i++) {
@@ -357,7 +370,7 @@ export function HarvesterPanel(props) {
     setParkMsg('Harvester running on clipboard…');
     try {
       const items = parseClipboardItems();
-      if (!items.length) { setParkMsg('Clipboard is empty — nothing to refine.'); setProcessing(false); return; }
+      if (!items.length) { setProcessing(false); return; }
       const out = [];
       for (let i = 0; i < items.length; i++) {
         const payload = buildClipboardPayload(items[i], i);
@@ -808,7 +821,8 @@ export function HarvesterPanel(props) {
         <div className="hcp-card"><div className="hcp-label">API Delta Scan Window (Outlook/Teams/GDP Status)</div><div style=${{ display: 'flex', gap: '8px' }}><input type="date" id="harvester-delta-from" value=${from} onInput=${(e) => setFrom(e.target.value)} /><input type="date" id="harvester-delta-to" value=${to} onInput=${(e) => setTo(e.target.value)} /></div></div>
         <div className="hcp-card"><div className="hcp-label">Drop Weekly GDP Tracker Spreadsheet</div><div className="hcp-drop">Drop Weekly GDP Tracker Spreadsheet here or click to browse<input type="file" accept=".xlsx,.xls,.csv" style=${{ display: 'none' }} onChange=${props.onGdpFile} /></div></div>
         <div className="hcp-card"><div className="hcp-label">Drop Project RAID Log Spreadsheet</div><div className="hcp-drop">Drop Project RAID Log Spreadsheet here or click to browse<input type="file" accept=".xlsx,.xls,.csv" style=${{ display: 'none' }} onChange=${props.onRaidFile} /></div></div>
-        <div className="hcp-card"><div className="hcp-label">Paste Bookmarklet Clipboard String</div><textarea id="harvester-clipboard" rows="4" value=${clip} onInput=${(e) => setClip(e.target.value)} placeholder="Paste Bookmarklet JSON string"></textarea><div style=${{ fontSize: '12px', fontStyle: 'italic', color: '#6b7280' }}>Click the Continuum Bookmarklet button on a live Salesforce or GDP tab, then paste the string here.</div><div style=${{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}><button type="button" onClick=${onStageClipboard} className="px-3 py-1 rounded-full bg-white border text-[11px]">Stage clipboard</button><button type="button" disabled=${processing} onClick=${onRunClipboardHarvest} className="px-3 py-1 rounded-full bg-black text-white text-[11px]">${processing ? 'Harvester running…' : 'Run Harvester & Refine'}</button></div></div>
+        <div className="hcp-card"><div className="hcp-label">Page capture (bookmarklet)</div><div style=${{ fontSize: '12px', color: '#6b7280' }}>Off until you approve a source system. The bookmarklet copies only text you can already see on the page; you paste it here and review it before anything is kept.</div><div style=${{ display: 'flex', gap: '6px', margin: '6px 0', flexWrap: 'wrap', alignItems: 'center' }}><input id="bookmarklet-host" aria-label="Approved source host" value=${bmDraft} onInput=${(e) => setBmDraft(e.target.value)} placeholder="host name, e.g. portal.example.com" style=${{ flex: 1, minWidth: '180px' }} /><button type="button" onClick=${addBmHost} className="px-3 py-1 rounded-full bg-white border text-[11px]">Approve source</button><button type="button" onClick=${copyBookmarklet} className="px-3 py-1 rounded-full bg-white border text-[11px]">Copy bookmarklet</button></div>${bmHosts.length ? html`<div style=${{ fontSize: '12px', marginBottom: '6px' }}>Approved: ${bmHosts.map((h) => html`<span key=${h} style=${{ marginRight: '8px' }}>${h} <button type="button" aria-label=${'Remove ' + h} onClick=${() => removeBmHost(h)}>×</button></span>`)}</div>` : html`<div style=${{ fontSize: '12px', fontStyle: 'italic' }}>Capture is off: no source approved.</div>`}</div>
+        <div className="hcp-card"><div className="hcp-label">Paste Bookmarklet Clipboard String</div><textarea id="harvester-clipboard" rows="4" value=${clip} onInput=${(e) => setClip(e.target.value)} placeholder="Paste the captured text from the bookmarklet"></textarea><div style=${{ fontSize: '12px', fontStyle: 'italic', color: '#6b7280' }}>Use the bookmarklet on an approved page, then paste what it copied here.</div><div style=${{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}><button type="button" onClick=${onStageClipboard} className="px-3 py-1 rounded-full bg-white border text-[11px]">Stage clipboard</button><button type="button" disabled=${processing} onClick=${onRunClipboardHarvest} className="px-3 py-1 rounded-full bg-black text-white text-[11px]">${processing ? 'Harvester running…' : 'Run Harvester & Refine'}</button></div></div>
         <div className="hcp-card"><div className="hcp-label">Staged (${staged.length})</div>${staged.map((s) => html`<div key=${s.id} className="text-[11px] italic text-[#64748B]">${s.title} [${s.piiStatus}]</div>`)}</div>
         <button id="harvester-run-btn" type="button" onClick=${(e) => { if (props.onRun) return props.onRun(e); return onProcess(); }}>Run Harvest and Refine</button>
         <div id="harvester-status" style=${{ fontSize: '12px', minHeight: '16px' }}>${status}</div>

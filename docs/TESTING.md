@@ -109,7 +109,7 @@ curl -s -X PUT http://localhost:8000/anchor/Acme%20Corp/Acme%20Corp%20DIP%20Disc
 - cards-store: freshness 2d ago green >1 month red Stale, EventBridge 6h HEAD check, weekly bucket significance 0.9 EXTENSION vs 0.25 CHASING, timeline Row12+Row18 multi-row hash
 - experience-pwa: ProjectHeader mint collapsible pastel tokens --pastel-blue #D6E8FF, shows Acme Corp / ACME-DIP-DISCOVERY / O-5030460 / 006Uj... both IDs
 - gdp-adapter: Engagement Data Export - Active exact columns, full read on HEAD change
-- connected-bookmarklet: V6.3_ESC dedupe, captures both O-5030460 + 006Uj...# Add to docs/TESTING.md — Scenario 9 — Insert Additional Clients — First Level PRIMARY FILTER
+- bookmarklet (IMP-05): `modules/experience-pwa/tests/bookmarklet.test.mjs` (off until a source is approved, only whitelisted fields kept)# Add to docs/TESTING.md — Scenario 9 — Insert Additional Clients — First Level PRIMARY FILTER
 
 ## SCENARIO 9: Insert Additional Client Master — First Level — PRIMARY FILTER dropdown — Data as Code
 

@@ -1,6 +1,6 @@
 # Local services: loopback only
 
-Continuum's optional services (anchor 8000, cards 8001, PWA host 8002, GDP adapter 8003, bookmarklet 8004, relationship admin 8005, vector 8006) are for the person running them. By default:
+Continuum's optional services (anchor 8000, cards 8001, PWA host 8002, GDP adapter 8003, relationship admin 8005, vector 8006) are for the person running them. By default:
 
 - they listen on `127.0.0.1` only, so other machines cannot reach them;
 - browsers may call them only from the local PWA (`http://localhost:8002` or `http://127.0.0.1:8002`); there is no wildcard CORS;

@@ -3,7 +3,7 @@
 // which adapter read it and which as-of date it speaks for.
 import { sha256Hex } from './backup.js';
 
-export const SOURCE_KINDS = ['xlsx', 'csv', 'paste', 'bookmarklet', 'note'];
+export const SOURCE_KINDS = ['xlsx', 'csv', 'paste', 'bookmarklet', 'note', 'email', 'transcript'];
 
 export async function hashBytes(bytes) {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -16,11 +16,13 @@ export function kindFromName(name) {
   const ext = m ? m[1].toLowerCase() : '';
   if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') return 'xlsx';
   if (ext === 'csv' || ext === 'tsv') return 'csv';
+  if (ext === 'eml') return 'email';
+  if (ext === 'vtt') return 'transcript';
   return 'note';
 }
 
 // content: string | Uint8Array | ArrayBuffer. Same content always gives the same hash.
-export async function makeSource({ name, kind, content, adapter, adapterVersion = '1', asOf = null, now = new Date() }) {
+export async function makeSource({ name, kind, content, adapter, adapterVersion = '1', asOf = null, meta = null, now = new Date() }) {
   if (kind && !SOURCE_KINDS.includes(kind)) throw new Error('Unknown source kind: ' + kind);
   const hash = typeof content === 'string' ? await sha256Hex(content) : await hashBytes(content);
   return {
@@ -32,6 +34,7 @@ export async function makeSource({ name, kind, content, adapter, adapterVersion 
     adapterVersion,
     asOf: asOf || null,
     importedAt: now.toISOString(),
+    ...(meta ? { meta } : {}),
   };
 }
 

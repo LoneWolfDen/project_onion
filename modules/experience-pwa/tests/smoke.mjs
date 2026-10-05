@@ -13,6 +13,8 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -205,6 +207,57 @@ const scenarios = {
     const g = await p.evaluate(() => { const a = document.querySelector('aside[aria-label="Continuum Guide panel"]'); return { w: Math.round(a.getBoundingClientRect().width), bg: getComputedStyle(a.parentElement).backgroundColor }; });
     check('Guide slider is 40vw (640px @1600)', g.w === 640, JSON.stringify(g));
     check('Guide backdrop dim is 30%', /0\.3\)/.test(g.bg), g.bg);
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+
+  // DAT-01: export, wipe, restore in a real browser, no network needed.
+  async 'backup: export then restore round trip'({ p, errors }) {
+    const count = () => p.evaluate(() => JSON.parse(localStorage.getItem('onion_db_state')).timeline.length);
+    const before = await count();
+    await p.click('#harvester-open-btn'); await sleep(p, 500);
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#backup-export')]);
+    const file = path.join(os.tmpdir(), 'smoke-backup-' + Date.now() + '.json');
+    await dl.saveAs(file);
+    await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('onion_db_state')); s.timeline = []; localStorage.setItem('onion_db_state', JSON.stringify(s)); });
+    check('state wiped before restore', (await count()) === 0);
+    await p.reload(); await p.waitForSelector('#harvester-open-btn'); await p.click('#harvester-open-btn'); await sleep(p, 500);
+    await p.setInputFiles('#backup-file', file); await p.waitForSelector('#backup-preview');
+    await p.check('input[name="backup-mode"] >> nth=1'); // Replace
+    p.once('dialog', (d) => d.accept());
+    await p.click('#backup-restore');
+    await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    await sleep(p, 800);
+    check('restore brings back every card', (await count()) === before, `before=${before}`);
+    const snaps = await p.evaluate(() => Object.keys(localStorage).filter((k) => k.indexOf('onion_preimport_backup_') === 0).length);
+    check('safety copy kept before restore', snaps === 1, 'snaps=' + snaps);
+    check('no API key in backup file', !/api[_-]?key/i.test(fs.readFileSync(file, 'utf8')));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+
+  // DAT-05: reset/clear are explicit, explain themselves, and cancel changes nothing.
+  async 'destructive: reset and clear need confirmation'({ p, errors }) {
+    const raw = () => p.evaluate(() => localStorage.getItem('onion_db_state'));
+    const before = await raw();
+    await p.click('#harvester-open-btn'); await sleep(p, 500);
+    await p.click('button[title="AI configuration"]'); await sleep(p, 300);
+    await p.click('button:has-text("Reset Demo Dataset")');
+    await p.waitForSelector('#confirm-dialog');
+    const t = await p.innerText('#confirm-dialog');
+    check('reset dialog states what will be removed', /replaces your current data \(\d+ cards/.test(t), t.slice(0, 160));
+    await p.click('#confirm-cancel'); await sleep(p, 300);
+    check('cancel closes dialog and leaves data unchanged', (await p.locator('#confirm-dialog').count()) === 0 && (await raw()) === before);
+    await p.click('#clear-all-btn'); await p.waitForSelector('#confirm-dialog');
+    check('clear-all confirm is disabled until the phrase is typed', await p.locator('#confirm-go').isDisabled());
+    await p.fill('#confirm-phrase', 'delete all data');
+    check('wrong-case phrase keeps it disabled', await p.locator('#confirm-go').isDisabled());
+    await p.click('#confirm-cancel'); await sleep(p, 300);
+    check('data still unchanged after abandoned clear', (await raw()) === before);
+    await p.click('#clear-all-btn'); await p.waitForSelector('#confirm-dialog');
+    await p.uncheck('#confirm-backup');
+    await p.fill('#confirm-phrase', 'DELETE ALL DATA');
+    await p.click('#confirm-go');
+    await p.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('onion_db_state')).timeline.length === 0; } catch (e) { return false; } }, null, { timeout: 10000 });
+    check('typed phrase clears all data', true);
     check('no page errors', !errors.length, errors.join(' | '));
   },
 

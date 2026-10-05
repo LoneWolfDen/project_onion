@@ -2,7 +2,7 @@
 import { MOCK_SEED } from '../data/mockSeed.js';
 import { buildDemoState } from '../data/demoDataset.js';
 import { getDefaultPersona } from '../constants/personas.js';
-import { reportStorageError, retainCorruptRaw, safeSetItem, isReadOnly } from './storageGuard.js';
+import { reportStorageError, retainCorruptRaw, safeSetItem, isReadOnly, clearStorageError, resolveStorageProblem } from './storageGuard.js';
 let _vectorMirror = null;
 function vectorMirror() {
   if (_vectorMirror) return _vectorMirror;
@@ -117,13 +117,18 @@ export function readLocal() {
 // Returns the state it was given (existing callers rely on that). Success is
 // signalled by the onion:db-update event only; a failed or refused write raises
 // onion:storage-error instead, so the UI never shows an unsaved change as saved.
-export function writeLocal(state) {
-  if (isReadOnly()) { reportStorageError(null, 'write', { code: 'readonly' }); return state; }
+export function writeLocal(state) { tryWriteLocal(state); return state; }
+// Same write, but returns true only if the data was stored. { force: true } is
+// for an explicit restore, which is the way out of read-only mode.
+export function tryWriteLocal(state, opts) {
+  const force = !!(opts && opts.force);
+  if (!force && isReadOnly()) { reportStorageError(null, 'write', { code: 'readonly' }); return false; }
   let json;
-  try { json = JSON.stringify(state); } catch (err) { reportStorageError(err, 'serialize'); return state; }
-  if (!safeSetItem(STORAGE_KEY, json, 'write')) return state;
+  try { json = JSON.stringify(state); } catch (err) { reportStorageError(err, 'serialize'); return false; }
+  try { localStorage.setItem(STORAGE_KEY, json); } catch (err) { reportStorageError(err, 'write'); return false; }
+  if (force) resolveStorageProblem(); else clearStorageError();
   try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { at: new Date().toISOString() } })); } catch (err) {}
-  return state;
+  return true;
 }
 async function tryFetch(path, options) {
   let lastErr = null;
@@ -488,6 +493,18 @@ export async function resetToDemoDataset() {
   writeLocal(state);
   try { localStorage.setItem('activePersona', 'Brené'); } catch (e) {}
   return state;
+}
+// Clear all data: removes every local data key and leaves an empty (not demo) dataset.
+// API/model settings are kept. Callers must confirm first (see core/destructive.js).
+export async function clearAllData() {
+  const empty = { clients: [], projects: [], timeline: [], notes: [], archived: [] };
+  // Write the empty dataset first: if the browser refuses, nothing else has been removed.
+  if (!tryWriteLocal(empty, { force: true })) throw new Error('Your browser could not store the cleared data, so nothing was changed.');
+  try {
+    DEMO_RESET_KEYS.filter((k) => k !== STORAGE_KEY).forEach((k) => localStorage.removeItem(k));
+    Object.keys(localStorage).filter((k) => k.indexOf('onion_review_draft_') === 0).forEach((k) => localStorage.removeItem(k));
+  } catch (e) {}
+  return empty;
 }
 export const OnionDB = new FailoverDB();
 try {

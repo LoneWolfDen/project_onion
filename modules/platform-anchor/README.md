@@ -3,7 +3,7 @@
 ## Run locally — no AWS needed
 
 ```bash
-cd /Users/wolf/Developer/project_onion
+cd path/to/project_onion
 pip install fastapi uvicorn
 python modules/platform-anchor/service.py
 # Server on http://localhost:8000 — docs at http://localhost:8000/docs

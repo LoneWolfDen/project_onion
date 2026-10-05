@@ -304,6 +304,12 @@ const scenarios = {
     check('one recovery copy retained', kept.copies === 1, JSON.stringify(kept));
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'persistent storage status (DAT-04)': async ({ p, errors }) => {
+    await p.click('#harvester-open-btn'); await sleep(p, 600);
+    const t = await p.evaluate(() => (document.querySelector('#persist-status') || {}).textContent || '');
+    check('persistence status is shown in plain language', /storage is protected|not protected|cannot tell/.test(t), t);
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
   'readable typography (HUI-01)': async ({ p, errors }) => {
     for (const [w, h] of [[1366, 768], [1920, 1080]]) {
       await p.setViewportSize({ width: w, height: h });

@@ -1,7 +1,7 @@
 # MUSE_AUDIT_LOG.md — Project Onion Systematic Review
 
 > Generated: 2026-09-21 — Token-optimized scan (tree + configs + doc headers + service headers + CONTRACT headers, no full utility reads)
-> Root: `/Users/wolf/Developer/project_onion`
+> Root: the repository root (originally a local macOS checkout)
 > Method: `ls -R`, `requirements.txt`, `README/GLOBAL_BRAIN/STATE`, `docs/BACKLOG_v0.16|v0.20`, `docs/NEXT_SPRINT`, `docs/CONTEXT_SUMMARY_v0.20`, `grep uvicorn.run`, `service.py:1-15`, `CONTRACT.md:1-15`, `fuse.js/parse.js/index.html` heads.
 
 ---

@@ -51,7 +51,7 @@ curl -s http://localhost:8000/anchors/Rolls-Royce | python3 -m json.tool
 # count 1
 
 # Option 2: Via Seed Script — Data as Code — versioned — for bulk
-cd /Users/wolf/Developer/project_onion
+cd path/to/project_onion
 source .venv/bin/activate
 python modules/platform-anchor/seed_clients.py --file data/seed/clients.json
 # Inserts all clients from JSON into STORE — idempotent — logs inserted

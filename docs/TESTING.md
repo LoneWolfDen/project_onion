@@ -19,7 +19,7 @@ Chat is RAM, HDD is docs/TESTING.md + module TEST_SCENARIOS.md — new session r
 
 ### Setup — 2 terminals — both show (main) branch — normal
 ```bash
-cd /Users/wolf/Developer/project_onion
+cd path/to/project_onion
 python3 -m venv .venv
 source .venv/bin/activate
 pip install fastapi uvicorn pydantic
@@ -145,7 +145,7 @@ curl -s http://localhost:8000/anchors/Rolls-Royce | python3 -m json.tool
 ### Steps — Option 2: Via Seed Script — Data as Code — Versioned — Recommended for Hackathon
 
 ```bash
-cd /Users/wolf/Developer/project_onion
+cd path/to/project_onion
 cat data/seed/clients.json | python3 -m json.tool
 # Shows 3 clients: Acme Corp, Rolls-Royce, ClientA — each with client_name PRIMARY FILTER
 

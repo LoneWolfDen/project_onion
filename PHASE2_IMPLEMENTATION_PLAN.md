@@ -120,6 +120,8 @@ Decided (5 Oct):
 
 Received (5 Oct): the GDP export columns (42) and RAID log columns (11) are recorded in `docs/IMPORT_TEMPLATES.md`, so step 15 is unblocked. Open gaps in them need decisions before RAID re-import is finished: the RAID file has no row ID and no project column (proposed: pick the project at import, identity = raised date + type + normalised description start), and the 0-1 scores have no stated formula (imported as given).
 
-## 7. Suggested first PR
+## 7. Progress (5 Oct)
 
-Step 0 plus FND-03 (FND-02 is already in its own PR) (repo guards, untrack Chroma, remove machine paths). It is small, mechanical, low-risk, and makes the later work safer.
+Done and merged: FND-02 (#37), FND-03 plus repo hygiene check (#38), DAT-02 (#39).
+In review: DAT-01 backup and restore (#40), DAT-05 destructive-action protection (#41).
+Next: PRV-01/02 (no-AI default, API keys out of storage), PRV-03 (loopback), HUI-01 (typography), then Release 1.

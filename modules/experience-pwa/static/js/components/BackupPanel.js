@@ -1,8 +1,9 @@
 // BackupPanel.js — export / restore everything, offline, no AI or network (DAT-01).
 import { buildBackup, validateBackup, restoreBackup, PREFERENCE_KEYS } from '../core/backup.js';
 import { readLocal, tryWriteLocal } from '../core/FailoverDB.js';
+import { requestPersistence, describePersistence } from '../core/persistence.js';
 const html = window.htm.bind(window.React.createElement);
-const { useState } = window.React;
+const { useState, useEffect } = window.React;
 const SNAP_PREFIX = 'onion_preimport_backup_';
 const btn = { background: '#EAF2FF', border: '1px solid #BFD7FF', color: '#1F4A7A', borderRadius: '9999px', padding: '6px 12px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' };
 
@@ -39,6 +40,8 @@ export async function downloadBackupNow() {
 
 export function BackupPanel() {
   const [msg, setMsg] = useState('');
+  const [persist, setPersist] = useState(null);
+  useEffect(() => { let live = true; requestPersistence().then((r) => { if (live) setPersist(describePersistence(r)); }); return () => { live = false; }; }, []);
   const [pending, setPending] = useState(null); // { name, backup }
   const [mode, setMode] = useState('merge');
   const lastBackup = (() => { try { return localStorage.getItem('onion_last_backup_at'); } catch (e) { return null; } })();
@@ -76,6 +79,7 @@ export function BackupPanel() {
   return html`<div id="backup-panel" style=${{ marginTop: '10px', padding: '10px', border: '1px solid #BFD7FF', borderRadius: '12px', background: '#F5F9FF' }}>
     <div style=${{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Backup and restore</div>
     <div style=${{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>Works offline. Last backup: ${lastBackup ? new Date(lastBackup).toLocaleString() : 'never'}. API keys are never included.</div>
+    ${persist ? html`<div id="persist-status" style=${{ fontSize: '13px', marginBottom: '8px', color: persist.level === 'ok' ? '#065F46' : '#92400E' }}>${persist.text}</div>` : null}
     <div style=${{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
       <button type="button" id="backup-export" onClick=${onExport} style=${btn}>⬇ Export backup</button>
       <label style=${{ ...btn, display: 'inline-block' }}>⬆ Choose backup file<input id="backup-file" type="file" accept="application/json,.json" onChange=${onPick} style=${{ display: 'none' }} /></label>

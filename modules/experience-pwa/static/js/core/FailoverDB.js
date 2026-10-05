@@ -3,6 +3,9 @@ import { MOCK_SEED } from '../data/mockSeed.js';
 import { buildDemoState } from '../data/demoDataset.js';
 import { getDefaultPersona } from '../constants/personas.js';
 import { reportStorageError, retainCorruptRaw, safeSetItem, isReadOnly, clearStorageError, resolveStorageProblem } from './storageGuard.js';
+import { getRaw, setRaw, removeRaw } from './repo.js';
+// Write the main state through the Repo; same contract as safeSetItem (true when accepted).
+function saveRaw(json, op) { try { setRaw(json); clearStorageError(); return true; } catch (err) { reportStorageError(err, op || 'write'); return false; } }
 let _vectorMirror = null;
 function vectorMirror() {
   if (_vectorMirror) return _vectorMirror;
@@ -58,7 +61,7 @@ function corruptState(raw, err) {
 }
 export function readLocal() {
   let raw = null;
-  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
+  try { raw = getRaw(); } catch (e) { raw = null; }
   // Compatibility: check legacy keys like onion_db_storage (your Safari shows this)
   if (raw == null || raw === '') {
     try {
@@ -70,7 +73,7 @@ export function readLocal() {
   }
   if (raw == null || raw === '') {
     const seed = bootState();
-    safeSetItem(STORAGE_KEY, JSON.stringify(seed), 'seed');
+    saveRaw(JSON.stringify(seed), 'seed');
     return seed;
   }
   let parsed = null;
@@ -110,7 +113,7 @@ export function readLocal() {
       };
       const t1 = heal(parsed.timeline);
       const t2 = heal(parsed.notes);
-      if (t1 || t2) safeSetItem(STORAGE_KEY, JSON.stringify(parsed), 'heal');
+      if (t1 || t2) saveRaw(JSON.stringify(parsed), 'heal');
     } catch (e) {}
     return parsed;
 }
@@ -125,7 +128,7 @@ export function tryWriteLocal(state, opts) {
   if (!force && isReadOnly()) { reportStorageError(null, 'write', { code: 'readonly' }); return false; }
   let json;
   try { json = JSON.stringify(state); } catch (err) { reportStorageError(err, 'serialize'); return false; }
-  try { localStorage.setItem(STORAGE_KEY, json); } catch (err) { reportStorageError(err, 'write'); return false; }
+  try { setRaw(json); } catch (err) { reportStorageError(err, 'write'); return false; }
   if (force) resolveStorageProblem(); else clearStorageError();
   try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { at: new Date().toISOString() } })); } catch (err) {}
   return true;
@@ -462,7 +465,7 @@ class FailoverDB {
     return target;
   }
   async resetToSeedData() {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    try { removeRaw(); } catch (e) {}
     const seed = seedState();
     writeLocal(seed);
     return seed;
@@ -475,7 +478,7 @@ class FailoverDB {
   }
 }
 export async function resetToSeedData() {
-  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  try { removeRaw(); } catch (e) {}
   const seed = seedState();
   writeLocal(seed);
   return seed;
@@ -486,7 +489,8 @@ export async function resetToSeedData() {
 const DEMO_RESET_KEYS = [STORAGE_KEY, ...LEGACY_KEYS, 'onion_projects', 'onion_review_queue', 'onion_vector_queue'];
 export async function resetToDemoDataset() {
   try {
-    DEMO_RESET_KEYS.forEach((k) => localStorage.removeItem(k));
+    removeRaw();
+    DEMO_RESET_KEYS.filter((k) => k !== STORAGE_KEY).forEach((k) => localStorage.removeItem(k));
     Object.keys(localStorage).filter((k) => k.indexOf('onion_review_draft_') === 0).forEach((k) => localStorage.removeItem(k));
   } catch (e) {}
   const state = demoState();
@@ -508,8 +512,8 @@ export async function clearAllData() {
 }
 export const OnionDB = new FailoverDB();
 try {
-  const bootRaw = localStorage.getItem(STORAGE_KEY);
-  if (bootRaw == null || bootRaw === '') localStorage.setItem(STORAGE_KEY, JSON.stringify(bootState()));
+  const bootRaw = getRaw();
+  if (bootRaw == null || bootRaw === '') setRaw(JSON.stringify(bootState()));
   window.OnionDB = OnionDB;
 } catch (err) {}
 export default OnionDB;

@@ -1,9 +1,13 @@
 // js/main.js — ESM entry (local vendor, no CDN)
-import { App } from './components/App.js';
 import { registerServiceWorker } from './core/pwa.js';
+import { initRepo, getRaw, setRaw, flushRepo, repoMode } from './core/repo.js';
 registerServiceWorker();
+const root = window.ReactDOM.createRoot(document.getElementById('root'));
 try {
-  const root = window.ReactDOM.createRoot(document.getElementById('root'));
+  // The Repo must be ready (state loaded from IndexedDB, or migrated once) before any module reads state.
+  const repo = await initRepo();
+  window.__continuumRepo = { getRaw, setRaw, flush: flushRepo, mode: repoMode, boot: repo };
+  const { App } = await import('./components/App.js');
   root.render(window.React.createElement(App));
 } catch (err) {
   document.getElementById('root').innerHTML =

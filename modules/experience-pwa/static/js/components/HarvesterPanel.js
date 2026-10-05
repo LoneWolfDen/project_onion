@@ -12,6 +12,7 @@ import { readLocal } from '../core/FailoverDB.js';
 import { CLEAR_PHRASE, removalSummary, describeRemoval, runGuarded } from '../core/destructive.js';
 import { piiScreen } from '../core/PiiGate.js';
 import { PiiSettings } from './PiiSettings.js';
+import { getRaw } from '../core/repo.js';
 import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
 import { matchSentence } from '../core/matchExplain.js';
 import { PERSONAS, getDefaultPersona } from '../constants/personas.js';
@@ -58,7 +59,7 @@ function topicTokens(text) {
 }
 function readAllTimelineCards() {
   try {
-    const raw = localStorage.getItem('onion_db_state');
+    const raw = getRaw();
     if (!raw) return [];
     const s = JSON.parse(raw);
     return Array.isArray(s.timeline) ? s.timeline : [];

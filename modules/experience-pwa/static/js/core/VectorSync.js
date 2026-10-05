@@ -5,6 +5,7 @@
 // 'onion_vector_queue' as {op,id,card,at,attempts}. Auto-drain on reconnect.
 // Endpoints: POST {base}/ingest (upsert), DELETE|POST {base}/delete.
 // Default base :8006 (vector-service). Override: localStorage VECTOR_BASE_URL.
+import { getRaw, setRaw } from './repo.js';
 const QUEUE_KEY = 'onion_vector_queue';
 const BASE_OVERRIDE_KEY = 'VECTOR_BASE_URL';
 const DEFAULT_BASES = ['http://localhost:8006'];
@@ -246,7 +247,7 @@ function markQueueMirrored(n) {
     const ids = Array.isArray(n) ? n.map(String).filter(Boolean) : null;
     if (!ids || !ids.length) return;
     const KEY = 'onion_db_state';
-    const raw = localStorage.getItem(KEY);
+    const raw = getRaw();
     if (!raw) return;
     const s = JSON.parse(raw);
     let touched = false;
@@ -259,7 +260,7 @@ function markQueueMirrored(n) {
       });
     });
     if (touched) {
-      localStorage.setItem(KEY, JSON.stringify(s));
+      setRaw(JSON.stringify(s));
       try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { source: 'vector-sync', at: new Date().toISOString(), ids: ids || [] } })); } catch (e) {}
     }
   } catch (e) {}

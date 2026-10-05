@@ -208,6 +208,32 @@ export function HarvesterPanel(props) {
       if (mapped.length) { setParsedReviewQueue((prev) => (Array.isArray(prev) ? prev : []).concat(mapped)); setParkMsg('Staged ' + mapped.length + ' item(s) ready for review below.'); }
     } catch (e) {}
   }, [staged && staged.length]);
+  // #11 — publish which existing cards a queued review item will merge into, so
+  // the card feed can show "Review & Merge" before Approve. Reuses the match the
+  // queue already holds (smartAppend.targetCardId); no second matcher.
+  window.React.useEffect(() => {
+    try {
+      const map = {};
+      (Array.isArray(parsedReviewQueue) ? parsedReviewQueue : []).forEach((c) => {
+        const sa = c && c.smartAppend;
+        if (!sa || !sa.targetCardId) return;
+        const k = String(sa.targetCardId);
+        const why = matchSentence(sa, sharedWordsFor(c));
+        map[k] = { count: ((map[k] && map[k].count) || 0) + 1, sentence: why.sentence, tooltip: why.tooltip };
+      });
+      window.__onionReviewTargets = map;
+      window.dispatchEvent(new CustomEvent('onion:review-queue', { detail: { at: Date.now() } }));
+    } catch (e) {}
+  }, [parsedReviewQueue]);
+  // "Review & Merge" on a card: open the drawer and scroll to the review queue.
+  window.React.useEffect(() => {
+    const h = () => {
+      try { setOpen(true); } catch (e) {}
+      setTimeout(() => { try { const el = document.getElementById('harvester-review-queue'); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }, 380);
+    };
+    try { window.addEventListener('onion:open-harvester-review', h); } catch (e) {}
+    return () => { try { window.removeEventListener('onion:open-harvester-review', h); } catch (e) {} };
+  }, []);
   const metaClient = (project && project.client_name) || (clientMeta && clientMeta.account_name) || '—';
   const metaProject = (project && project.project_name) || '—';
   const metaOpp = (project && (project.opportunity_numbers || [])[0]) || '—';
@@ -219,9 +245,14 @@ export function HarvesterPanel(props) {
   // "Data Park staged (N) — pending before AI" panel can render below the
   // Stage/Run buttons, mirroring what the Bookmarklet's "Staged" list already
   // shows, plus per-row delete and a "Clear all" action.
+  // Run AI consumes staged items: rows now sitting in the review queue are no
+  // longer "staged", so the counter drops to 0 as soon as Run AI completes.
+  // They stay pending_processing in storage until Approve, so a reload before
+  // Approve restores them to the staged list rather than losing them.
+  const queuedIds = new Set((Array.isArray(parsedReviewQueue) ? parsedReviewQueue : []).map((c) => String((c && (c.sourceId || c.id)) || '')));
   const stagedRows = (() => {
     try {
-      return readAllTimelineCards().filter((t) => t && t.syncStatus === 'pending_processing' && (!project || t.project_name === project.project_name || t.projectId === canonicalProjectId));
+      return readAllTimelineCards().filter((t) => t && t.syncStatus === 'pending_processing' && !queuedIds.has(String(t.id)) && (!project || t.project_name === project.project_name || t.projectId === canonicalProjectId));
     } catch (e) { return []; }
   })();
   const stagedCount = stagedRows.length;
@@ -757,10 +788,7 @@ export function HarvesterPanel(props) {
           <textarea id="datapark-raw" rows="6" value=${rawText} onInput=${(e) => setRawText(e.target.value)} placeholder="Paste raw harvest text here…" style=${{ width: '100%', marginTop: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px', fontSize: '12px' }}></textarea>
           ${(() => {
             try {
-              const raw = typeof localStorage!=='undefined'? localStorage.getItem('onion_db_state') : null;
-              const s = raw? JSON.parse(raw) : {timeline:[]};
-              const pending = (s.timeline||[]).filter(t=>t && t.syncStatus==='pending_processing');
-              const n = pending.length;
+              const n = stagedCount;
               return html`<div style=${{ display:'flex', gap:'6px', marginTop:'8px', flexWrap:'wrap', alignItems:'center' }}>
                 <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text- font-medium">Stage to Data Park</button>
                 <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text- font-medium">${processing? 'AI engine running...' : 'Run AI Processing Engine'+(n? ' STAGED('+n+')' : '')}</button>
@@ -796,7 +824,7 @@ export function HarvesterPanel(props) {
             </div>
           </div>` : null}
         </div>
-        ${Array.isArray(parsedReviewQueue) && parsedReviewQueue.length ? html`<div className="hcp-card" style=${{ borderColor: '#c4b5fd', background: '#f5f3ff' }}>
+        ${Array.isArray(parsedReviewQueue) && parsedReviewQueue.length ? html`<div id="harvester-review-queue" className="hcp-card" style=${{ borderColor: '#c4b5fd', background: '#f5f3ff' }}>
           <div className="hcp-label">Contributor Parser Review (${parsedReviewQueue.length}) — review, edit, set privacy, then approve</div>
           <div style=${{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
             ${parsedReviewQueue.map((c, idx) => html`<div key=${String(c.sourceId || '') + '-' + idx} style=${{ background: '#fff', border: '1px solid #ddd6fe', borderRadius: '10px', padding: '8px' }}>

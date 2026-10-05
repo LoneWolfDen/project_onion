@@ -426,6 +426,17 @@ function similarToPlaybookBanner(m, clientName, onReview) {
     return html`<button type="button" onClick=${onReviewHere} title=${why.tooltip} className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#F5F3FF] border border-[#C4B5FD] text-[10px] text-[#5B21B6] cursor-pointer hover:bg-[#EDE9FE]">⚡ ${label} — ${why.sentence} <span className="ml-1 font-bold underline">Review</span></button>`;
   } catch (e) { return null; }
 }
+// Queued-in-Harvester banner (purple): a staged item has been matched to this
+// card but not approved yet. Review & Merge opens the Harvester review queue.
+function queuedMergeBanner(m) {
+  try {
+    const info = m && window.__onionReviewTargets && window.__onionReviewTargets[String(m.id)];
+    if (!info) return null;
+    const label = info.count === 1 ? '1 similar update queued in Harvester' : info.count + ' similar updates queued in Harvester';
+    const go = (e) => { try { if (e && e.stopPropagation) e.stopPropagation(); } catch (e2) {} window.dispatchEvent(new CustomEvent('onion:open-harvester-review')); };
+    return html`<div style=${{ marginTop: '8px', width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', borderRadius: '8px', background: '#F5F3FF', border: '1px solid #C4B5FD', fontSize: '11px', color: '#5B21B6' }} title=${info.tooltip}><span className="min-w-0 flex-1">⚡ ${label} — ${info.sentence}</span><button type="button" onClick=${go} style=${{ flexShrink: 0, background: '#5B21B6', color: '#fff', border: 'none', borderRadius: '9999px', padding: '2px 10px', fontWeight: 600, cursor: 'pointer' }}>Review & Merge</button></div>`;
+  } catch (e) { return null; }
+}
 export function TimelineCard(props) {
   const project = props.project;
   const timeline = props.timeline || [];
@@ -451,6 +462,14 @@ export function TimelineCard(props) {
   // visible cards changes (persona switch, project switch, note approval, etc.)
   // changes the hook count between renders -> React error #300 -> white screen.
   const [selectedNodeMap, setSelectedNodeMap] = window.React.useState({});
+  // #11 — re-render when the Harvester review queue changes so the
+  // "Review & Merge" banner appears/clears on the card a queued item will merge into.
+  const [, setReviewTick] = window.React.useState(0);
+  window.React.useEffect(() => {
+    const h = () => setReviewTick((v) => v + 1);
+    window.addEventListener('onion:review-queue', h);
+    return () => window.removeEventListener('onion:review-queue', h);
+  }, []);
   window.React.useEffect(() => {
     if (!menuOpenId) return;
     const close = () => setMenuOpenId(null);
@@ -794,6 +813,7 @@ export function TimelineCard(props) {
       
       ${timelineStrip(m, isOwner, selectedNode, toggleNode)}
       ${selectedNode? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${nodeViewerTitle(selectedNode)}</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'Unknown author'} • ${formatWhen(selectedNode.at) || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
+      ${queuedMergeBanner(m)}
       ${similarToPlaybookBanner(m, m.client_name, () => setAppendOpen((prev) => Object.assign({}, prev, { [m.id]: true })))}
       ${pendingAppendsBanner(m, appendsOpen, toggleAppends)}
       ${hasAppends &&!!appendOpen[m.id]? appendedNodesBlock(m) : null}

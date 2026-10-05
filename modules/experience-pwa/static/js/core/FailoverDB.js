@@ -2,6 +2,7 @@
 import { MOCK_SEED } from '../data/mockSeed.js';
 import { buildDemoState } from '../data/demoDataset.js';
 import { getDefaultPersona } from '../constants/personas.js';
+import { reportStorageError, retainCorruptRaw, safeSetItem, isReadOnly } from './storageGuard.js';
 let _vectorMirror = null;
 function vectorMirror() {
   if (_vectorMirror) return _vectorMirror;
@@ -48,6 +49,13 @@ export function seedState() { const s = clone(MOCK_SEED); try { (s.timeline || [
 const BOOT_DATASET = 'demo';
 export function demoState() { const s = buildDemoState(Date.now()); try { (s.timeline || []).forEach(ensureTimelineNodes); } catch (e) {} return s; }
 function bootState() { return BOOT_DATASET === 'demo' ? demoState() : seedState(); }
+// Unreadable saved state: keep the raw text under a recovery key, switch to
+// read-only so the empty placeholder below can never overwrite it, and tell the user.
+function corruptState(raw, err) {
+  const recoveryKey = retainCorruptRaw(raw);
+  reportStorageError(err, 'parse', { code: 'parse', recoveryKey });
+  return { clients: [], projects: [], timeline: [], notes: [], archived: [] };
+}
 export function readLocal() {
   let raw = null;
   try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
@@ -62,17 +70,17 @@ export function readLocal() {
   }
   if (raw == null || raw === '') {
     const seed = bootState();
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(seed)); } catch (e) {}
+    safeSetItem(STORAGE_KEY, JSON.stringify(seed), 'seed');
     return seed;
   }
   let parsed = null;
   try {
     parsed = JSON.parse(raw);
   } catch (err) {
-    return { clients: [], projects: [], timeline: [], notes: [], archived: [] };
+    return corruptState(raw, err);
   }
   if (!parsed || typeof parsed !== 'object') {
-    return { clients: [], projects: [], timeline: [], notes: [], archived: [] };
+    return corruptState(raw, null);
   }
     let seededCache = null;
     const seedField = (k) => { try { if (!seededCache) seededCache = bootState(); return clone(seededCache[k]); } catch (e) { return []; } };
@@ -102,12 +110,18 @@ export function readLocal() {
       };
       const t1 = heal(parsed.timeline);
       const t2 = heal(parsed.notes);
-      if (t1 || t2) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {} }
+      if (t1 || t2) safeSetItem(STORAGE_KEY, JSON.stringify(parsed), 'heal');
     } catch (e) {}
     return parsed;
 }
+// Returns the state it was given (existing callers rely on that). Success is
+// signalled by the onion:db-update event only; a failed or refused write raises
+// onion:storage-error instead, so the UI never shows an unsaved change as saved.
 export function writeLocal(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (err) {}
+  if (isReadOnly()) { reportStorageError(null, 'write', { code: 'readonly' }); return state; }
+  let json;
+  try { json = JSON.stringify(state); } catch (err) { reportStorageError(err, 'serialize'); return state; }
+  if (!safeSetItem(STORAGE_KEY, json, 'write')) return state;
   try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { at: new Date().toISOString() } })); } catch (err) {}
   return state;
 }

@@ -207,6 +207,22 @@ const scenarios = {
     check('Guide backdrop dim is 30%', /0\.3\)/.test(g.bg), g.bg);
     check('no page errors', !errors.length, errors.join(' | '));
   },
+
+  // DAT-02: damaged saved data is kept, reported, and never overwritten.
+  async 'storage: corrupt state shows banner and is preserved'({ p, errors }) {
+    const damaged = '{"timeline":[{"id":"precious"';
+    await p.evaluate((raw) => localStorage.setItem('onion_db_state', raw), damaged);
+    await p.reload(); await p.waitForSelector('.storage-banner', { timeout: 15000 });
+    const banner = await p.innerText('.storage-banner');
+    check('banner explains the problem in plain language', /could not be read/.test(banner) && /Download recovery file/.test(banner), banner);
+    const kept = await p.evaluate(() => ({
+      orig: localStorage.getItem('onion_db_state'),
+      copies: Object.keys(localStorage).filter((k) => k.indexOf('onion_db_corrupt_') === 0).length,
+    }));
+    check('damaged data left untouched', kept.orig === damaged);
+    check('one recovery copy retained', kept.copies === 1, JSON.stringify(kept));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
 };
 
 // --------------------------------------------------------------------- main

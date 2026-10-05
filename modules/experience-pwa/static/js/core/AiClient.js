@@ -1,11 +1,13 @@
 // js/core/AiClient.js — Hybrid OpenRouter / Mock AI integration (Failover-safe, zero-install).
-// Live Mode: OPENROUTER_API_KEY in localStorage → real fetch to OpenRouter.
-// Fallback/Mock Mode: no key → 1200ms latency + beautifully formatted mock JSON.
+// Default is No AI: content stays on the device. A remote provider is used only when
+// aiConfig.resolveRemote() allows it (provider chosen + consent given + session key set);
+// every call fails closed to the local rules otherwise.
 // Returns: { synthesizedText, tags, impactScore, aiEngine, aiModel?, aiFallbackReason? }
+// aiModel for live results is "<Provider> | <model>" so cards name the provider and model.
 // — never throws to caller (always resolves). aiEngine is 'live' | 'mock' | 'fallback'
 // so every card can say honestly which engine produced its summary.
+import { resolveRemote, getModel, PROVIDERS, reasonText } from './aiConfig.js';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'anthropic/claude-3-haiku';
 
 // Offline keyword rules. Whole words only: a bare substring test made
 // "report", "support" and "opportunity" look like purchase orders.
@@ -69,10 +71,6 @@ export function privacyMatchesCard(cardOrPrivacy, mode, activePersona) {
   return isTeamShared || (isMyNotes && String(cardAuthor || '') === persona);
 }
 
-function getProvider() {
-  try { return localStorage.getItem('LLM_PROVIDER') || 'openrouter'; } catch (e) { return 'openrouter'; }
-}
-
 // Shared JSON-parse logic for both OpenRouter and Anthropic raw text responses.
 // Try strict JSON first, then extract {...} block, then fall back to raw text.
 function parseAiJson(raw, input, kind) {
@@ -102,16 +100,14 @@ function parseAiJson(raw, input, kind) {
 }
 
 async function callOpenRouter(input, kind, enrichWithAggregation) {
-  let apiKey = null;
-  let model = DEFAULT_MODEL;
-  try {
-    apiKey = localStorage.getItem('OPENROUTER_API_KEY') || '';
-    model = localStorage.getItem('OPENROUTER_MODEL') || DEFAULT_MODEL;
-  } catch (e) { apiKey = null; }
-  if (!apiKey || !String(apiKey).trim()) {
-    await new Promise((r) => setTimeout(r, 1200));
-    return enrichWithAggregation(mockResult(input, kind));
+  const gate = resolveRemote();
+  if (!gate.allowed || gate.provider !== 'openrouter') {
+    const m = mockResult(input, kind);
+    m.aiFallbackReason = reasonText(gate.reason);
+    return enrichWithAggregation(m);
   }
+  const apiKey = gate.key;
+  const model = getModel();
   try {
     const res = await fetch(OPENROUTER_URL, {
       method: 'POST',
@@ -140,9 +136,8 @@ async function callOpenRouter(input, kind, enrichWithAggregation) {
     if (!res.ok) throw new Error('OpenRouter HTTP ' + res.status);
     const data = await res.json();
     const raw = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
-    return enrichWithAggregation(Object.assign(parseAiJson(raw, input, kind), { aiEngine: 'live', aiModel: model }));
+    return enrichWithAggregation(Object.assign(parseAiJson(raw, input, kind), { aiEngine: 'live', aiModel: PROVIDERS.openrouter.label + ' | ' + model }));
   } catch (err) {
-    await new Promise((r) => setTimeout(r, 1200));
     const fb = mockResult(input, kind);
     fb.tags = (fb.tags || []).concat(['#Mock_Fallback']);
     fb.aiEngine = 'fallback';
@@ -152,6 +147,12 @@ async function callOpenRouter(input, kind, enrichWithAggregation) {
 }
 
 async function callAnthropic(input, kind, enrichWithAggregation) {
+  const gate = resolveRemote();
+  if (!gate.allowed || gate.provider !== 'anthropic') {
+    const m = mockResult(input, kind);
+    m.aiFallbackReason = reasonText(gate.reason);
+    return enrichWithAggregation(m);
+  }
   try {
     const prompt =
       'You are an enterprise data parser for Project Continuum. ' +
@@ -163,7 +164,7 @@ async function callAnthropic(input, kind, enrichWithAggregation) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': (localStorage.getItem('ANTHROPIC_API_KEY') || ''),
+        'x-api-key': gate.key,
         'anthropic-version': '2023-06-01',
         //'dangerously-allow-browser': 'true',
         'anthropic-dangerous-direct-browser-access': 'true',
@@ -177,16 +178,15 @@ async function callAnthropic(input, kind, enrichWithAggregation) {
     if (!res.ok) throw new Error('Anthropic HTTP ' + res.status);
     const data = await res.json();
     const raw = (data && Array.isArray(data.content) && data.content[0] && data.content[0].text) || '';
-    return enrichWithAggregation(Object.assign(parseAiJson(raw, input, kind), { aiEngine: 'live', aiModel: 'claude-3-5-sonnet-20241022' }));
+    return enrichWithAggregation(Object.assign(parseAiJson(raw, input, kind), { aiEngine: 'live', aiModel: PROVIDERS.anthropic.label + ' | claude-3-5-sonnet-20241022' }));
   } catch (err) {
-    // Anthropic failed (network/HTTP/parse) — retry via the existing OpenRouter
-    // path before ever falling all the way through to the mock safety net.
-    const out = await callOpenRouter(input, kind, enrichWithAggregation);
-    if (out && out.aiEngine === 'mock') {
-      out.aiEngine = 'fallback';
-      out.aiFallbackReason = 'Anthropic: ' + String((err && err.message) || err).slice(0, 120);
-    }
-    return out;
+    // Anthropic failed. Do NOT retry through another provider: the user only agreed
+    // to send content to Anthropic. Fall back to the local rules and say so.
+    const fb = mockResult(input, kind);
+    fb.tags = (fb.tags || []).concat(['#Mock_Fallback']);
+    fb.aiEngine = 'fallback';
+    fb.aiFallbackReason = 'Anthropic: ' + String((err && err.message) || err).slice(0, 120);
+    return enrichWithAggregation(fb);
   }
 }
 
@@ -194,9 +194,13 @@ async function callAnthropic(input, kind, enrichWithAggregation) {
 // card predates engine tracking (seed data), so nothing is claimed either way.
 export function aiEngineLabel(engine, model) {
   const e = String(engine || '');
-  if (e === 'live') return 'Live AI' + (model ? ' · ' + String(model).split('/').pop() : '');
-  if (e === 'mock') return 'Offline mock AI';
-  if (e === 'fallback') return 'Mock fallback · live AI failed';
+  if (e === 'live') {
+    const parts = String(model || '').split(' | ');
+    if (parts.length === 2) return parts[0] + ' · ' + parts[1].split('/').pop();
+    return 'Live AI' + (model ? ' · ' + String(model).split('/').pop() : '');
+  }
+  if (e === 'mock') return 'No AI (local rules)';
+  if (e === 'fallback') return 'No AI (local rules) · provider failed';
   return '';
 }
 
@@ -211,7 +215,7 @@ export async function processWithAI(text, type) {
     if (out.privacy == null) out.privacy = 'Team Shared';
     return out;
   };
-  if (getProvider() === 'anthropic') {
+  if (resolveRemote().provider === 'anthropic') {
     return callAnthropic(input, kind, enrichWithAggregation);
   }
   return callOpenRouter(input, kind, enrichWithAggregation);
@@ -283,9 +287,10 @@ export async function askSmartAssistant(question, contextCards, privacyMode, act
     const blocks = scoped.slice(0, 12).map((card) => '--- CARD ID: ' + String((card && card.id) || '') + ' ---\nTitle: ' + String((card && card.title) || '') + '\nContent: ' + String((card && (card.content || card.synthesizedText || card.detail)) || '').slice(0, 800));
     ctx = (blocks.join('\n\n') || '[]').slice(0, 6000);
   } catch (e) { try { ctx = JSON.stringify(lite, null, 2).slice(0, 6000); } catch (e2) {} }
-  let apiKey = null; let model = DEFAULT_MODEL;
-  try { apiKey = localStorage.getItem('OPENROUTER_API_KEY') || ''; model = localStorage.getItem('OPENROUTER_MODEL') || DEFAULT_MODEL; } catch (e) {}
-  if (apiKey && String(apiKey).trim()) {
+  const gate = resolveRemote();
+  const apiKey = gate.allowed && gate.provider === 'openrouter' ? gate.key : '';
+  const model = getModel();
+  if (apiKey) {
     try {
       const res = await fetch(OPENROUTER_URL, {
         method: 'POST',
@@ -308,11 +313,9 @@ export async function askSmartAssistant(question, contextCards, privacyMode, act
       }
       throw new Error('Empty LLM answer');
     } catch (err) {
-      await new Promise((r) => setTimeout(r, 900));
       return mockQaFallback(q, scoped, mode, persona);
     }
   }
-  await new Promise((r) => setTimeout(r, 900));
   return mockQaFallback(q, scoped, mode, persona);
 }
 export default { processWithAI, askSmartAssistant, privacyMatchesCard, aiEngineLabel };

@@ -210,6 +210,34 @@ const scenarios = {
     check('no page errors', !errors.length, errors.join(' | '));
   },
 
+  // PRV-01/02: No AI by default; remote AI needs consent and a session-only key.
+  async 'privacy: no-AI default and session-only keys'({ p, errors }) {
+    const requests = [];
+    p.on('request', (r) => { if (/openrouter\.ai|anthropic\.com/.test(r.url())) requests.push(r.url()); });
+    await p.click('#harvester-open-btn'); await sleep(p, 500);
+    await p.click('button[title="AI configuration"]'); await sleep(p, 300);
+    check('default provider is No AI', (await p.inputValue('#ai-provider')) === 'none');
+    check('status says everything stays on the device', /stays on this device/.test(await p.innerText('#ai-status')));
+    await p.selectOption('#ai-provider', 'openrouter'); await sleep(p, 300);
+    const d = await p.innerText('#ai-disclosure');
+    check('disclosure names destination and data sent', /openrouter\.ai/.test(d) && /What is sent/.test(d), d.slice(0, 120));
+    check('not used until consent is given', /not confirmed/.test(await p.innerText('#ai-status')));
+    await p.check('#ai-ack'); await p.fill('#ai-key', 'sk-smoke-test-key'); await p.click('#ai-key-save'); await sleep(p, 300);
+    check('status shows provider on after consent and key', /OpenRouter is on/.test(await p.innerText('#ai-status')));
+    const stored = await p.evaluate(() => ({
+      local: Object.entries(localStorage).some(([k, v]) => /sk-smoke-test-key/.test(k + v)),
+      sessionHas: Object.entries(sessionStorage).some(([k, v]) => /sk-smoke-test-key/.test(v)),
+      shown: document.body.innerText.includes('sk-smoke-test-key'),
+    }));
+    check('key is not in localStorage', !stored.local);
+    check('key is held for the session only', stored.sessionHas);
+    check('key is never shown again', !stored.shown);
+    await p.click('#ai-key-clear'); await sleep(p, 300);
+    check('removing the key turns remote AI off', /no key is set/.test(await p.innerText('#ai-status')));
+    check('no request went to an AI provider', requests.length === 0, requests.join(','));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+
   // DAT-01: export, wipe, restore in a real browser, no network needed.
   async 'backup: export then restore round trip'({ p, errors }) {
     const count = () => p.evaluate(() => JSON.parse(localStorage.getItem('onion_db_state')).timeline.length);

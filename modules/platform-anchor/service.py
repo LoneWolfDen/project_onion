@@ -1,6 +1,5 @@
 
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import hashlib, re, uuid, json
@@ -8,8 +7,13 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
+import local_only
+
 app = FastAPI(title="Anchor Service v0.16", version="v0.16-archive-justification-sorted-provenance-links")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+local_only.apply(app)
 
 STORE = {}
 CONNECTED_ID_EXTRACT = re.compile(r'(006[A-Za-z0-9]{12,15})')
@@ -406,4 +410,4 @@ def clear_all():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    local_only.run(app, 8000)

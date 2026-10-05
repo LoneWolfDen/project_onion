@@ -129,5 +129,5 @@ Still to settle during step 15: how a RAID row is recognised on re-import (propo
 
 ## 7. Progress (5 Oct)
 
-Done and merged: FND-02 (#37), FND-03 plus repo hygiene check (#38), DAT-02 (#39), DAT-01 backup and restore (#40), DAT-05 destructive-action protection (#41).
-Next: PRV-01/02 (no-AI default, API keys out of storage), PRV-03 (loopback), HUI-01 (typography), then Release 1 (IMP-01/02 first, with smart column matching).
+Release 0 done and merged: FND-02 (#37), FND-03 plus repo hygiene check (#38), DAT-02 (#39), DAT-01 backup and restore (#40), DAT-05 destructive-action protection (#41), PRV-01/02 no-AI default and keys out of storage (#42), PRV-03 loopback-only services (#43), HUI-01 readable typography (#44), DAT-04 persistent storage (#45).
+Next: Release 1, starting with IMP-01/02 (Source record, generic Excel/CSV engine with smart column matching), then IMP-03 RAID, IMP-04 GDP, DAT-03 IndexedDB, PWA-01/02, HND-01..03, PRV-05. Each release runs in its own thread to keep context small; this section is the source of status.

@@ -129,6 +129,5 @@ Still to settle during step 15: how a RAID row is recognised on re-import (propo
 
 ## 7. Progress (5 Oct)
 
-Done and merged: FND-02 (#37), FND-03 plus repo hygiene check (#38), DAT-02 (#39).
-In review: DAT-01 backup and restore (#40), DAT-05 destructive-action protection (#41).
-Next: PRV-01/02 (no-AI default, API keys out of storage), PRV-03 (loopback), HUI-01 (typography), then Release 1.
+Done and merged: FND-02 (#37), FND-03 plus repo hygiene check (#38), DAT-02 (#39), DAT-01 backup and restore (#40), DAT-05 destructive-action protection (#41).
+Next: PRV-01/02 (no-AI default, API keys out of storage), PRV-03 (loopback), HUI-01 (typography), then Release 1 (IMP-01/02 first, with smart column matching).

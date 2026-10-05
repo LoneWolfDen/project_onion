@@ -5,6 +5,7 @@
 // New flow: Stage to Data Park → syncStatus pending_processing → Run AI Processing Engine
 // → processWithAI() → mark processed + dispatch onion:db-update.
 import { projectIdEquals } from '../core/schema.js';
+import { AiSettings, useAiStatus } from './AiSettings.js';
 import { BackupPanel, downloadBackupNow } from './BackupPanel.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { readLocal } from '../core/FailoverDB.js';
@@ -172,8 +173,7 @@ export function HarvesterPanel(props) {
   const [rawText, setRawText] = window.React.useState('');
   const [kind, setKind] = window.React.useState('Email');
   const [showGear, setShowGear] = window.React.useState(false);
-  const [apiKey, setApiKey] = window.React.useState(() => { try { return localStorage.getItem('OPENROUTER_API_KEY') || ''; } catch (e) { return ''; } });
-  const [model, setModel] = window.React.useState(() => { try { return localStorage.getItem('OPENROUTER_MODEL') || 'anthropic/claude-3-haiku'; } catch (e) { return 'anthropic/claude-3-haiku'; } });
+  const aiStatus = useAiStatus();
   const [parkMsg, setParkMsg] = window.React.useState('');
   const [confirmKind, setConfirmKind] = window.React.useState(null); // 'reset' | 'clear' | null
   const [confirmBusy, setConfirmBusy] = window.React.useState(false);
@@ -397,13 +397,6 @@ export function HarvesterPanel(props) {
       setParkMsg('Harvester refined ' + out.length + ' clipboard card(s) — ready for review below.');
     } catch (e) { setParkMsg('Harvester failed: ' + String((e && e.message) || e)); }
     setProcessing(false);
-  };
-  const saveKey = () => {
-    try {
-      localStorage.setItem('OPENROUTER_API_KEY', String(apiKey || '').trim());
-      localStorage.setItem('OPENROUTER_MODEL', String(model || 'anthropic/claude-3-haiku').trim() || 'anthropic/claude-3-haiku');
-      setParkMsg('API key saved locally. Live AI mode enabled.');
-    } catch (e) { setParkMsg('Could not save key (storage blocked). Mock mode continues.'); }
   };
   const onStage = async () => {
     const v = String(rawText || '').trim();
@@ -762,8 +755,8 @@ export function HarvesterPanel(props) {
     return html`<${ConfirmDialog}
       title=${confirmKind === 'clear' ? 'Clear ALL data?' : 'Reset to the demo dataset?'}
       lines=${confirmKind === 'clear'
-        ? ['This permanently removes ' + what + ' from this browser and leaves Continuum empty.', 'API key and model settings are kept. This cannot be undone without a backup.']
-        : ['This replaces your current data (' + what + ') with the fictional demo dataset.', 'API key and model settings are kept. This cannot be undone without a backup.']}
+        ? ['This permanently removes ' + what + ' from this browser and leaves Continuum empty.', 'AI provider and model settings are kept. This cannot be undone without a backup.']
+        : ['This replaces your current data (' + what + ') with the fictional demo dataset.', 'AI provider and model settings are kept. This cannot be undone without a backup.']}
       confirmLabel=${confirmKind === 'clear' ? 'Clear all data' : 'Reset to demo'}
       phrase=${confirmKind === 'clear' ? CLEAR_PHRASE : null}
       busy=${confirmBusy} error=${confirmErr}
@@ -803,15 +796,8 @@ export function HarvesterPanel(props) {
             <button type="button" onClick=${() => setShowGear((v) => !v)} title="AI configuration" style=${{ marginLeft: 'auto', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '9999px', width: '26px', height: '26px', cursor: 'pointer' }}>⚙️</button>
           </div>
           ${showGear ? html`<div style=${{ marginTop: '8px', padding: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
-            <div style=${{ fontSize: '11px', fontWeight: 700 }}>OpenRouter API Key (stored in localStorage only)</div>
-            <input type="password" value=${apiKey} onInput=${(e) => setApiKey(e.target.value)} placeholder="sk-or-v1-…" style=${{ width: '100%', marginTop: '6px', background: '#f9fafb', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }} />
-            <input value=${model} onInput=${(e) => setModel(e.target.value)} placeholder="anthropic/claude-3-haiku" style=${{ width: '100%', marginTop: '6px', background: '#f9fafb', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }} />
-            <div style=${{ marginTop: '6px', display: 'flex', gap: '6px' }}>
-              <button type="button" onClick=${saveKey} className="px-3 py-1 rounded-full bg-white border text-[11px]">Save key</button>
-              <button type="button" onClick=${() => { try { localStorage.removeItem('OPENROUTER_API_KEY'); } catch (e) {} setApiKey(''); setParkMsg('Key cleared — Mock mode active.'); }} className="px-3 py-1 rounded-full bg-white border text-[11px]">Clear (use Mock)</button>
-            </div>
-            <div style=${{ fontSize: '10px', fontStyle: 'italic', color: '#6b7280', marginTop: '4px' }}>No key → 1.2s simulated latency + mock JSON so the demo never fails.</div>
-            <button type="button" onClick=${onResetSeed} title="Replace all local data with the fictional hackathon demo dataset (API key settings are kept)" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset Demo Dataset</button>
+            <${AiSettings} />
+            <button type="button" onClick=${onResetSeed} title="Replace all local data with the fictional hackathon demo dataset (AI settings are kept)" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset Demo Dataset</button>
           </div>` : null}
           <${BackupPanel} />
           <button type="button" id="clear-all-btn" onClick=${onClearAll} title="Permanently remove all local data (asks you to type a phrase)" style=${{ marginTop: '8px', width: '100%', background: '#fff', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>🗑 Clear all data…</button>
@@ -820,7 +806,7 @@ export function HarvesterPanel(props) {
             <select value=${kind} onChange=${(e) => setKind(e.target.value)} style=${{ background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}>
               ${['Email', 'Excel', 'Scrape', 'Chat'].map((t) => html`<option key=${t} value=${t}>${t}</option>`)}
             </select>
-            <span style=${{ fontSize: '11px', color: apiKey && String(apiKey).trim() ? '#065F46' : '#92400E', alignSelf: 'center' }}>${apiKey && String(apiKey).trim() ? '● Live AI' : '● Mock AI'}</span>
+            <span style=${{ fontSize: '11px', color: aiStatus.allowed ? '#065F46' : '#92400E', alignSelf: 'center' }}>${aiStatus.allowed ? '● ' + aiStatus.provider + ' AI' : '● No AI'}</span>
           </div>
           ${false && html` 
           <textarea id="datapark-raw" rows="6" value=${rawText} onInput=${(e) => setRawText(e.target.value)} placeholder="Paste raw harvest text here (emails, RAID rows, chat excerpts)…" style=${{ width: '100%', marginTop: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px', fontSize: '12px' }}></textarea>

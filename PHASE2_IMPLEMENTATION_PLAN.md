@@ -84,6 +84,7 @@ Follows the backlog's releases but regroups by dependency. Each step ships as it
 12. **PWA-01/02** manifest + icons; rewrite `sw.js` with versioned cache name, explicit precache list, old-cache cleanup, waiting-worker "Update available" prompt (remove unconditional `skipWaiting`), never cache `/ingest`/card data; Playwright offline-start test.
 13. **IMP-01** `Source` record + `core/source.js` (SHA-256, kind, adapter/version, as-of); duplicate detection before staging.
 14. **IMP-02** generic xlsx/csv engine: sheet picker, header mapping preview, unmapped list, row preview, atomic stage (all-or-nothing), provenance (file/sheet/row/column). Pure parse+map functions tested with fixture files under `tests/fixtures/`.
+    - **Smart column matching (agreed 5 Oct).** Three layers, each optional and each ending in the user's confirmation on the mapping preview: (1) exact header match; (2) a built-in alias table plus fuzzy match for known template variants (for example older RAID headers such as "Raised", "Owner", "Mitigation"); (3) AI suggestions for headers still unmatched. Layer 3 sends **only the header names and a target field list, never row values**, and only after the user explicitly enables a provider (PRV-01). Two ways to run it with no installation: paste the generated prompt into Copilot or any assistant and paste the JSON answer back, or use the configured provider key. AI output is a suggestion only: it is shown with "Suggested" labels, can never skip the preview, is validated against the allowed field list, and cannot change values. Confirmed mappings are saved per header fingerprint, so a known variant is recognised next time without AI. Without any AI the engine still works, with unmatched columns listed for manual mapping.
 15. **IMP-03/04** RAID then GDP adapters as mapping templates over step 14 (not new engines). Explicit column mapping only, `Not found` for blanks, re-import appends a timeline node (diff by row key), unmatched/other-project counts shown. Templates are now agreed (see `docs/IMPORT_TEMPLATES.md`).
 16. **HND-01/02/03** rewrite handover as a pure `buildHandover(state, project)` returning sections; approved-only default; separate "Needs confirmation"; `Not found` for empty sections; remove keyword inference in favour of structured fields (add `category` field via mapping, `Uncategorised` otherwise); preview + review-confirmed gate with timestamp and package hash.
 17. **PRV-05** one `core/pii.js` used by paste, notes, titles, bookmarklet, file import; preview of redactions; retain protected original; resolve the "emails stay" rule (needs a product answer).
@@ -118,7 +119,13 @@ Decided (5 Oct):
 3. No credential was ever committed, so no rotation is needed. The FND-01 history scan stays as a confirming CI check.
 4. Chroma database files are deleted from git (PR `claude/fnd02-untrack-chroma`).
 
-Received (5 Oct): the GDP export columns (42) and RAID log columns (11) are recorded in `docs/IMPORT_TEMPLATES.md`, so step 15 is unblocked. Open gaps in them need decisions before RAID re-import is finished: the RAID file has no row ID and no project column (proposed: pick the project at import, identity = raised date + type + normalised description start), and the 0-1 scores have no stated formula (imported as given).
+Received (5 Oct): the GDP export columns (42) and RAID log columns (11) are recorded in `docs/IMPORT_TEMPLATES.md`. Answers to the open points:
+- **RAID project:** the import goes to the active project already shown in the Harvester drawer, so no project column or picker is needed.
+- **Private until approved:** GDP content (including people names) is held private until the user approves it, like all imported data.
+- **Scores:** Probability, Impact and Overall Impact are imported as given, never recalculated.
+- **RAID templates vary:** older RAID templates are still in use with mostly-similar columns, so the import engine must tolerate different headers (see step 14). GDP is a tool export and its columns rarely change, so it uses a fixed template with a clear error if headers differ.
+
+Still to settle during step 15: how a RAID row is recognised on re-import (proposed: raised date + type + normalised description start, since the file has no row ID).
 
 ## 7. Progress (5 Oct)
 

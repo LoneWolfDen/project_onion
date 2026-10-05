@@ -69,10 +69,11 @@ Rules (from IMP-04): rows join to a project only through GDP ID, Project ID or O
 
 Note the date formats differ between the two files (GDP uses `/`, RAID uses `-`); both are day-first. Parsers must reject ambiguous or non-matching dates rather than guess.
 
-## Gaps found in the templates (need a decision before IMP-03/04 are finished)
+## Decisions (5 Oct)
 
-1. **RAID has no row ID and no project column.** IMP-03 requires re-importing a changed row to append a timeline node to the *same* RAID item, and the file does not say which project it belongs to. Proposed: the user picks the project at import time, and a row's identity is Date Raised + RAID Type + the first 80 characters of Description (normalised). Edited descriptions would then appear as a new item; the alternative is to ask the team to add a RAID ID column.
-2. **RAID has no raised-by column.** Only Assigned To (owner) exists.
-3. **People columns in GDP** (GDD, GDM, PrgM, EM / DL, BDM / AM / SAM, National Account Owner) hold names. They are treated as stakeholders. Per the product decision emails are kept; names are not redacted, so these need the "private until approved" review like any imported content.
-4. **Probability, Impact and Overall Impact** are 0-1 scores with no stated formula. They are imported as given and never recalculated or relabelled (no invented significance).
-5. **One GDP row per project per week** is assumed (Status Date drives freshness). If a file holds several dates for one project, every row is staged and the latest Status Date is shown as current.
+1. **RAID project:** an import always goes to the active project shown in the Harvester drawer; the file needs no project column. RAID has no row ID, so identity on re-import is proposed as Date Raised + RAID Type + the first 80 characters of the normalised Description (to be confirmed when IMP-03 is built).
+2. **Older RAID templates:** several versions are in use with mostly the same columns. The engine matches headers exactly, then through an alias table, then (optionally) AI suggestions, and always shows the mapping for confirmation. The 11 columns above are the canonical target fields.
+3. **GDP:** a tool export whose columns rarely change. Fixed template; a missing or renamed required header is reported before anything is staged.
+4. **Privacy:** imported GDP and RAID content, including people names, stays private until the user approves it. Emails are kept (not redacted).
+5. **Scores:** Probability, Impact and Overall Impact are imported as given, never recalculated.
+6. **Dates:** GDP uses DD/MM/YYYY and RAID uses DD-MM-YYYY (both day-first). Dates that do not parse are shown as text with a warning, never guessed.

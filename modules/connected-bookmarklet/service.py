@@ -1,17 +1,15 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import pathlib
 
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
+import local_only
+
 app = FastAPI(title="Connected Bookmarklet", version="v0.10-bookmarklet")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+local_only.apply(app)
 
 BASE = pathlib.Path(__file__).parent
 
@@ -52,4 +50,4 @@ def install():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8004)
+    local_only.run(app, 8004)

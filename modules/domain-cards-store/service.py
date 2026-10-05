@@ -1,19 +1,17 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime
 import hashlib, re
 
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
+import local_only
+
 app = FastAPI(title="Cards Store", version="v0.8.1-cors-fix")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+local_only.apply(app)
 
 STORE = {}
 
@@ -42,7 +40,7 @@ def root():
         "service": "domain-cards-store",
         "status": "ok",
         "version": "v0.8.1-cors-fix",
-        "cors": "allow_origins * enabled for PWA :8002",
+        "cors": "local PWA origins only",
         "freshness": "2d ago green >1 month red Stale",
         "weekly_bucket": "0.9 EXTENSION show vs 0.25 CHASING hide"
     }
@@ -113,4 +111,4 @@ def get_card(client_name: str, anchor_id: str, card_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    local_only.run(app, 8001)

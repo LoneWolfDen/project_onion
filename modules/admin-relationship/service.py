@@ -1,19 +1,17 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import json, os, pathlib
 from datetime import datetime
 
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
+import local_only
+
 app = FastAPI(title="Admin Relationship - Editable Mapping", version="v0.11-relationship-model")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+local_only.apply(app)
 
 BASE = pathlib.Path(__file__).parent
 # Single location for reads and writes, derived from the repo checkout.
@@ -178,4 +176,4 @@ def export_markdown():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8005)
+    local_only.run(app, 8005)

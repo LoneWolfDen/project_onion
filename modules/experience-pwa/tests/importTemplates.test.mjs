@@ -42,3 +42,29 @@ test('saved mapping is remembered per header fingerprint', async () => {
   const m = E.matchHeaders(headers, T.RAID_FIELDS, T.loadSavedMap(fp));
   assert.equal(m.columns[0].field, 'owner'); assert.equal(m.columns[0].how, 'saved');
 });
+
+test('GDP: 42 fixed columns, exact headers only, required keys', () => {
+  assert.equal(T.GDP_FIELDS.length, 42);
+  const headers = T.GDP_FIELDS.map((f) => f.label);
+  const m = E.matchHeaders(headers, T.GDP_FIELDS, {}, { exactOnly: true });
+  assert.ok(m.columns.every((c) => c.how === 'exact')); assert.deepEqual(m.missingRequired, []);
+  const renamed = E.matchHeaders(headers.map((h) => (h === 'Status Date' ? 'Status Dt' : h)), T.GDP_FIELDS, {}, { exactOnly: true });
+  assert.deepEqual(renamed.missingRequired, ['statusDate']);
+  assert.equal(renamed.columns.find((c) => c.header === 'Status Dt').field, null);
+});
+
+test('GDP: rows join only by GDP ID, Project ID (zeros stripped) or Opportunity ID; others are counted', () => {
+  const project = { project_ids: ['7302010'], opportunity_numbers: ['O-730201'], gdp_url: 'https://gdp.example/dashboard/project-details/7302' };
+  const row = (v) => ({ row: 2, values: v });
+  const rows = [row({ projectId: '007302010' }), row({ oppId: 'O-730201' }), row({ gdpId: '7302' }), row({ projectId: '999' }), row({ engagement: 'Beacon' })];
+  const r = T.gdpSelect(rows, project);
+  assert.equal(r.staged.length, 3);
+  assert.match(r.notes[1], /^1 rows belong to other projects/); assert.match(r.notes[2], /^1 rows have no/);
+});
+
+test('GDP: content cites as-of date and shows Not found for blanks', () => {
+  const rec = { values: { status: 'Green', statusDate: '2026-10-01', summary: 'On track', gdd: 'Ana' } };
+  assert.equal(T.gdpTitle(rec), 'GDP status 2026-10-01: Green');
+  const c = T.gdpContent(rec);
+  assert.match(c, /As of: 2026-10-01/); assert.match(c, /GDM Not found/);
+});

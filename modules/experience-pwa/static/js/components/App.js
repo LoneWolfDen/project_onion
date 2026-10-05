@@ -4,7 +4,7 @@ import { StorageBanner } from './StorageBanner.js';
 import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ImportWizard } from './ImportWizard.js';
-import { RAID_FIELDS, raidValidate, raidContent, raidTitle, provenanceText } from '../core/importTemplates.js';
+import { RAID_FIELDS, raidValidate, raidContent, raidTitle, provenanceText, GDP_FIELDS, gdpSelect, gdpContent, gdpTitle } from '../core/importTemplates.js';
 import { ProjectModal } from './ProjectModal.js';
 import { HandoverModal } from './HandoverModal.js';
 import { WORLD_OF_CONTINUUM } from '../constants/worldOfContinuum.js';
@@ -251,16 +251,19 @@ export function App() {
   const allConnectedUrls = (a) => { const u = (Array.isArray(a.connected_record_urls) ? a.connected_record_urls : []).concat(Array.isArray(a.salesforceUrls) ? a.salesforceUrls : []); return [...new Set(u.map(String))].filter(Boolean); };
   const openEdit = () => { if (!active) return; setMName(active.project_name); setMOpp((active.opportunity_numbers || [])[0] || ''); setMOppList(((active.opportunity_numbers || []).length ? active.opportunity_numbers : ['']).map(String)); setMProj(''); setMProjList(['']); setMAccount(active.client_name); setMJust(''); setMErr(''); setMGdp(firstGdpUrl(active)); setMConnected(firstConnectedUrl(active)); setMConnList((allConnectedUrls(active).length ? allConnectedUrls(active) : [''])); setMOppConnList(oppConnToState(active)); setMKeywords(((active.keywords || active.filter_keywords) || []).join(', ')); setMContacts(contactsToState(active)); setMSharepoint(spToState(active.sharepoint_urls || active.sharepoint || null)); setEditOpen(true); };
   const RAID_ADAPTER = { name: 'raid', label: 'RAID log', fields: RAID_FIELDS, validate: raidValidate };
+  const GDP_ADAPTER = { name: 'gdp', label: 'GDP export', fields: GDP_FIELDS, strict: true, select: gdpSelect };
+  const onGdpFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: GDP_ADAPTER }); };
   const onRaidFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: RAID_ADAPTER }); };
   const onImportStage = ({ records, source, warnings }) => {
+    const isGdp = importJob && importJob.adapter.name === 'gdp';
     const out = records.map((r, i) => {
-      const s = piiScreen(raidContent(r));
-      const p = toPayload({ id: 'raid-' + source.id + '-' + r.row + '-' + Date.now() + '-' + i, projectId: active.project_name, type: 'RAID', title: raidTitle(r), source: provenanceText(r), content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)' }, activePersona);
-      return p;
+      const s = piiScreen(isGdp ? gdpContent(r) : raidContent(r));
+      const src = provenanceText(r, isGdp ? 'summary' : 'description') + (isGdp ? ' (as of ' + (r.values.statusDate || 'Not found') + ')' : '');
+      return toPayload({ id: (isGdp ? 'gdp-' : 'raid-') + source.id + '-' + r.row + '-' + Date.now() + '-' + i, projectId: active.project_name, type: isGdp ? 'GDP' : 'RAID', title: isGdp ? gdpTitle(r) : raidTitle(r), source: src, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)' }, activePersona);
     });
     setStaged((p) => p.concat(out));
     setImportedSources((prev) => { const next = prev.concat([source]); try { localStorage.setItem('continuum_import_sources', JSON.stringify(next)); } catch (e) {} return next; });
-    setHStatus('Staged ' + out.length + ' RAID rows from ' + source.name + (warnings.length ? ' (' + warnings.length + ' warnings)' : '') + '. They stay private until approved.');
+    setHStatus('Staged ' + out.length + (isGdp ? ' GDP' : ' RAID') + ' rows from ' + source.name + (warnings.length ? ' (' + warnings.length + ' warnings)' : '') + '. They stay private until approved.');
     setImportJob(null);
   };
   const parseWb = async (file, source) => {
@@ -448,7 +451,7 @@ export function App() {
         <div className="woc-sig" title="Built by VY · LoneWolfDen: self-sufficient, unafraid of change, ready to explore"><svg className="woc-wolf" viewBox="0 0 64 64" aria-hidden="true"><circle cx="46" cy="14" r="11" fill="#E2E8F0"/><path fill="#64748B" d="M5 9.5 L13 9.5 L18.5 8 L20.5 3 L23.5 0.5 L25.5 9 L29.5 13.5 C33 17 35.5 22 38.5 28 C41.5 33 45 38 47.5 43.5 C49 46.5 50 49 50.5 51 C54.5 50 58.5 51 61.5 53.5 L63.5 57 C60 56 56 56 52.5 56.5 L51.5 59.5 L42.5 59.5 L40.5 56.5 L36.5 56.5 L35.5 59.5 L25.5 59.5 L26 57.5 L28 55.5 C28.5 50.5 28.5 45 27.5 40.5 L25 36.5 L26.5 33.5 L23.5 31 L24.5 28 L21.5 25.5 L19.5 21 L16.5 17.5 L10 15.5 L12.5 13 Z"/><path fill="#CBD5E1" d="M0 64 L6 60.5 L20 59.5 L34 60 L50 59.5 L60 60.5 L64 62 L64 64 Z"/></svg><span>-VY-</span></div>
       </aside>
     </div>` : null}
-    <${HarvesterPanel} project=${active} activePersona=${activePersona} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} onRaidFile=${onRaidFile} />${importJob ? html`<${ImportWizard} file=${importJob.file} adapter=${importJob.adapter} knownSources=${importedSources} onStage=${onImportStage} onCancel=${() => setImportJob(null)} />` : null}
+    <${HarvesterPanel} project=${active} activePersona=${activePersona} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} onRaidFile=${onRaidFile} onGdpFile=${onGdpFile} />${importJob ? html`<${ImportWizard} file=${importJob.file} adapter=${importJob.adapter} project=${active} knownSources=${importedSources} onStage=${onImportStage} onCancel=${() => setImportJob(null)} />` : null}
   </div>`;
 
 

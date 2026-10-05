@@ -80,7 +80,7 @@ export const FUZZY_MIN = 0.8;
 
 // field = { key, label, required?, aliases?: [] }. Order of layers: saved, exact, alias, fuzzy.
 // saved: { [fingerprint]: { [headerNorm]: fieldKey } } looked up by caller; pass the inner map here.
-export function matchHeaders(headers, fields, saved = {}) {
+export function matchHeaders(headers, fields, saved = {}, opts = {}) {
   const used = new Set();
   const out = headers.map((h, index) => ({ index, header: String(h == null ? '' : h).trim(), field: null, how: null, score: 0 }));
   const byKey = new Map(fields.map((f) => [f.key, f]));
@@ -88,7 +88,8 @@ export function matchHeaders(headers, fields, saved = {}) {
   const pass = (fn) => out.forEach((m) => { if (!m.field && m.header) fn(m); });
   pass((m) => { const k = saved[normHeader(m.header)]; if (k && byKey.has(k) && !used.has(k)) claim(m, k, 'saved', 1); });
   pass((m) => { const f = fields.find((x) => !used.has(x.key) && (normHeader(x.label) === normHeader(m.header) || normHeader(x.key) === normHeader(m.header))); if (f) claim(m, f.key, 'exact', 1); });
-  pass((m) => { const f = fields.find((x) => !used.has(x.key) && (x.aliases || []).some((a) => normHeader(a) === normHeader(m.header))); if (f) claim(m, f.key, 'alias', 0.95); });
+  if (!opts.exactOnly) pass((m) => { const f = fields.find((x) => !used.has(x.key) && (x.aliases || []).some((a) => normHeader(a) === normHeader(m.header))); if (f) claim(m, f.key, 'alias', 0.95); });
+  if (opts.exactOnly) return finish();
   pass((m) => {
     let best = null;
     fields.forEach((f) => {
@@ -97,11 +98,14 @@ export function matchHeaders(headers, fields, saved = {}) {
     });
     if (best) claim(m, best.f.key, 'fuzzy', Number(best.s.toFixed(2)));
   });
-  return {
-    columns: out,
-    unmapped: out.filter((m) => !m.field && m.header),
-    missingRequired: fields.filter((f) => f.required && !used.has(f.key)).map((f) => f.key),
-  };
+  return finish();
+  function finish() {
+    return {
+      columns: out,
+      unmapped: out.filter((m) => !m.field && m.header),
+      missingRequired: fields.filter((f) => f.required && !used.has(f.key)).map((f) => f.key),
+    };
+  }
 }
 
 // Layer 3: AI suggestions. Only header names and the field list leave the app; never row values.

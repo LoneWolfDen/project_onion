@@ -304,6 +304,29 @@ const scenarios = {
     check('one recovery copy retained', kept.copies === 1, JSON.stringify(kept));
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'readable typography (HUI-01)': async ({ p, errors }) => {
+    for (const [w, h] of [[1366, 768], [1920, 1080]]) {
+      await p.setViewportSize({ width: w, height: h });
+      await p.click('#harvester-open-btn'); await sleep(p, 500);
+      const r = await p.evaluate(() => {
+        let small = 0; const ex = [];
+        const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        while (walk.nextNode()) {
+          const n = walk.currentNode; if (!n.textContent.trim()) continue;
+          const el = n.parentElement; if (!el || !el.getClientRects().length) continue;
+          const cs = getComputedStyle(el); if (cs.visibility === 'hidden') continue;
+          if (parseFloat(cs.fontSize) * (parseFloat(cs.zoom) || 1) < 12 && parseFloat(cs.fontSize) < 12) { small++; if (ex.length < 3) ex.push(el.tagName + ':' + n.textContent.trim().slice(0, 20)); }
+        }
+        const short = [...document.querySelectorAll('button')].filter((b) => b.getClientRects().length && b.getBoundingClientRect().height < 30).length;
+        return { small, ex, short, hscroll: document.documentElement.scrollWidth > innerWidth + 1 };
+      });
+      check(`${w}x${h}: no visible text under 12px`, r.small === 0, JSON.stringify(r.ex));
+      check(`${w}x${h}: no horizontal scroll`, !r.hscroll);
+      check(`${w}x${h}: buttons at least 30px tall`, r.short === 0, String(r.short));
+      await closeDrawer(p);
+    }
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
 };
 
 // --------------------------------------------------------------------- main

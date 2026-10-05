@@ -1,7 +1,7 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
 import { getRaw } from '../core/repo.js';
-import { confidenceBreakdown, confidenceTier, buildConfidenceText } from '../core/confidence.js';
+import { buildConfidenceText, evidenceStrength } from '../core/confidence.js';
 import { aiEngineLabel } from '../core/AiClient.js';
 import { cardAge, formatWhen, toDate } from '../core/timeAgo.js';
 import { matchSentence } from '../core/matchExplain.js';
@@ -383,19 +383,10 @@ function provenanceEntriesFor(m) {
 // the card's own source plus the RAW updates already shared onto it. Hashtags,
 // AI summaries and draft (staged) updates are not evidence, so they add nothing.
 // The number comes from core/confidence.js; the breakdown shows every term.
-function evidenceFor(m) {
-  const cardSource = String((m && (m.source || m.type)) || 'Timeline');
-  const nodes = Array.isArray(m && m.nodes) ? m.nodes : [];
-  const isRaw = (n) => n && String(n.kind || '').toUpperCase() === 'RAW';
-  const shared = nodes.filter((n) => isRaw(n) && !n.stagedAppend);
-  const drafts = nodes.filter((n) => isRaw(n) && n.stagedAppend).length;
-  const origins = [cardSource].concat(shared.map((n) => String(n.source || cardSource)));
-  const entries = Math.max(1, shared.length);
-  return Object.assign(confidenceBreakdown(origins.map((o) => ({ origin: o })), entries), { entries, drafts });
-}
+function evidenceFor(m) { return evidenceStrength(m); }
 function evidenceBox(ev, tier) {
   const n = ev.origins.length;
-  const conf = buildConfidenceText(ev, tier);
+  const conf = buildConfidenceText(ev, tier, 'Evidence strength');
   const count = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   return html`<div className="mt-2 p-2.5 rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF2] text-[11px] text-[#334155]">
     <div><span className="font-semibold text-[#1E293B]">${conf.lead}</span> (${ev.pct}%).${conf.sources ? ' Sources: ' + conf.sources + '.' : ''} ${count(ev.entries, 'source entry', 'source entries')}.${ev.drafts ? ' ' + count(ev.drafts, 'draft update', 'draft updates') + ' not counted until shared.' : ''}</div>
@@ -718,7 +709,7 @@ export function TimelineCard(props) {
     })();
     // Edit, delete and the privacy switch act on the whole card, so only its author gets them.
     const isCardOwner = (() => { const me = String(props.activePersona || '').trim().toLowerCase(); const o = String(m.author || m.contributor || '').trim().toLowerCase(); return !!me && o === me; })();
-    const confTier = confidenceTier(d.pct);
+    const confTier = d.ev.tier;
     const provenanceEntries = provenanceEntriesFor(m);
     // Only drafts the viewer wrote survive viewForPersona, so this is "I have a draft here".
     const hasPendingAppends = (Array.isArray(m.pendingAppends) && m.pendingAppends.length > 0) || (Array.isArray(m.nodes) && m.nodes.some((n) => n && n.stagedAppend));

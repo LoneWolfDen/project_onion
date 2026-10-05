@@ -345,6 +345,8 @@ class FailoverDB {
     };
     if (patch.title === undefined) delete patch.title;
     if (patch.smartAppend === undefined) delete patch.smartAppend;
+    // KNW-01: structured fields from the import or review step ride through approval.
+    ['category', 'raidType', 'importSourceId', 'kind'].forEach((k) => { if (aiResult && aiResult[k]) patch[k] = aiResult[k]; });
     if (t) { Object.assign(t, patch); t.syncStatus = 'pending_upload'; stampVectorPending(t); ensureTimelineNodes(t); writeLocal(s); fireVectorMirror('upsert', t); }
     return t || { id, ...patch };
   }

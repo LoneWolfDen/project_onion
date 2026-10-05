@@ -264,7 +264,7 @@ export function App() {
       const rawText = isGdp ? gdpContent(r) : raidContent(r);
       const pid = (isGdp ? 'gdp-' : 'raid-') + source.id + '-' + r.row + '-' + Date.now() + '-' + i;
       retainOriginal(pid, rawText, s.text);
-      return toPayload({ id: pid, projectId: active.project_name, type: isGdp ? 'GDP' : 'RAID', title: piiScreen(isGdp ? gdpTitle(r) : raidTitle(r)).text, source: src, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)' }, activePersona);
+      return toPayload({ id: pid, projectId: active.project_name, type: isGdp ? 'GDP' : 'RAID', title: piiScreen(isGdp ? gdpTitle(r) : raidTitle(r)).text, source: src, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)', category: isGdp ? 'delivery' : 'raid', raidType: isGdp ? '' : String(r.values.type || ''), importSourceId: source.id }, activePersona);
     });
     setStaged((p) => p.concat(out));
     setImportedSources((prev) => { const next = prev.concat([source]); try { localStorage.setItem('continuum_import_sources', JSON.stringify(next)); } catch (e) {} return next; });

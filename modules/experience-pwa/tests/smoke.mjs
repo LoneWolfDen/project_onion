@@ -373,6 +373,26 @@ const scenarios = {
     await ctx.setOffline(false);
     check('no update banner when nothing changed', await p.locator('#update-banner').count() === 0);
   },
+  'handover review gate (HND-01/02/03)': async ({ p, errors }) => {
+    await p.click('text=Handover'); await p.waitForSelector('#ho-review', { timeout: 5000 });
+    const btn = p.locator('button:has-text("Generate Interactive HTML Report")');
+    check('export is locked until the review is confirmed', await btn.isDisabled());
+    const sum = await p.innerText('#ho-review-summary');
+    check('review summary counts approved items and what needs confirmation', /approved items/.test(sum) && /(need confirmation|Nothing waiting)/.test(sum), sum.slice(0, 120));
+    await p.waitForFunction(() => !document.getElementById('ho-confirm').disabled, null, { timeout: 5000 });
+    await p.check('#ho-confirm');
+    check('confirmation is timestamped with a package hash', /Confirmed 20\d\d-.*package [0-9a-f]{12}/.test(await p.innerText('#ho-confirmed-at')));
+    check('export unlocks after confirming', await btn.isEnabled());
+    await p.fill('textarea[placeholder^="Transition notes"]', 'changed after review');
+    await sleep(p, 600);
+    check('changing the content cancels the confirmation', await btn.isDisabled() && !(await p.isChecked('#ho-confirm')));
+    await p.check('#ho-confirm');
+    const [dl] = await Promise.all([p.waitForEvent('download'), btn.click()]);
+    const txt = fs.readFileSync(await dl.path(), 'utf8');
+    check('exported file carries who confirmed, when, and the hash', /Reviewed and confirmed by/.test(txt) && /Package hash [0-9a-f]{16}/.test(txt));
+    check('empty sections read Not found', /<em>Not found<\/em>/.test(txt));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
   'readable typography (HUI-01)': async ({ p, errors }) => {
     for (const [w, h] of [[1366, 768], [1920, 1080]]) {
       await p.setViewportSize({ width: w, height: h });

@@ -101,7 +101,7 @@ body { font-family: Inter, system-ui, sans-serif; background: #fafcfe; color: #1
 .ho-proj-tab.is-active .ho-add-btn.is-in{background:#fff;color:#1E293B;border-color:#fff;}
 .ho-tiles-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px;}
 @media(min-width:760px){.ho-tiles-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
-@media(min-width:1100px){.ho-tiles-grid{grid-template-columns:repeat(5,minmax(0,1fr));}}
+@media(min-width:1100px){.ho-tiles-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
 .ho-tile-btn{text-align:left;border-radius:12px;border:1px solid #E6EAF2;padding:10px;cursor:pointer;transition:box-shadow .15s,transform .15s;}
 .ho-tile-btn:hover{box-shadow:0 4px 14px rgba(31,74,122,.15);}
 .ho-tile-btn.is-on{outline:2px solid #1E293B;outline-offset:1px;}

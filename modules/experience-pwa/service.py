@@ -1,5 +1,8 @@
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_shared"))
+import local_only
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 STATIC_DIR = os.path.abspath(STATIC_DIR)
 # Root-level SW only (correct scope for PWA install at /).
@@ -89,4 +92,4 @@ if __name__ == "__main__":
     size = os.path.getsize(idx_path) if exists else 0
     print(f"Serving PWA at http://localhost:8002/ and http://localhost:8002/app")
     print(f"Static dir: {STATIC_DIR} - exists: {exists} - size: {size} bytes")
-    HTTPServer(("0.0.0.0", 8002), PWAHandler).serve_forever()
+    HTTPServer((local_only.bind_host(), 8002), PWAHandler).serve_forever()

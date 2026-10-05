@@ -22,6 +22,12 @@ const CONTENT = [
   ['AWS access key', /\bAKIA[0-9A-Z]{16}\b/],
   ['API key', /\bsk-(or-v1-|ant-)?[A-Za-z0-9_-]{24,}\b/],
 ];
+// Services must stay loopback-only with no wildcard CORS (PRV-03).
+const SERVICE_SRC = /^modules\/[^/]+\/(service|main)\.py$/;
+const SERVICE_RULES = [
+  ['service binds 0.0.0.0', /host\s*=\s*["']0\.0\.0\.0["']|\(\s*["']0\.0\.0\.0["']\s*,/],
+  ['wildcard CORS', /allow_origins\s*=\s*\[[^\]]*["']\*["']/],
+];
 for (const f of files) {
   if (SKIP.some((re) => re.test(f))) continue;
   let text;
@@ -31,6 +37,7 @@ for (const f of files) {
   lines.forEach((line, i) => {
     if (line.length > 4000) return; // generated/minified blobs
     for (const [name, re] of CONTENT) if (re.test(line)) problems.push(`${name}: ${f}:${i + 1}`);
+    if (SERVICE_SRC.test(f)) for (const [name, re] of SERVICE_RULES) if (re.test(line)) problems.push(`${name}: ${f}:${i + 1}`);
   });
 }
 

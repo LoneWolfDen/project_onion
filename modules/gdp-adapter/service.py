@@ -1,19 +1,17 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import hashlib, re
 
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
+import local_only
+
 app = FastAPI(title="GDP Adapter", version="v0.9-gdp-export-active")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+local_only.apply(app)
 
 STORE = {}  # key = gdp_id#client_name
 
@@ -42,7 +40,7 @@ def root():
         "status": "ok",
         "version": "v0.9-gdp-export-active",
         "port": 8003,
-        "cors": "allow_origins * for PWA :8002",
+        "cors": "local PWA origins only",
         "export": "Engagement Data Export - Active - exact columns - full read on HEAD change",
         "eventbridge": "6h HEAD check for gdp_ids 8399 + sharepoint acmespf - full read on change",
         "levels": {
@@ -143,4 +141,4 @@ def ingest_gdp(payload: Dict):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8003)
+    local_only.run(app, 8003)

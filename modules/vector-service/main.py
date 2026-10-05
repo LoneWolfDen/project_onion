@@ -1,21 +1,18 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Any, Optional
 import json
 
 from store import vector_store
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
+import local_only
 
 app = FastAPI(title="Project Onion Vector Service", version="1.0.1-privacyfix")
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:8002", "http://localhost:8000", "*"],  # Allow all for hackathon
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS limited to the local PWA; origin and Host guard (PRV-03)
+local_only.apply(app)
 
 class CardPayload(BaseModel):
     id: str

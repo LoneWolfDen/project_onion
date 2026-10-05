@@ -1,6 +1,6 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
-import { confidenceBreakdown, confidenceTier } from '../core/confidence.js';
+import { confidenceBreakdown, confidenceTier, buildConfidenceText } from '../core/confidence.js';
 import { aiEngineLabel } from '../core/AiClient.js';
 import { cardAge, formatWhen, toDate } from '../core/timeAgo.js';
 import { matchSentence } from '../core/matchExplain.js';
@@ -394,9 +394,10 @@ function evidenceFor(m) {
 }
 function evidenceBox(ev, tier) {
   const n = ev.origins.length;
+  const conf = buildConfidenceText(ev, tier);
   const count = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   return html`<div className="mt-2 p-2.5 rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF2] text-[11px] text-[#334155]">
-    <div><span className="font-semibold text-[#1E293B]">Evidence strength: ${tier}</span> (${ev.pct}%) — based on ${count(n, 'independent source', 'independent sources')}: ${ev.origins.join(', ')} · ${count(ev.entries, 'source entry', 'source entries')}.${ev.drafts ? ' ' + count(ev.drafts, 'draft update', 'draft updates') + ' not counted until shared.' : ''}</div>
+    <div><span className="font-semibold text-[#1E293B]">${conf.lead}</span> (${ev.pct}%).${conf.sources ? ' Sources: ' + conf.sources + '.' : ''} ${count(ev.entries, 'source entry', 'source entries')}.${ev.drafts ? ' ' + count(ev.drafts, 'draft update', 'draft updates') + ' not counted until shared.' : ''}</div>
     <details className="mt-1"><summary className="cursor-pointer text-[#1F4A7A]">How is this calculated?</summary>
       <div className="mt-1 text-[#475569]">${ev.base} base + ${ev.originBoost} (${count(n, 'source', 'sources')} × 8, max 32) + ${ev.rowBoost} (${count(ev.extraRows, 'extra entry', 'extra entries')} × 3, max 9) = ${ev.pct}%${ev.capped ? ' (capped at 97)' : ''}. High ≥ 85, Medium ≥ 60. Hashtags, AI summaries and unshared drafts are not counted.</div>
     </details>
@@ -426,6 +427,17 @@ function similarToPlaybookBanner(m, clientName, onReview) {
     return html`<button type="button" onClick=${onReviewHere} title=${why.tooltip} className="mt-2 w-full text-left px-2 py-1 rounded-[8px] bg-[#F5F3FF] border border-[#C4B5FD] text-[10px] text-[#5B21B6] cursor-pointer hover:bg-[#EDE9FE]">⚡ ${label} — ${why.sentence} <span className="ml-1 font-bold underline">Review</span></button>`;
   } catch (e) { return null; }
 }
+// Queued-in-Harvester banner (purple): a staged item has been matched to this
+// card but not approved yet. Review & Merge opens the Harvester review queue.
+function queuedMergeBanner(m) {
+  try {
+    const info = m && window.__onionReviewTargets && window.__onionReviewTargets[String(m.id)];
+    if (!info) return null;
+    const label = info.count === 1 ? '1 similar update queued in Harvester' : info.count + ' similar updates queued in Harvester';
+    const go = (e) => { try { if (e && e.stopPropagation) e.stopPropagation(); } catch (e2) {} window.dispatchEvent(new CustomEvent('onion:open-harvester-review')); };
+    return html`<div style=${{ marginTop: '8px', width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', borderRadius: '8px', background: '#F5F3FF', border: '1px solid #C4B5FD', fontSize: '11px', color: '#5B21B6' }} title=${info.tooltip}><span className="min-w-0 flex-1">⚡ ${label} — ${info.sentence}</span><button type="button" onClick=${go} style=${{ flexShrink: 0, background: '#5B21B6', color: '#fff', border: 'none', borderRadius: '9999px', padding: '2px 10px', fontWeight: 600, cursor: 'pointer' }}>Review & Merge</button></div>`;
+  } catch (e) { return null; }
+}
 export function TimelineCard(props) {
   const project = props.project;
   const timeline = props.timeline || [];
@@ -451,6 +463,14 @@ export function TimelineCard(props) {
   // visible cards changes (persona switch, project switch, note approval, etc.)
   // changes the hook count between renders -> React error #300 -> white screen.
   const [selectedNodeMap, setSelectedNodeMap] = window.React.useState({});
+  // #11 — re-render when the Harvester review queue changes so the
+  // "Review & Merge" banner appears/clears on the card a queued item will merge into.
+  const [, setReviewTick] = window.React.useState(0);
+  window.React.useEffect(() => {
+    const h = () => setReviewTick((v) => v + 1);
+    window.addEventListener('onion:review-queue', h);
+    return () => window.removeEventListener('onion:review-queue', h);
+  }, []);
   window.React.useEffect(() => {
     if (!menuOpenId) return;
     const close = () => setMenuOpenId(null);
@@ -766,9 +786,9 @@ export function TimelineCard(props) {
       <div className="absolute top-3 right-3 flex items-center gap-1">
         <div className="relative">
           <button type="button" onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); setMenuOpenId(menuOpen ? null : String(m.id)); }} title="Card options" aria-label="Card options" className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">⋯</button>
-          ${menuOpen ? html`<div onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} className="absolute right-0 mt-1 w-32 rounded-[10px] bg-white border border-[#E6EAF2] shadow-lg z-20 overflow-hidden">
-            <button type="button" disabled=${!isCardOwner} onClick=${() => onStartEditCard(m)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-[#1E293B] hover:bg-[#F8FAFC]' : 'text-[#94A3B8] cursor-not-allowed')}>✏️ Edit Details</button>
-            <button type="button" disabled=${!isCardOwner} onClick=${() => onDeleteCard(m.id)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
+          ${menuOpen ? html`<div onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} className="absolute right-0 mt-1 rounded-[10px] bg-white border border-[#E6EAF2] overflow-hidden" style=${{ width: '140px', zIndex: 20, boxShadow: '0 8px 20px rgba(15,23,42,.14)' }}>
+            <button type="button" disabled=${!isCardOwner} onClick=${() => onStartEditCard(m)} style=${{ whiteSpace: 'nowrap' }} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-[#1E293B] hover:bg-[#F8FAFC]' : 'text-[#94A3B8] cursor-not-allowed')}>✏️ Edit Details</button>
+            <button type="button" disabled=${!isCardOwner} onClick=${() => onDeleteCard(m.id)} style=${{ whiteSpace: 'nowrap' }} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
           </div>` : null}
         </div>
         <button onClick=${() => flip(setOpenProv, m.id)} title=${open ? 'Collapse' : 'Expand'} aria-label=${open ? 'Collapse card' : 'Expand card'} aria-expanded=${open ? 'true' : 'false'} className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">${open ? '-' : '+'}</button>
@@ -794,6 +814,7 @@ export function TimelineCard(props) {
       
       ${timelineStrip(m, isOwner, selectedNode, toggleNode)}
       ${selectedNode? html`<div className="mt-2 p-2 rounded-[8px] bg-[#F0F7FF] border border-[#A8C6F0] text-[11px] text-[#1F4A7A] animate-in fade-in slide-in-from-top-1 shadow-sm"><div className="font-bold flex items-center gap-2"><span>${nodeViewerTitle(selectedNode)}</span><span className="font-normal opacity-70 ml-auto">${selectedNode.author || 'Unknown author'} • ${formatWhen(selectedNode.at) || 'Just now'}</span><button onClick=${() => setSelectedNode(null)} className="ml-1 text-[14px] hover:bg-blue-100 rounded w-5 h-5 flex items-center justify-center">✕</button></div><div className="mt-1 leading-normal whitespace-pre-wrap">${selectedNode.fullText || selectedNode.text}</div></div>` : null}
+      ${queuedMergeBanner(m)}
       ${similarToPlaybookBanner(m, m.client_name, () => setAppendOpen((prev) => Object.assign({}, prev, { [m.id]: true })))}
       ${pendingAppendsBanner(m, appendsOpen, toggleAppends)}
       ${hasAppends &&!!appendOpen[m.id]? appendedNodesBlock(m) : null}

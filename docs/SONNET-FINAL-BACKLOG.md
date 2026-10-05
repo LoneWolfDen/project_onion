@@ -105,3 +105,17 @@ Good - but I found 2 more small gaps: sync footer hardcoded Local/Vector always 
 Prompt:
 You are reviewing Project Onion full flow per FINAL BACKLOG. P0 white screen hook bug + author drop, P1 privacy + pending_processing filter + personas.js + PII both title/body, P2 model confidence detailed banner + model % dynamic + pills cumulative + provenance multiple links + Review & Merge banner + YOUR NOTES sync fix + sort order, P3 side panel width + STAGED counter + Collapse handlers + pastel styling. Do not change business logic, only restore beauty that exists in old HTML if data still there. Provide fixed files diff. Complexity estimates given.
 
+
+---
+
+## STATUS — verified 2026-10-05 (headless browser run against the demo dataset)
+
+| # | Item | Status |
+|---|------|--------|
+| 1–6, 8, 9, 10, 12, 13, 14, 16, 17 | P0/P1 + P2/P3 fixes (hook-in-loop, author drop, isOwner, pending_processing filter, personas, PII title+body, dynamic %, cumulative pills, multi-link provenance, notes sync, updated_at sort + pending pinned, Collapse All, dynamic sync footer, STAGED(N)) | Done, verified |
+| 7 | Model confidence text | Done — card floor reads "Model confidence: High — 3 sources fused, validated via Salesforce (85%). Sources: Teams Chat + Salesforce + Outlook Mail." (`buildConfidenceText` in `core/confidence.js`; "fused" only with 2+ distinct sources, "validated via" only when a system-of-record source is present; a single source reads "not yet corroborated"). Unit tests: `modules/experience-pwa/tests/confidence.test.mjs`. |
+| 11 | "Similar to playbook → Review & Merge" | Done — purple banner on the target card while a matched item is queued in the Harvester (before Approve); **Review & Merge** opens the drawer and scrolls to the review queue. The post-Approve "update waiting for your review" banner already existed. |
+| 15 | Side panels | Done — Harvester drawer and Guide slider are 40vw (min 480px, max 94vw); Harvester content text scaled up (zoom 1.18); backdrop dim set to 30%. |
+| STAGED | Run AI clears STAGED(N) | Done — items moved to the review queue no longer count as staged. They stay `pending_processing` in storage until Approve, so a reload before Approve restores them. |
+| 18, 19 | Chroma non-blocking, pastel audit | Not verified (low priority) |
+| 14 (ellipsis menu) | "Card options" button | Done, verified — Edit Details / Delete work for the card owner and are disabled for others; menu width fixed (compiled CSS lacked `w-32`). |

@@ -26,3 +26,17 @@ export function confidenceBreakdown(evidence = [], sourceRowCount = 1) {
 export function calcConfidence(evidence = [], sourceRowCount = 1) {
   return confidenceBreakdown(evidence, sourceRowCount).pct;
 }
+// Plain-language confidence sentence (backlog #7), built only from the breakdown:
+//   "Model confidence: High — 3 sources fused, validated via Salesforce. Sources: Email + Teams Chat + Salesforce"
+// "N sources fused" needs 2+ distinct sources; one source is reported as not yet
+// corroborated. "validated via X" names a system-of-record source (Salesforce,
+// GDP, SharePoint, RAID log, Excel) that is among the fused sources — never invented.
+const SYSTEM_OF_RECORD = /salesforce|gdp|sharepoint|raid|excel/i;
+export function buildConfidenceText(breakdown, tier) {
+  const origins = (breakdown && breakdown.origins) || [];
+  const n = origins.length;
+  const label = 'Model confidence: ' + tier;
+  if (n <= 1) return { lead: label + ' — ' + (n ? '1 source (' + origins[0] + '), not yet corroborated' : 'no sources recorded'), sources: '' };
+  const validator = origins.find((o) => SYSTEM_OF_RECORD.test(String(o)));
+  return { lead: label + ' — ' + n + ' sources fused' + (validator ? ', validated via ' + validator : ''), sources: origins.join(' + ') };
+}

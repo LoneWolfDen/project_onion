@@ -275,16 +275,7 @@ try {
         });
       }
     } catch (e) {}
-    try {
-      // Register SW at root scope (canonical file: modules/experience-pwa/sw.js;
-      // dev service.py serves its bytes at /sw.js; prod Nginx serves module root).
-      // Failures are silent — localStorage queue still works (Dual-Mode).
-      if ('serviceWorker' in navigator && window.isSecureContext !== false) {
-        navigator.serviceWorker.register('/sw.js').then((reg) => {
-          try { if (reg && reg.sync) reg.sync.register('onion-vector-sync').catch(() => {}); } catch (e) {}
-        }).catch(() => {});
-      }
-    } catch (e) {}
+    // The service worker itself is registered by core/pwa.js (registerServiceWorker, called from main.js).
     setInterval(() => { try { flushVectorQueue(); } catch (e) {} }, 60000);
     setTimeout(() => { try { flushVectorQueue(); } catch (e) {} }, 3000);
   }

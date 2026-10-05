@@ -11,6 +11,7 @@ STATIC_DIR = os.path.abspath(STATIC_DIR)
 # Task 1 (no dual copies; single source of truth at module root).
 ROOT_SW = os.path.abspath(os.path.join(os.path.dirname(__file__), "sw.js"))
 class PWAHandler(SimpleHTTPRequestHandler):
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.webmanifest': 'application/manifest+json'}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
     def do_GET(self):

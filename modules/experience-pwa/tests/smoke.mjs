@@ -354,6 +354,25 @@ const scenarios = {
     check('only the matching row is staged, privately', /Staged 1 GDP rows/.test(t) && /private until approved/.test(t), t.slice(0, 80));
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'PWA install and offline start (PWA-01/02)': async ({ p, ctx, errors }) => {
+    const mf = await p.evaluate(async () => { const r = await fetch('/manifest.webmanifest'); return { type: r.headers.get('content-type'), j: await r.json() }; });
+    check('manifest served with its own type and icons load', /manifest\+json/.test(mf.type) && mf.j.icons.length >= 3);
+    const icon = await p.evaluate(async () => (await fetch('/icons/icon-192.png')).status);
+    check('icon is served', icon === 200);
+    await p.evaluate(async () => { await navigator.serviceWorker.ready; });
+    await p.reload(); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const ctl = await p.evaluate(() => !!navigator.serviceWorker.controller);
+    check('page is controlled by the service worker', ctl);
+    const names = await p.evaluate(() => caches.keys());
+    check('one versioned cache, precache filled', names.length === 1 && /^continuum-sw-v\d+$/.test(names[0]), names.join(','));
+    const n = await p.evaluate(async () => (await (await caches.open((await caches.keys())[0])).keys()).length);
+    check('app shell precached', n >= 40, String(n));
+    await ctx.setOffline(true);
+    await p.reload(); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 }).catch(() => {});
+    check('app starts offline with cards visible', (await p.locator('[id^="tl-"]').count()) > 0);
+    await ctx.setOffline(false);
+    check('no update banner when nothing changed', await p.locator('#update-banner').count() === 0);
+  },
   'readable typography (HUI-01)': async ({ p, errors }) => {
     for (const [w, h] of [[1366, 768], [1920, 1080]]) {
       await p.setViewportSize({ width: w, height: h });

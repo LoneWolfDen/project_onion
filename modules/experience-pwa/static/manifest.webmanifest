@@ -1,0 +1,15 @@
+{
+  "name": "Continuum",
+  "short_name": "Continuum",
+  "description": "Local-first project knowledge for delivery leads. Your data stays on this device.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FDE8F0",
+  "theme_color": "#831843",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

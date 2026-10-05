@@ -17,11 +17,17 @@ import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
 import { matchSentence } from '../core/matchExplain.js';
 import { PERSONAS, getDefaultPersona } from '../constants/personas.js';
 const html = window.htm.bind(window.React.createElement);
+// KNW-01: structured fields that must survive staging, review and approval (category, RAID type, source id).
+export function carryFields(o) {
+  const out = {};
+  ['category', 'raidType', 'importSourceId', 'kind'].forEach((k) => { if (o && o[k]) out[k] = o[k]; });
+  return out;
+}
 export function toPayload(o, persona) {
   const p = (typeof persona === 'string' && persona) || (o && (o.author || o.contributor)) || 'Brené';
   // Privacy passthrough (Fail Closed default): callers that carry a user-selected
   // privacy (e.g. Harvester review queue) must survive to FailoverDB.
-  return { id: o.id, projectId: o.projectId, type: o.type, title: o.title, source: o.source, timestamp: o.timestamp || 'Just now', content: o.content, piiStatus: o.piiStatus || 'Clean', syncStatus: 'pending_upload', author: o.author || p, contributor: o.contributor || p, privacy: o.privacy || 'Team Shared' };
+  return { id: o.id, projectId: o.projectId, type: o.type, title: o.title, source: o.source, timestamp: o.timestamp || 'Just now', content: o.content, piiStatus: o.piiStatus || 'Clean', syncStatus: 'pending_upload', author: o.author || p, contributor: o.contributor || p, privacy: o.privacy || 'Team Shared', ...carryFields(o) };
 }
 // Canonical privacy normalizer (Fail Closed): every private alias collapses to
 // 'My Notes (Private)' so TimelineCard pills, scopeByPrivacyMode, is_private_card
@@ -213,6 +219,7 @@ export function HarvesterPanel(props) {
         mergeHint: s.mergeHint || '', structured: (s.structured && typeof s.structured === 'object') ? s.structured : {},
         privacy: s.privacy || 'Team Shared', smartAppend: s.smartAppend || null,
         aiEngine: s.aiEngine || '', aiModel: s.aiModel || '', aiFallbackReason: s.aiFallbackReason || '',
+        ...carryFields(s),
       }));
       if (mapped.length) { setParsedReviewQueue((prev) => (Array.isArray(prev) ? prev : []).concat(mapped)); setParkMsg('Staged ' + mapped.length + ' item(s) ready for review below.'); }
     } catch (e) {}
@@ -684,7 +691,7 @@ export function HarvesterPanel(props) {
             continue;
           } else {
             // If append logic failed, fallback to new card to prevent data loss
-            const aiResult = { title: card.title, synthesizedText: card.synthesizedText, tags: card.tags, impactScore: card.impactScore, privacy: effPrivacy, author: card.author, aiEngine: card.aiEngine, aiModel: card.aiModel, aiFallbackReason: card.aiFallbackReason };
+            const aiResult = { title: card.title, synthesizedText: card.synthesizedText, tags: card.tags, impactScore: card.impactScore, privacy: effPrivacy, author: card.author, aiEngine: card.aiEngine, aiModel: card.aiModel, aiFallbackReason: card.aiFallbackReason, ...carryFields(card) };
             if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
             done++;
           }
@@ -702,7 +709,7 @@ export function HarvesterPanel(props) {
             contributor: card.contributor,
             aiEngine: card.aiEngine,
             aiModel: card.aiModel,
-            aiFallbackReason: card.aiFallbackReason
+            aiFallbackReason: card.aiFallbackReason, ...carryFields(card)
           };
           if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
           done++;

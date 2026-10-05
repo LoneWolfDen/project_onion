@@ -32,11 +32,31 @@ export function calcConfidence(evidence = [], sourceRowCount = 1) {
 // corroborated. "validated via X" names a system-of-record source (Salesforce,
 // GDP, SharePoint, RAID log, Excel) that is among the fused sources — never invented.
 const SYSTEM_OF_RECORD = /salesforce|gdp|sharepoint|raid|excel/i;
-export function buildConfidenceText(breakdown, tier) {
+export function buildConfidenceText(breakdown, tier, name = 'Model confidence') {
   const origins = (breakdown && breakdown.origins) || [];
   const n = origins.length;
-  const label = 'Model confidence: ' + tier;
+  const label = name + ': ' + tier;
   if (n <= 1) return { lead: label + ' — ' + (n ? '1 source (' + origins[0] + '), not yet corroborated' : 'no sources recorded'), sources: '' };
   const validator = origins.find((o) => SYSTEM_OF_RECORD.test(String(o)));
   return { lead: label + ' — ' + n + ' sources fused' + (validator ? ', validated via ' + validator : ''), sources: origins.join(' + ') };
+}
+
+// KNW-04 Evidence Strength. Counts only what a reviewer can check: the card's own source plus RAW
+// updates already approved onto it. Draft (staged) updates, AI summaries and hashtags add nothing,
+// and several entries from one origin count as one independent source.
+//   Tier (docs/EVIDENCE_STRENGTH.md): Low = one source only (not corroborated, whatever the score);
+//   Medium = 2+ independent sources; High = 3+ independent sources and a score of 85 or more.
+export function evidenceStrength(card) {
+  const m = card || {};
+  const cardSource = String(m.source || m.type || 'Timeline');
+  const nodes = Array.isArray(m.nodes) ? m.nodes : [];
+  const isRaw = (n) => n && String(n.kind || '').toUpperCase() === 'RAW';
+  const shared = nodes.filter((n) => isRaw(n) && !n.stagedAppend);
+  const drafts = nodes.filter((n) => isRaw(n) && n.stagedAppend).length;
+  const aiNodes = nodes.filter((n) => n && String(n.kind || '').toUpperCase() === 'AI').length;
+  const origins = [cardSource].concat(shared.map((n) => String(n.source || cardSource)));
+  const entries = Math.max(1, shared.length);
+  const b = confidenceBreakdown(origins.map((o) => ({ origin: o })), entries);
+  const tier = b.origins.length < 2 ? 'Low' : (b.origins.length >= 3 && b.pct >= 85 ? 'High' : 'Medium');
+  return { ...b, tier, entries, drafts, ignored: { drafts, aiNodes } };
 }

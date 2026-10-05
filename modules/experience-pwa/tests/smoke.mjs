@@ -93,7 +93,7 @@ const scenarios = {
     const body = await p.innerText('body');
     const pcts = [...body.matchAll(/\((\d+)%\)/g)].map((m) => m[1]);
     check('model % varies per card (not static 63)', new Set(pcts).size > 1, 'values=' + pcts.join(','));
-    check('confidence sentence: "Model confidence: <tier> — …"', /Model confidence: (High|Medium|Low) — /.test(body));
+    check('evidence sentence: "Evidence strength: <tier> — …"', /Evidence strength: (High|Medium|Low) — /.test(body));
     check('single source reads "not yet corroborated"', /1 source \([^)]+\), not yet corroborated/.test(body));
     check('footer shows Local and Vector status', /Local:\s*\S+\s*\|\s*Vector:\s*\S+/.test(body));
     check('YOUR NOTES sync shows "Nothing pending"', /Nothing pending/.test(body));

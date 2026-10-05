@@ -8,6 +8,7 @@
 //  - Empty sections say "Not found".
 //  - A package hash lets the review gate prove that what was confirmed is what is exported.
 import { canonicalJson, sha256Hex } from './backup.js';
+import { KINDS, kindOf, sourceIdsOf } from './knowledge.js';
 
 export const NOT_FOUND = 'Not found';
 export const CATS = [
@@ -87,7 +88,12 @@ export function buildHandover(state, project, opts = {}) {
     key: cat.key, label: cat.label,
     items: approved.filter((c) => categoryOf(c) === cat.key).sort((a, b) => cardTime(b) - cardTime(a)),
   })).map((sec) => ({ ...sec, empty: sec.items.length ? '' : NOT_FOUND }));
+  // KNW-01: every approved statement has one kind; Facts need sources and mock/fallback AI is never a Fact.
+  const kinds = {};
+  const kindCounts = Object.fromEntries(KINDS.map((k) => [k.key, 0]));
+  approved.forEach((c) => { const k = kindOf(c); kinds[String(c.id)] = k; kindCounts[k] += 1; });
   return {
+    kinds, kindCounts,
     cards: approved,
     open: approved.filter((c) => !isClosed(c)).sort((a, b) => cardTime(b) - cardTime(a)),
     closed: approved.filter(isClosed).sort((a, b) => closedTime(b) - closedTime(a)),
@@ -105,7 +111,7 @@ export function packageManifest(entries, options = {}) {
     projects: entries.map((e) => ({
       ref: (e.project && e.project.Project_ReferenceID) || '',
       remark: String(e.perNote || ''),
-      items: e.groups.cards.map((c) => ({ id: String(c.id || ''), title: String(c.title || ''), text: String(c.synthesizedText || c.content || c.detail || ''), category: categoryOf(c), closed: isClosed(c) })),
+      items: e.groups.cards.map((c) => ({ id: String(c.id || ''), title: String(c.title || ''), text: String(c.synthesizedText || c.content || c.detail || ''), category: categoryOf(c), closed: isClosed(c), kind: kindOf(c), sourceIds: sourceIdsOf(c) })),
       unconfirmed: options.includeUnconfirmed ? e.groups.needsConfirmation.map((c) => String(c.id || '')) : [],
     })),
   };

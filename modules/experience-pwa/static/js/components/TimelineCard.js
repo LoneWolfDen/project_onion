@@ -1,5 +1,6 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
+import { getRaw } from '../core/repo.js';
 import { confidenceBreakdown, confidenceTier, buildConfidenceText } from '../core/confidence.js';
 import { aiEngineLabel } from '../core/AiClient.js';
 import { cardAge, formatWhen, toDate } from '../core/timeAgo.js';
@@ -653,7 +654,7 @@ export function TimelineCard(props) {
       if (fromProps.length) return fromProps.filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;
     } catch (e) {}
     try {
-      const raw = (typeof localStorage !== 'undefined' && localStorage.getItem('onion_db_state')) || '';
+      const raw = getRaw() || '';
       const st = raw ? JSON.parse(raw) : null;
       const all = [].concat((st && st.notes) || [], (st && st.timeline) || []);
       return all.filter((x) => x && (x.syncStatus === 'pending_upload' || x.syncStatus === 'pending_review')).length;

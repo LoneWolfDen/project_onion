@@ -1,3 +1,4 @@
+import { getRaw, setRaw } from '../core/repo.js';
 // js/data/seedData.v2.js — Offline-first demo fixture set (Dual-Mode Facade).
 // Additive loader ONLY — never auto-overwrites FailoverDB. Project_ReferenceID
 // is the real key (not projectId/project_name literals) — resolved at load
@@ -43,13 +44,13 @@ export function loadSeedV2() {
     console.warn('loadSeedV2: no Project_ReferenceID found — create a project first (Register/Add new).');
     return 0;
   }
-  const db = JSON.parse(localStorage.getItem('onion_db_state') || '{"timeline":[]}');
+  const db = JSON.parse(getRaw() || '{"timeline":[]}');
   if (!Array.isArray(db.timeline)) db.timeline = [];
   const toAdd = v2Cards
     .map((c) => ({ ...c, project: activeRef, project_name: activeRef, Project_ReferenceID: activeRef }))
     .filter((c) => !db.timeline.find((x) => x.contentHash === c.contentHash));
   db.timeline = [...db.timeline, ...toAdd];
-  localStorage.setItem('onion_db_state', JSON.stringify(db));
+  setRaw(JSON.stringify(db));
   return toAdd.length;
 }
 

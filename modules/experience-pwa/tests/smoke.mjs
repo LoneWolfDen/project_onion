@@ -135,14 +135,14 @@ const scenarios = {
   },
 
   async 'multi-source confidence sentence'({ p, errors }) {
-    const id = await p.evaluate(() => {
-      const s = JSON.parse(localStorage.getItem('onion_db_state'));
+    const id = await p.evaluate(async () => {
+      const s = JSON.parse(window.__continuumRepo.getRaw());
       const c = s.timeline.find((x) => /refresh the Beacon-201 onboarding/.test(x.title));
       const at = new Date().toISOString();
       c.nodes = (c.nodes || []).concat([
         { kind: 'RAW', text: 'Salesforce amount updated', source: 'Salesforce', author: 'Malcolm', at },
         { kind: 'RAW', text: 'Client email confirming', source: 'Outlook Mail', author: 'Malcolm', at }]);
-      localStorage.setItem('onion_db_state', JSON.stringify(s));
+      window.__continuumRepo.setRaw(JSON.stringify(s)); await window.__continuumRepo.flush();
       return c.id;
     });
     await p.reload(); await p.waitForSelector('#tl-' + id); await sleep(p, 600);
@@ -246,7 +246,7 @@ const scenarios = {
     const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#backup-export')]);
     const file = path.join(os.tmpdir(), 'smoke-backup-' + Date.now() + '.json');
     await dl.saveAs(file);
-    await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('onion_db_state')); s.timeline = []; localStorage.setItem('onion_db_state', JSON.stringify(s)); });
+    await p.evaluate(async () => { const s = JSON.parse(window.__continuumRepo.getRaw()); s.timeline = []; window.__continuumRepo.setRaw(JSON.stringify(s)); await window.__continuumRepo.flush(); });
     check('state wiped before restore', (await count()) === 0);
     await p.reload(); await p.waitForSelector('#harvester-open-btn'); await p.click('#harvester-open-btn'); await sleep(p, 500);
     await p.setInputFiles('#backup-file', file); await p.waitForSelector('#backup-preview');
@@ -292,7 +292,7 @@ const scenarios = {
   // DAT-02: damaged saved data is kept, reported, and never overwritten.
   async 'storage: corrupt state shows banner and is preserved'({ p, errors }) {
     const damaged = '{"timeline":[{"id":"precious"';
-    await p.evaluate((raw) => localStorage.setItem('onion_db_state', raw), damaged);
+    await p.evaluate(async (raw) => { window.__continuumRepo.setRaw(raw); await window.__continuumRepo.flush(); }, damaged);
     await p.reload(); await p.waitForSelector('.storage-banner', { timeout: 15000 });
     const banner = await p.innerText('.storage-banner');
     check('banner explains the problem in plain language', /could not be read/.test(banner) && /Download recovery file/.test(banner), banner);
@@ -413,6 +413,36 @@ const scenarios = {
     await p.fill('#pii-sample', 'padel on friday');
     check('own noise words apply in the live sample', /\[NOISE_FILTERED\] on friday/.test(await p.innerText('#pii-sample-out')));
     check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'IndexedDB storage and one-time migration (DAT-03)': async ({ p, ctx, errors }) => {
+    const mode = await p.evaluate(() => window.__continuumRepo.mode());
+    check('fresh browser stores data in IndexedDB', mode === 'idb', mode);
+    const legacy = { clients: [{ name: 'Legacy Co' }], projects: [{ Project_ReferenceID: 'LEG-O-1-010126000000', project_name: 'Legacy-1', client_name: 'Legacy Co', opportunity_numbers: ['O-1'], project_ids: ['1'], active: true, created_at: '2099-01-01T00:00:00Z' }],
+      timeline: [{ id: 'legacy-card', Project_ReferenceID: 'LEG-O-1-010126000000', project_name: 'Legacy-1', projectId: 'Legacy-1', title: 'Legacy migrated card', content: 'from localStorage', type: 'Chat', privacy: 'Team Shared', syncStatus: 'pending_upload', author: 'Brené', created_at: '2026-01-01T00:00:00Z' }], notes: [], archived: [] };
+    const c2 = await ctx.browser().newContext({ viewport: { width: 1600, height: 1000 } });
+    const q = await c2.newPage(); const errs = [];
+    q.on('pageerror', (e) => errs.push(e.message.slice(0, 200)));
+    await q.addInitScript((st) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('onion_db_state', JSON.stringify(st)); sessionStorage.setItem('seeded', '1'); } }, legacy);
+    await q.goto(BASE + '/app'); await q.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const boot = await q.evaluate(() => window.__continuumRepo.boot);
+    check('existing localStorage data is migrated once', boot.mode === 'idb' && boot.migrated === true, JSON.stringify(boot));
+    check('card survived the migration', (await q.innerText('body')).includes('Legacy migrated card'));
+    const bk = await q.evaluate(() => Object.keys(localStorage).filter((k) => k.indexOf('onion_db_state_premigrate_') === 0).length);
+    check('dated localStorage backup is kept', bk === 1, String(bk));
+    const inIdb = await q.evaluate(() => new Promise((res) => { const r = indexedDB.open('continuum-db'); r.onsuccess = () => { const g = r.result.transaction('kv').objectStore('kv').get('state'); g.onsuccess = () => res(String(g.result || '').includes('Legacy migrated card')); }; r.onerror = () => res(false); }));
+    check('state is in IndexedDB', inIdb);
+    await q.reload(); await q.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const boot2 = await q.evaluate(() => window.__continuumRepo.boot);
+    check('second boot does not migrate again and keeps the data', boot2.migrated === false && (await q.innerText('body')).includes('Legacy migrated card'));
+    // A full localStorage must not stop saving.
+    await q.evaluate(() => { const junk = 'x'.repeat(1024 * 256); let i = 0; try { for (;;) localStorage.setItem('junk' + (i++), junk); } catch (e) { /* full */ } });
+    await q.evaluate(async () => { const s = JSON.parse(window.__continuumRepo.getRaw()); s.notes.push({ id: 'big-note', title: 'saved while storage full', content: 'x', project_name: 'Legacy-1', Project_ReferenceID: 'LEG-O-1-010126000000', privacy: 'Team Shared', created_at: new Date().toISOString() }); window.__continuumRepo.setRaw(JSON.stringify(s)); await window.__continuumRepo.flush(); });
+    await q.reload(); await q.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const kept = await q.evaluate(() => (window.__continuumRepo.getRaw() || '').includes('saved while storage full'));
+    check('changes are still saved when localStorage is full', kept);
+    check('no storage warning shown', await q.locator('.storage-banner').count() === 0);
+    check('no page errors', !errors.length && !errs.length, errors.concat(errs).join(' | '));
+    await c2.close();
   },
   'readable typography (HUI-01)': async ({ p, errors }) => {
     for (const [w, h] of [[1366, 768], [1920, 1080]]) {

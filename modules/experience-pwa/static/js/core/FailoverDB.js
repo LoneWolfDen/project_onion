@@ -4,6 +4,7 @@ import { buildDemoState } from '../data/demoDataset.js';
 import { getDefaultPersona } from '../constants/personas.js';
 import { reportStorageError, retainCorruptRaw, safeSetItem, isReadOnly, clearStorageError, resolveStorageProblem } from './storageGuard.js';
 import { getRaw, setRaw, removeRaw } from './repo.js';
+import { retainOriginal } from './pii.js';
 // Write the main state through the Repo; same contract as safeSetItem (true when accepted).
 function saveRaw(json, op) { try { setRaw(json); clearStorageError(); return true; } catch (err) { reportStorageError(err, op || 'write'); return false; } }
 let _vectorMirror = null;
@@ -150,7 +151,10 @@ class FailoverDB {
   async saveNote(note) {
     const s = readLocal();
     if (!Array.isArray(s.notes)) s.notes = [];
-    const rec = tagPending({ id: 'n-local-' + Date.now(), created_at: new Date().toISOString(), ...note });
+    // The protected original never goes on the card: it is kept on this device only (PRV-05 gap).
+    const { rawOriginal, ...cleanNote } = note || {};
+    const rec = tagPending({ id: 'n-local-' + Date.now(), created_at: new Date().toISOString(), ...cleanNote });
+    if (rawOriginal != null) { try { retainOriginal(rec.id, String(rawOriginal), String(rec.content == null ? '' : rec.content)); } catch (e) {} }
     try { rec.syncStatus = 'pending_upload'; } catch (e) {}
     stampVectorPending(rec);
     s.notes.push(rec);
@@ -346,7 +350,7 @@ class FailoverDB {
     if (patch.title === undefined) delete patch.title;
     if (patch.smartAppend === undefined) delete patch.smartAppend;
     // KNW-01: structured fields from the import or review step ride through approval.
-    ['category', 'raidType', 'importSourceId', 'kind'].forEach((k) => { if (aiResult && aiResult[k]) patch[k] = aiResult[k]; });
+    ['category', 'raidType', 'importSourceId', 'kind', 'rowKey'].forEach((k) => { if (aiResult && aiResult[k]) patch[k] = aiResult[k]; });
     if (t) { Object.assign(t, patch); t.syncStatus = 'pending_upload'; stampVectorPending(t); ensureTimelineNodes(t); writeLocal(s); fireVectorMirror('upsert', t); }
     return t || { id, ...patch };
   }

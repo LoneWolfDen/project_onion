@@ -7,11 +7,14 @@
 import { projectIdEquals } from '../core/schema.js';
 import { AiSettings, useAiStatus } from './AiSettings.js';
 import { BackupPanel, downloadBackupNow } from './BackupPanel.js';
+import { DiagnosticsPanel, DisplayPanel } from './DiagnosticsPanel.js';
+import { logEvent } from '../core/logger.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { readLocal } from '../core/FailoverDB.js';
 import { CLEAR_PHRASE, removalSummary, describeRemoval, runGuarded } from '../core/destructive.js';
 import { piiScreen } from '../core/PiiGate.js';
 import { PiiSettings } from './PiiSettings.js';
+import { OriginalsPanel } from './OriginalsPanel.js';
 import { getRaw } from '../core/repo.js';
 import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
 import { matchSentence } from '../core/matchExplain.js';
@@ -20,14 +23,14 @@ const html = window.htm.bind(window.React.createElement);
 // KNW-01: structured fields that must survive staging, review and approval (category, RAID type, source id).
 export function carryFields(o) {
   const out = {};
-  ['category', 'raidType', 'importSourceId', 'kind'].forEach((k) => { if (o && o[k]) out[k] = o[k]; });
+  ['category', 'raidType', 'importSourceId', 'kind', 'rowKey'].forEach((k) => { if (o && o[k]) out[k] = o[k]; });
   return out;
 }
 export function toPayload(o, persona) {
   const p = (typeof persona === 'string' && persona) || (o && (o.author || o.contributor)) || 'Brené';
   // Privacy passthrough (Fail Closed default): callers that carry a user-selected
   // privacy (e.g. Harvester review queue) must survive to FailoverDB.
-  return { id: o.id, projectId: o.projectId, type: o.type, title: o.title, source: o.source, timestamp: o.timestamp || 'Just now', content: o.content, piiStatus: o.piiStatus || 'Clean', syncStatus: 'pending_upload', author: o.author || p, contributor: o.contributor || p, privacy: o.privacy || 'Team Shared', ...carryFields(o) };
+  return { id: o.id, projectId: o.projectId, type: o.type, title: o.title, source: o.source, timestamp: o.timestamp || 'Just now', content: o.content, piiStatus: o.piiStatus || 'Clean', syncStatus: 'pending_upload', author: o.author || p, contributor: o.contributor || p, privacy: o.privacy || 'Team Shared', ...(o.smartAppend ? { smartAppend: o.smartAppend } : {}), ...carryFields(o) };
 }
 // Canonical privacy normalizer (Fail Closed): every private alias collapses to
 // 'My Notes (Private)' so TimelineCard pills, scopeByPrivacyMode, is_private_card
@@ -631,6 +634,16 @@ export function HarvesterPanel(props) {
     } catch (e) {}
     setParkMsg(norm === 'My Notes (Private)' ? 'Saved to My Notes (Private) — local draft updated.' : 'Visibility set to Team Shared — local draft updated.');
   };
+  // Imported rows and clipboard items live only in the review queue until approved. markProcessed
+  // updates an existing stored row, so make sure one exists first or the approved card would be lost.
+  const ensureStaged = async (api, card, effPrivacy) => {
+    try {
+      if (!api || !api.stageToDataPark || !card || !card.sourceId) return;
+      const have = (typeof readAllTimelineCards === 'function' ? readAllTimelineCards() : []).some((t) => t && String(t.id) === String(card.sourceId));
+      if (have) return;
+      await api.stageToDataPark({ id: card.sourceId, projectId: card.projectId, project_name: card.project_name, Project_ReferenceID: card.Project_ReferenceID, type: card.type, title: card.title, source: card.source, timestamp: card.timestamp, content: card.content, piiStatus: card.piiStatus, privacy: effPrivacy, author: card.author, contributor: card.contributor });
+    } catch (e) { /* markProcessed below reports the failure */ }
+  };
   const onApproveAll = async () => {
     if (approving) return;
     const queue = Array.isArray(parsedReviewQueue) ? parsedReviewQueue : [];
@@ -692,7 +705,7 @@ export function HarvesterPanel(props) {
           } else {
             // If append logic failed, fallback to new card to prevent data loss
             const aiResult = { title: card.title, synthesizedText: card.synthesizedText, tags: card.tags, impactScore: card.impactScore, privacy: effPrivacy, author: card.author, aiEngine: card.aiEngine, aiModel: card.aiModel, aiFallbackReason: card.aiFallbackReason, ...carryFields(card) };
-            if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
+            if (api && api.markProcessed) { await ensureStaged(api, card, effPrivacy); await api.markProcessed(card.sourceId, aiResult); }
             done++;
           }
         } else {
@@ -711,7 +724,7 @@ export function HarvesterPanel(props) {
             aiModel: card.aiModel,
             aiFallbackReason: card.aiFallbackReason, ...carryFields(card)
           };
-          if (api && api.markProcessed) await api.markProcessed(card.sourceId, aiResult);
+          if (api && api.markProcessed) { await ensureStaged(api, card, effPrivacy); await api.markProcessed(card.sourceId, aiResult); }
           done++;
         }
       }
@@ -807,9 +820,12 @@ export function HarvesterPanel(props) {
           ${showGear ? html`<div style=${{ marginTop: '8px', padding: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
             <${AiSettings} />
             <${PiiSettings} />
+            <${OriginalsPanel} />
             <button type="button" onClick=${onResetSeed} title="Replace all local data with the fictional hackathon demo dataset (AI settings are kept)" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset Demo Dataset</button>
           </div>` : null}
           <${BackupPanel} />
+          <${DisplayPanel} />
+          <${DiagnosticsPanel} />
           <button type="button" id="clear-all-btn" onClick=${onClearAll} title="Permanently remove all local data (asks you to type a phrase)" style=${{ marginTop: '8px', width: '100%', background: '#fff', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>🗑 Clear all data…</button>
           ${confirmDialog}
           <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>

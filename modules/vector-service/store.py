@@ -60,6 +60,9 @@ class VectorStore:
             "author": card.get("author", card.get("contributor", "Walter")),
             "is_private": is_private_card(card),
         }
+        # PRV-04: explicit privacy metadata on every stored card.
+        metadata["privacy"] = "private" if metadata["is_private"] else "shared"
+        metadata["persona_source"] = str(card.get("persona_source") or "client-supplied")
         card_id = card.get("id", hashlib.md5(document_text.encode()).hexdigest())
         try:
             self.collection.upsert(documents=[document_text], metadatas=[metadata], ids=[card_id])

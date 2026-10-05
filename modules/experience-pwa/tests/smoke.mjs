@@ -391,6 +391,11 @@ const scenarios = {
     const txt = fs.readFileSync(await dl.path(), 'utf8');
     check('exported file carries who confirmed, when, and the hash', /Reviewed and confirmed by/.test(txt) && /Package hash [0-9a-f]{16}/.test(txt));
     check('empty sections read Not found', /<em>Not found<\/em>/.test(txt));
+    const [zd] = await Promise.all([p.waitForEvent('download'), p.click('#ho-package')]);
+    const zip = fs.readFileSync(await zd.path());
+    const names = ['handover.md', 'handover.html', 'handover.json', 'sources.csv', 'manifest.json'];
+    check('package is a zip with md, html, json, csv and manifest', zip.readUInt32LE(0) === 0x04034b50 && names.every((n) => zip.includes(Buffer.from(n))), zd.suggestedFilename());
+    check('statement ids appear in the exported html', /S-[0-9a-f]{10}/.test(txt));
     check('no page errors', !errors.length, errors.join(' | '));
   },
   'privacy screening (PRV-05)': async ({ p, errors }) => {
@@ -409,6 +414,8 @@ const scenarios = {
     check('protected original is retained on this device only', orig.includes('555-123-4567'));
     // custom word via settings
     await p.click('button[title="AI configuration"]'); await sleep(p, 400);
+    await p.click('#originals-show'); await sleep(p, 300);
+    check('protected originals can be viewed on this device', (await p.innerText('#originals-list')).includes('555-123-4567'));
     await p.fill('#pii-words', 'padel');
     await p.fill('#pii-sample', 'padel on friday');
     check('own noise words apply in the live sample', /\[NOISE_FILTERED\] on friday/.test(await p.innerText('#pii-sample-out')));
@@ -465,6 +472,57 @@ const scenarios = {
       check(`${w}x${h}: buttons at least 30px tall`, r.short === 0, String(r.short));
       await closeDrawer(p);
     }
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'record as decision (KNW-02)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const first = cards(p).first();
+    await first.locator('button[aria-label="Card options"]').click(); await sleep(p, 250);
+    p.once('dialog', (d) => d.accept('Client agreed in the steering call'));
+    await p.click('button:has-text("Record as decision")'); await sleep(p, 600);
+    const body = await first.innerText();
+    check('card shows who recorded the decision', /Decision · /.test(body), body.slice(0, 160));
+    await first.locator('button[aria-label="Card options"]').click(); await sleep(p, 250);
+    check('menu now offers to clear it', await p.locator('button:has-text("Clear decision")').count() === 1);
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'diagnostics log (OPS-01/02)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    await p.click('#harvester-open-btn'); await sleep(p, 600);
+    await p.click('#diag-preview'); await p.waitForSelector('#diag-text', { timeout: 3000 });
+    const t = await p.inputValue('#diag-text');
+    check('diagnostics preview shows events, not content', /app\.start/.test(t) && !/Beacon|Apollo|@/.test(t), t.slice(0, 200));
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#diag-download')]);
+    check('diagnostics download is the previewed JSON', JSON.parse(fs.readFileSync(await dl.path(), 'utf8')).format === 'continuum-diagnostics');
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'card hierarchy flag (HUI-03)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const before = await p.evaluate(() => ({ attr: document.documentElement.getAttribute('data-layout'), n: document.querySelectorAll('[id^="tl-"]').length, t: parseFloat(getComputedStyle(document.querySelector('.onion-card-title')).fontSize) }));
+    check('layout flag is off by default', before.attr === null && before.t < 16, JSON.stringify(before));
+    await p.evaluate(() => localStorage.setItem('continuum_layout', 'hierarchy'));
+    await p.reload(); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 }); await sleep(p, 400);
+    const after = await p.evaluate(() => ({ attr: document.documentElement.getAttribute('data-layout'), n: document.querySelectorAll('[id^="tl-"]').length, t: parseFloat(getComputedStyle(document.querySelector('.onion-card-title')).fontSize) }));
+    check('flag on: title is larger and the same cards show', after.attr === 'hierarchy' && after.t >= 17 && after.n === before.n, JSON.stringify(after));
+    await p.evaluate(() => localStorage.removeItem('continuum_layout'));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'RAID re-import diff (IMP-03 gap)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    await p.click('#harvester-open-btn'); await sleep(p, 600);
+    const csv = (rows) => ({ name: 'raid-' + rows.length + '-' + Math.random().toString(16).slice(2, 6) + '.csv', mimeType: 'text/csv', buffer: Buffer.from(['Raised,Type,Description,Owner'].concat(rows).join('\n')) });
+    const input = p.locator('input[type=file]').nth(1);
+    await input.setInputFiles(csv(['05-10-2026,Risk,Reimport vendor slip,Sam', '06-10-2026,Issue,Reimport env down,Sam']));
+    await p.waitForSelector('#import-confirm'); await p.click('#import-confirm'); await sleep(p, 600);
+    await p.click('text=Approve & Add to Project'); await sleep(p, 1200);
+    const kept = await p.evaluate(() => JSON.parse(window.__continuumRepo.getRaw()).timeline.filter((c) => c.type === 'RAID' && /Reimport/.test(c.title || c.content || '')).map((c) => ({ cat: c.category, src: !!c.importSourceId, key: !!c.rowKey, sync: c.syncStatus })));
+    check('approved import rows become cards that keep category, source and row key', kept.length === 2 && kept.every((c) => c.cat === 'raid' && c.src && c.key && c.sync !== 'pending_processing'), JSON.stringify(kept));
+    await input.setInputFiles(csv(['05-10-2026,Risk,Reimport vendor slip,Sam', '06-10-2026,Issue,Reimport env down,Pat', '07-10-2026,Risk,Reimport brand new,Sam']));
+    await p.waitForSelector('#import-confirm'); await p.click('#import-confirm'); await sleep(p, 600);
+    const t = await p.innerText('#harvester-status');
+    check('re-import reports new, changed and unchanged counts', /1 new, 1 changed .*1 unchanged/.test(t), t.slice(0, 200));
+    const body = await p.innerText('#harvester-control-panel');
+    check('changed row is staged as an update on its existing card', /Smart Append/.test(body));
     check('no page errors', !errors.length, errors.join(' | '));
   },
 };

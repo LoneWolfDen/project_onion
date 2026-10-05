@@ -68,3 +68,31 @@ test('GDP: content cites as-of date and shows Not found for blanks', () => {
   const c = T.gdpContent(rec);
   assert.match(c, /As of: 2026-10-01/); assert.match(c, /GDM Not found/);
 });
+
+// ---- RAID re-import diff ----
+import { reimportDiff, diffSummary, raidKeyFromContent, raidRowKey, raidContent } from '../static/js/core/importTemplates.js';
+const rr = (o) => ({ values: { raised: '2026-10-05', type: 'Risk', description: 'Vendor may slip', owner: 'Sam', ...o }, provenance: {}, row: 2 });
+const asCard = (rec, extra = {}) => ({ id: 'c-' + rec.values.description, type: 'RAID', content: raidContent(rec), ...extra });
+
+test('re-import diff: new, changed, unchanged and repeated rows', () => {
+  const old = rr({}); const same = rr({ description: 'Same one' }); const other = rr({ description: 'Gone from file' });
+  const existing = [asCard(old), asCard(same), asCard(other), { id: 'x', type: 'GDP', content: raidContent(old) }];
+  const incoming = [rr({ owner: 'Pat' }), rr({ description: 'Same one' }), rr({ description: 'Brand new' }), rr({ description: 'Brand new' })];
+  const d = reimportDiff(incoming, existing, raidContent);
+  assert.deepEqual([d.added.length, d.changed.length, d.unchanged.length, d.duplicates], [1, 1, 1, 1]);
+  assert.equal(d.changed[0].card.id, 'c-Vendor may slip');
+  assert.match(diffSummary(d, 'raid.xlsx'), /1 new, 1 changed .*, 1 unchanged \(skipped\), 1 repeated row/);
+});
+
+test('cards imported before row keys are recognised from their content; stored rowKey wins', () => {
+  const rec = rr({});
+  assert.equal(raidKeyFromContent(raidContent(rec)), raidRowKey(rec));
+  assert.equal(raidKeyFromContent('free text note'), '');
+  const d = reimportDiff([rec], [{ id: 'k', type: 'RAID', rowKey: raidRowKey(rec), content: 'edited since' }], raidContent);
+  assert.equal(d.changed.length, 1);
+});
+
+test('blank raised date and Not found match each other', () => {
+  const rec = rr({ raised: '' });
+  assert.equal(raidKeyFromContent(raidContent(rec)), raidRowKey(rec));
+});

@@ -4,7 +4,6 @@
 //  - Text written by the mock or fallback AI engine can never be a Fact: it is an AI suggestion.
 //  - A Decision exists only when a person recorded it (card.decision.by). AI never creates one.
 //  - Kind comes from structured fields only (card.kind, RAID type, structured tags), never from text.
-import { sha256Hex } from './backup.js';
 import { categoryOf, isClosed } from './handover.js';
 
 export const KINDS = [
@@ -61,14 +60,18 @@ export function kindOf(card) {
   return k;
 }
 
-// Stable short id so the same statement carries the same id in the app, the export and sources.csv.
-export async function statementId(card) {
-  return 'S-' + (await sha256Hex(String((card && card.id) || '') + '|' + kindOf(card))).slice(0, 10);
+// Stable short id (FNV-1a, 53 bits) so the same statement carries the same id in the app, the
+// export and sources.csv. A label, not a security hash: file hashes in the package use SHA-256.
+export function statementId(card) {
+  const str = String((card && card.id) || '') + '|' + kindOf(card);
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0; h2 = Math.imul(h2 + c, 0x85ebca6b) >>> 0; }
+  return 'S-' + h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0').slice(0, 2);
 }
 
-export async function statementOf(card) {
+export function statementOf(card) {
   return {
-    id: await statementId(card),
+    id: statementId(card),
     cardId: String((card && card.id) || ''),
     kind: kindOf(card),
     text: String((card && (card.synthesizedText || card.content || card.detail || card.title)) || ''),

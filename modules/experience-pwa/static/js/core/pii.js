@@ -81,3 +81,15 @@ export function retainOriginal(id, original, screened) {
 }
 export function getOriginal(id) { try { const e = JSON.parse(localStorage.getItem(ORIG_KEY) || '{}')[String(id)]; return e ? e.text : null; } catch (e) { return null; } }
 export const ORIGINALS_KEY = ORIG_KEY;
+
+// Viewing and removing protected originals (kept on this device only).
+export function listOriginals() {
+  try {
+    const all = JSON.parse(localStorage.getItem(ORIG_KEY) || '{}');
+    return Object.keys(all).map((id) => ({ id, text: String(all[id].text || ''), at: String(all[id].at || '') })).sort((a, b) => b.at.localeCompare(a.at));
+  } catch (e) { return []; }
+}
+export function deleteOriginal(id) {
+  try { const all = JSON.parse(localStorage.getItem(ORIG_KEY) || '{}'); const had = String(id) in all; delete all[String(id)]; localStorage.setItem(ORIG_KEY, JSON.stringify(all)); return had; } catch (e) { return false; }
+}
+export function clearOriginals() { try { localStorage.removeItem(ORIG_KEY); return true; } catch (e) { return false; } }

@@ -139,4 +139,16 @@ Known gaps carried into Release 2:
 - The service worker precache list is manual: add new files to `PRECACHE` in `sw.js` and bump `SW_VERSION` (a unit test fails if the list is stale).
 - Not verified: opening the app from a second device on a real network.
 
-Next: Release 2 (KNW-01/02/04, HND-04, HUI-03, OPS-01/02/03, PRV-04) in a fresh thread.
+Release 2 done (5 Oct), thread "Phase 2 Release 2": service worker precache generated from `static/` (#55); KNW-01/04 statement kinds, category and source carried through approval, Evidence Strength (#56, `docs/EVIDENCE_STRENGTH.md`); then in one PR: KNW-02 "Record as decision" (person only), HND-04 export package (`.zip` with md, html, json, sources.csv, manifest with SHA-256), OPS-01/02 safe logger and Diagnostics panel with previewable export, OPS-03 trust-boundary tests as a `critical-tests` check plus a tag-triggered release gate, HUI-03 card hierarchy behind a layout flag (Display setting), PRV-04 vector-service scope (project required, `ONION_PERSONA` server-derived persona, explicit privacy metadata, `/list` hides other people's private cards), protected originals screen and originals kept for typed notes, RAID re-import diff (new, changed, unchanged counts; changed rows staged as updates on their card).
+
+Bug found and fixed in Release 2: approving imported rows or clipboard items that were never written to storage did nothing, so the approved card was lost. Approval now stores the row first.
+
+Known gaps carried into Release 3:
+- Repo setting needed from the user: mark the `critical-tests` check as required in the branch rules (a workflow cannot set this itself).
+- `ONION_PERSONA` is not set by default, so the pilot runs in test-aid mode (browser persona honoured, responses say `client-supplied`). Set it when more than one person uses a service.
+- Existing RAID cards approved before this release are matched on re-import from their content text; if a card's text was later replaced by an approved update, it will not match and its row is staged as new.
+- Decisions are recorded on the card; there is no separate decisions list or export section yet.
+- The package `.zip` is uncompressed (store only) to avoid a library.
+- Opening the app from a second device on a real network is still unverified and needs the user.
+
+Next: Release 3 (KNW-03, RAD-01/02, HUI-02, IMP-05/06, HUI-04), scope to be decided after pilot feedback, in a fresh thread.

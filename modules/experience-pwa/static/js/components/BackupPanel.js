@@ -2,6 +2,7 @@
 import { buildBackup, validateBackup, restoreBackup, PREFERENCE_KEYS } from '../core/backup.js';
 import { readLocal, tryWriteLocal } from '../core/FailoverDB.js';
 import { requestPersistence, describePersistence } from '../core/persistence.js';
+import { logEvent } from '../core/logger.js';
 const html = window.htm.bind(window.React.createElement);
 const { useState, useEffect } = window.React;
 const SNAP_PREFIX = 'onion_preimport_backup_';
@@ -34,8 +35,9 @@ export async function downloadBackupNow() {
     const b = await buildBackup(readLocal(), readPrefs());
     download('continuum-backup-' + stamp() + '.json', JSON.stringify(b, null, 2));
     try { localStorage.setItem('onion_last_backup_at', b.generatedAt); } catch (e) {}
+    logEvent('backup', 'backup.exported', {});
     return true;
-  } catch (e) { return false; }
+  } catch (e) { logEvent('backup', 'backup.export_failed', {}, 'error'); return false; }
 }
 
 export function BackupPanel() {

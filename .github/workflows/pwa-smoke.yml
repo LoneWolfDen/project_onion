@@ -18,6 +18,19 @@ permissions:
   contents: read
 
 jobs:
+  # OPS-03: trust-boundary tests as their own check. Mark "critical-tests" as a required status
+  # check in the branch rules so a failure blocks merging; release-gate.yml re-runs it on tags.
+  critical-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Trust-boundary tests
+        run: node --test modules/experience-pwa/tests/trust-boundary.test.mjs
+
   pwa:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -39,6 +52,7 @@ jobs:
         run: |
           python -m pip install -q fastapi httpx
           python -m unittest discover -s modules/_shared/tests -v
+          python -m unittest discover -s modules/vector-service/tests -v
 
       - name: Unit tests
         run: node --test modules/experience-pwa/tests/*.test.mjs

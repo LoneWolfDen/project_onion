@@ -32,6 +32,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Repo hygiene (runtime DBs, personal paths, secrets)
+        run: node scripts/check-repo.mjs
+
       - name: Unit tests
         run: node --test modules/experience-pwa/tests/*.test.mjs
 

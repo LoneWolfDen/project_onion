@@ -1,5 +1,6 @@
 // App orchestrator P1 — imports + state + helpers.
 import { OnionDB, readLocal, writeLocal } from '../core/FailoverDB.js';
+import { StorageBanner } from './StorageBanner.js';
 import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ProjectModal } from './ProjectModal.js';
@@ -392,6 +393,7 @@ export function App() {
   const askRaw = String(ask || '').trim();
   const hits = (askRaw ? contextCards.filter((t) => matchesAssistantQuery(t, askRaw)) : contextCards).slice(0, 3);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
+    <${StorageBanner} />
     <div className="sticky top-0 z-20 border-b border-[#d6e8ff]" style=${{ background: 'linear-gradient(90deg,#D6F5E8 0%,#D6E8FF 100%)' }}>
       <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">

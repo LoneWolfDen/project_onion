@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
-import json, pathlib
+import json, os, pathlib
 from datetime import datetime
 
 app = FastAPI(title="Admin Relationship - Editable Mapping", version="v0.11-relationship-model")
@@ -16,11 +16,10 @@ app.add_middleware(
 )
 
 BASE = pathlib.Path(__file__).parent
-MODEL_PATH = pathlib.Path("/Users/wolf/Developer/project_onion/data/seed/relationship_model.json")
-# Fallback to local seed if not exists
+# Single location for reads and writes, derived from the repo checkout.
+# Override with ONION_MODEL_PATH to keep the model elsewhere.
 LOCAL_MODEL = BASE.parent.parent / "data" / "seed" / "relationship_model.json"
-if not MODEL_PATH.exists() and LOCAL_MODEL.exists():
-    MODEL_PATH = LOCAL_MODEL
+MODEL_PATH = pathlib.Path(os.environ.get("ONION_MODEL_PATH") or LOCAL_MODEL)
 
 def load_model():
     if MODEL_PATH.exists():
@@ -31,7 +30,7 @@ def load_model():
 
 def save_model(model):
     # For hackathon: save to data/seed/relationship_model.json - Data as Code versioned
-    target = pathlib.Path("/Users/wolf/Developer/project_onion/data/seed/relationship_model.json")
+    target = MODEL_PATH
     if not target.parent.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
     with open(target, "w") as f:

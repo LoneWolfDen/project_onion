@@ -32,7 +32,7 @@ if __name__ == "__main__":
     a=p.parse_args()
     fp=Path(a.file)
     if not fp.exists():
-        alt=Path("/Users/wolf/Developer/project_onion")/a.file
+        alt=Path(__file__).resolve().parents[2]/a.file
         if alt.exists():
             fp=alt
         else:

@@ -117,24 +117,24 @@ function exportHandoverHtml(model){
 const css='*{box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,sans-serif;background:#fbfdfb;color:#1E293B;margin:0;padding:24px;letter-spacing:-0.01em}'
 +'.ho-wrap{max-width:1020px;margin:0 auto;background:#fff;border:1px solid #E6EAF2;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(31,74,122,.08)}'
 +'.ho-hero{background:linear-gradient(90deg,#D6F5E8 0%,#D6E8FF 100%);padding:20px 24px;border-bottom:1px solid #A8C6F0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}'
-+'.ho-brand{display:inline-flex;align-items:center;gap:8px;background:#1F4A7A;color:#fff;font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;border-radius:9999px;padding:6px 12px}'
++'.ho-brand{display:inline-flex;align-items:center;gap:8px;background:#1F4A7A;color:#fff;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border-radius:9999px;padding:6px 12px}'
 +'.ho-hero h1{margin:6px 0 0;font-size:22px;letter-spacing:-0.02em}.ho-hero p{margin:4px 0 0;font-size:12px;color:#475569;font-style:italic}'
 +'.ho-cover{margin:16px 24px;padding:12px 14px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;font-size:13px}'
 +'.ho-proj{margin:16px 24px;border:1px solid #E6EAF2;border-radius:14px;overflow:hidden;background:#fff}'
 +'.ho-proj-h{background:#EEF6FF;border-bottom:1px solid #A8C6F0;padding:12px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}'
-+'.ho-proj-h b{font-size:14px}.ho-badge{display:inline-block;background:#1F4A7A;color:#fff;border-radius:9999px;padding:2px 10px;font-size:10px;font-weight:700}'
-+'.ho-proj-m{padding:8px 14px;font-size:11px;color:#64748B}.ho-note{background:#F0F7FF;border:1px solid #A8C6F0;border-radius:10px;padding:8px 10px;margin:8px 14px;font-size:12px}'
++'.ho-proj-h b{font-size:14px}.ho-badge{display:inline-block;background:#1F4A7A;color:#fff;border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:700}'
++'.ho-proj-m{padding:8px 14px;font-size:12px;color:#64748B}.ho-note{background:#F0F7FF;border:1px solid #A8C6F0;border-radius:10px;padding:8px 10px;margin:8px 14px;font-size:12px}'
 +'.ho-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:10px 14px 2px}'
-+'.ho-tile{border-radius:12px;padding:10px;border:1px solid #E6EAF2}.ho-tile b{display:block;font-size:11px}.ho-tile span{font-size:18px;font-weight:800}'
++'.ho-tile{border-radius:12px;padding:10px;border:1px solid #E6EAF2}.ho-tile b{display:block;font-size:12px}.ho-tile span{font-size:18px;font-weight:800}'
 +'.ho-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:10px 14px 14px}'
 +'.ho-col{border:1px solid #E6EAF2;border-radius:12px;background:#F8FAFC;overflow:hidden}.ho-col h4{margin:0;padding:8px 10px;font-size:12px;background:#fff;border-bottom:1px solid #E6EAF2}'
 +'.ho-col ul{list-style:none;margin:0;padding:8px;max-height:380px;overflow:auto}'
 +'.ho-card{background:#fff;border:1px solid #E6EAF2;border-radius:10px;padding:8px 10px;margin:0 0 8px;list-style:none}'
-+'.ho-card-t{font-weight:600;font-size:13px}.ho-hash{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;color:#1F4A7A;background:#D6E8FF;border:1px solid #A8C6F0;border-radius:9999px;padding:0 8px;text-decoration:none}'
-+'.ho-card-m{font-size:10px;color:#64748B;font-style:italic;margin:4px 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}'
-+'.ho-pill{display:inline-block;border:1px solid #E6EAF2;border-radius:9999px;padding:1px 8px;font-size:10px;font-weight:700;font-style:normal}'
++'.ho-card-t{font-weight:600;font-size:13px}.ho-hash{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;color:#1F4A7A;background:#D6E8FF;border:1px solid #A8C6F0;border-radius:9999px;padding:0 8px;text-decoration:none}'
++'.ho-card-m{font-size:12px;color:#64748B;font-style:italic;margin:4px 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}'
++'.ho-pill{display:inline-block;border:1px solid #E6EAF2;border-radius:9999px;padding:1px 8px;font-size:12px;font-weight:700;font-style:normal}'
 +'.ho-card-b{font-size:12px;color:#1E293B}'
-+'.ho-foot{padding:12px 24px;font-size:10px;color:#9ca3af;font-style:italic;border-top:1px solid #E6EAF2;background:#F8FAFC}'
++'.ho-foot{padding:12px 24px;font-size:12px;color:#9ca3af;font-style:italic;border-top:1px solid #E6EAF2;background:#F8FAFC}'
 +'@media(max-width:760px){.ho-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ho-cols{grid-template-columns:1fr}body{padding:12px}}'
 +'@media print{.ho-wrap{box-shadow:none}body{padding:0;background:#fff}.no-print{display:none!important}.ho-col ul{max-height:none;overflow:visible}}';
 let body='<div class="ho-hero"><div><span class="ho-brand">Project Continuum · Handover</span><h1>Executive Handover Pack</h1><p>Generated '+esc(model.generatedAt)+' | By '+esc(model.generatedBy)+' | Window: '+esc(model.timeframe)+' | Projects: '+model.projects.length+'</p></div></div>';
@@ -142,8 +142,8 @@ if(model.coverNotes)body+='<div class="ho-cover"><strong>Transition notes —</s
 if(!model.projects.length)body+='<div style="padding:14px 24px"><p><em>No projects selected.</em></p></div>';
 model.projects.forEach((entry)=>{
 const pj=entry.project||{};const g=entry.groups||{open:[],closed:[],risks:[],counts:{}};
-const tiles=CATS.map((t)=>'<div class="ho-tile" style="background:'+t.bg+';border-color:'+t.bd+';color:'+t.tx+'"><b>'+t.icon+' '+esc(t.label)+'</b><span>'+Number((g.counts||{})[t.key]||0)+'</span><div style="font-size:10px;font-style:italic">'+esc(t.hint)+'</div></div>').join('');
-body+='<section class="ho-proj"><div class="ho-proj-h"><b>'+esc(pj.project_name||pj.Project_ReferenceID||'Project')+'</b><span class="ho-badge">'+esc(pj.client_name||'Client')+'</span><span style="font-size:11px;color:#64748B">'+esc(pj.Project_ReferenceID||'')+'</span></div><div class="ho-proj-m">'+esc((pj.opportunity_numbers||[]).join(', ')||'No Opp ID')+' | '+esc((pj.project_ids||[]).join(', ')||'No Project ID')+'</div>';
+const tiles=CATS.map((t)=>'<div class="ho-tile" style="background:'+t.bg+';border-color:'+t.bd+';color:'+t.tx+'"><b>'+t.icon+' '+esc(t.label)+'</b><span>'+Number((g.counts||{})[t.key]||0)+'</span><div style="font-size:12px;font-style:italic">'+esc(t.hint)+'</div></div>').join('');
+body+='<section class="ho-proj"><div class="ho-proj-h"><b>'+esc(pj.project_name||pj.Project_ReferenceID||'Project')+'</b><span class="ho-badge">'+esc(pj.client_name||'Client')+'</span><span style="font-size:12px;color:#64748B">'+esc(pj.Project_ReferenceID||'')+'</span></div><div class="ho-proj-m">'+esc((pj.opportunity_numbers||[]).join(', ')||'No Opp ID')+' | '+esc((pj.project_ids||[]).join(', ')||'No Project ID')+'</div>';
 if(entry.perNote)body+='<div class="ho-note"><strong>Handover remark —</strong> '+esc(entry.perNote)+'</div>';
 body+='<div class="ho-tiles">'+tiles+'</div>';
 body+='<div class="ho-cols"><div class="ho-col"><h4>Active Open Topics ('+g.open.length+')</h4><ul>'+(g.open.length?g.open.map(cardRow).join(''):'<li class="ho-card"><em>No open threads in window.</em></li>')+'</ul></div>';

@@ -1,0 +1,9 @@
+/* HUI-01 readable typography. Loaded after styles.css; raises the small utility sizes to a 12px floor. */
+:root{--fs-min:12px;--fs-body:15px;--control-h:32px}
+html{font-size:15px}
+body{font-size:var(--fs-body);line-height:1.5}
+.text-\[8px\],.text-\[9px\],.text-\[10px\],.text-\[11px\]{font-size:var(--fs-min)}
+.text-\[12px\]{font-size:13px}
+.text-\[13px\]{font-size:14px}
+.onion-conf-pill,.onion-prov-chip,.onion-edit-btn,.onion-save-btn,.onion-privacy-shared,.onion-privacy-private,.onion-fallback-note,.onion-conf-high,#harvester-control-panel .hcp-label{font-size:var(--fs-min)}
+button,select,input:not([type=checkbox]):not([type=radio]),[role=button]{min-height:var(--control-h)}

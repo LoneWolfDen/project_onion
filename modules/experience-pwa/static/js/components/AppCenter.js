@@ -260,7 +260,7 @@ export function AppCenter(p) {
     setNoteSaving(true); setNoteMsg('');
     try {
       const s = piiScreen(v);
-      const payload = { project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: v.slice(0, 80), content: s.text, rephrased: s.text, privacy: priv, piiStatus: s.flag, syncStatus: 'pending_upload', author: (p.activePersona || 'Brené'), refs: [], updates: [] };
+      const payload = { project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: s.text.slice(0, 80), content: s.text, rephrased: s.text, privacy: priv, piiStatus: s.flag, syncStatus: 'pending_upload', author: (p.activePersona || 'Brené'), refs: [], updates: [] };
       // Pure-offline: never fetch localhost:8000 (CORS in air-gapped PWA). Only OnionDB local storage.
       const api = (typeof window !== 'undefined' && window.OnionDB) || null;
       if (!api || !api.saveNote) throw new Error('OnionDB unavailable');

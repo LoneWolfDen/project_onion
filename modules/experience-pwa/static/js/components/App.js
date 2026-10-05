@@ -15,6 +15,7 @@ import { AppRight } from './AppRight.js';
 import { genProjectReferenceID, projectIdEquals, stripLeadingZeros } from '../core/schema.js';
 import { askSmartAssistant } from '../core/AiClient.js';
 import { piiScreen } from '../core/PiiGate.js';
+import { retainOriginal } from '../core/pii.js';
 import { PERSONAS } from '../constants/personas.js';
 const { useState, useEffect, useMemo } = window.React;
 const html = window.htm.bind(window.React.createElement);
@@ -251,8 +252,8 @@ export function App() {
   const oppConnToState = (a) => { const opps = (a && a.opportunity_numbers) || []; const urls = allConnectedUrls(a); const n = Math.max(opps.length, urls.length, 1); const out = []; for (let i = 0; i < n; i++) out.push({ oppId: String(opps[i] || ''), connectedUrl: String(urls[i] || '') }); return out; };
   const allConnectedUrls = (a) => { const u = (Array.isArray(a.connected_record_urls) ? a.connected_record_urls : []).concat(Array.isArray(a.salesforceUrls) ? a.salesforceUrls : []); return [...new Set(u.map(String))].filter(Boolean); };
   const openEdit = () => { if (!active) return; setMName(active.project_name); setMOpp((active.opportunity_numbers || [])[0] || ''); setMOppList(((active.opportunity_numbers || []).length ? active.opportunity_numbers : ['']).map(String)); setMProj(''); setMProjList(['']); setMAccount(active.client_name); setMJust(''); setMErr(''); setMGdp(firstGdpUrl(active)); setMConnected(firstConnectedUrl(active)); setMConnList((allConnectedUrls(active).length ? allConnectedUrls(active) : [''])); setMOppConnList(oppConnToState(active)); setMKeywords(((active.keywords || active.filter_keywords) || []).join(', ')); setMContacts(contactsToState(active)); setMSharepoint(spToState(active.sharepoint_urls || active.sharepoint || null)); setEditOpen(true); };
-  const RAID_ADAPTER = { name: 'raid', label: 'RAID log', fields: RAID_FIELDS, validate: raidValidate };
-  const GDP_ADAPTER = { name: 'gdp', label: 'GDP export', fields: GDP_FIELDS, strict: true, select: gdpSelect };
+  const RAID_ADAPTER = { name: 'raid', label: 'RAID log', fields: RAID_FIELDS, validate: raidValidate, content: raidContent };
+  const GDP_ADAPTER = { name: 'gdp', label: 'GDP export', fields: GDP_FIELDS, strict: true, select: gdpSelect, content: gdpContent };
   const onGdpFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: GDP_ADAPTER }); };
   const onRaidFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: RAID_ADAPTER }); };
   const onImportStage = ({ records, source, warnings }) => {
@@ -260,7 +261,10 @@ export function App() {
     const out = records.map((r, i) => {
       const s = piiScreen(isGdp ? gdpContent(r) : raidContent(r));
       const src = provenanceText(r, isGdp ? 'summary' : 'description') + (isGdp ? ' (as of ' + (r.values.statusDate || 'Not found') + ')' : '');
-      return toPayload({ id: (isGdp ? 'gdp-' : 'raid-') + source.id + '-' + r.row + '-' + Date.now() + '-' + i, projectId: active.project_name, type: isGdp ? 'GDP' : 'RAID', title: isGdp ? gdpTitle(r) : raidTitle(r), source: src, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)' }, activePersona);
+      const rawText = isGdp ? gdpContent(r) : raidContent(r);
+      const pid = (isGdp ? 'gdp-' : 'raid-') + source.id + '-' + r.row + '-' + Date.now() + '-' + i;
+      retainOriginal(pid, rawText, s.text);
+      return toPayload({ id: pid, projectId: active.project_name, type: isGdp ? 'GDP' : 'RAID', title: piiScreen(isGdp ? gdpTitle(r) : raidTitle(r)).text, source: src, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)' }, activePersona);
     });
     setStaged((p) => p.concat(out));
     setImportedSources((prev) => { const next = prev.concat([source]); try { localStorage.setItem('continuum_import_sources', JSON.stringify(next)); } catch (e) {} return next; });
@@ -332,7 +336,7 @@ export function App() {
     setActiveRef(ref);
     setRegOpen(false);
   }} />` : null;
-  const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: v.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', author: activePersona || 'Brené', refs: [], updates: [] }); if (reset) reset(''); };
+  const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: s.text.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', author: activePersona || 'Brené', refs: [], updates: [] }); if (reset) reset(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); try { const api = (window.OnionDB || OnionDB); if (api.updateCardPrivacy) { await api.updateCardPrivacy(note.id, next); return; } await api.updateNotePrivacy(note.id, next); } catch (e) {} };
   const onDeleteCard = async (id) => { if (!id) return; try { const api = (window.OnionDB || OnionDB); if (api && api.deleteCard) await api.deleteCard(String(id)); } catch (e) {} };
   const onEditCard = async (id, patch) => { if (!id) return; try { const api = (window.OnionDB || OnionDB); if (api && api.updateCard) await api.updateCard(String(id), patch || {}); } catch (e) {} };

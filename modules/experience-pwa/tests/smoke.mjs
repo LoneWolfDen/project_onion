@@ -393,6 +393,27 @@ const scenarios = {
     check('empty sections read Not found', /<em>Not found<\/em>/.test(txt));
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'privacy screening (PRV-05)': async ({ p, errors }) => {
+    await p.click('#harvester-open-btn'); await sleep(p, 600);
+    // import preview states what will be redacted and that emails stay
+    const csv = ['Raised,Type,Description,Owner', '05-10-2026,Risk,Call 555-123-4567 about the vendor,me@client.example'].join('\n');
+    await p.locator('input[type=file]').nth(1).setInputFiles({ name: 'raid.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await p.waitForSelector('#import-redactions', { timeout: 5000 });
+    const t = await p.innerText('#import-redactions');
+    check('import preview lists redactions and kept emails', /1 phone number will be redacted/.test(t) && /email address is kept on purpose/.test(t), t);
+    await p.click('#import-confirm'); await sleep(p, 600);
+    const st = await p.evaluate(() => JSON.parse(localStorage.getItem('onion_db_state') || '{}'));
+    const raw = JSON.stringify(st);
+    check('redacted text is what is stored', !raw.includes('555-123-4567'));
+    const orig = await p.evaluate(() => localStorage.getItem('continuum_pii_originals') || '');
+    check('protected original is retained on this device only', orig.includes('555-123-4567'));
+    // custom word via settings
+    await p.click('button[title="AI configuration"]'); await sleep(p, 400);
+    await p.fill('#pii-words', 'padel');
+    await p.fill('#pii-sample', 'padel on friday');
+    check('own noise words apply in the live sample', /\[NOISE_FILTERED\] on friday/.test(await p.innerText('#pii-sample-out')));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
   'readable typography (HUI-01)': async ({ p, errors }) => {
     for (const [w, h] of [[1366, 768], [1920, 1080]]) {
       await p.setViewportSize({ width: w, height: h });

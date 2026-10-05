@@ -8,6 +8,7 @@ import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ImportWizard } from './ImportWizard.js';
 import { MailImportDialog } from './MailImportDialog.js';
 import { makeReuse } from '../core/compounding.js';
+import { RadarPanel } from './RadarPanel.js';
 import { forPresentation, hiddenCount, applyPresentation } from '../core/presentation.js';
 import { RAID_FIELDS, raidValidate, raidContent, raidTitle, provenanceText, reimportDiff, diffSummary, raidRowKey, GDP_FIELDS, gdpSelect, gdpContent, gdpTitle } from '../core/importTemplates.js';
 import { ProjectModal } from './ProjectModal.js';
@@ -85,6 +86,7 @@ export function App() {
   const [staged, setStaged] = useState([]);
   const [importJob, setImportJob] = useState(null);
   const [mailJob, setMailJob] = useState(null);
+  const [radarOpen, setRadarOpen] = useState(false);
   const [present, setPresent] = useState(false); // session only: never saved, so the app always opens normally
   useEffect(() => { applyPresentation(document, present); }, [present]);
   const [importedSources, setImportedSources] = useState(() => { try { return JSON.parse(localStorage.getItem('continuum_import_sources') || '[]'); } catch (e) { return []; } });
@@ -475,6 +477,7 @@ export function App() {
         <div className="flex items-center gap-2">
           <label className="text-[11px] text-[#6b7280]">Persona</label><select value=${activePersona} onChange=${(e) => setActivePersona(e.target.value)} className="bg-white border border-[#bfdbfe] rounded-full px-3 py-1 text-[11px] font-medium" title="Switch persona view">${PERSONAS.map((p) => html`<option key=${p} value=${p}>${p}</option>`)}</select>
           <div className="text-[11px] text-[#6b7280] italic flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse inline-block"></span>Sync latest</div>
+          <button id="radar-open" type="button" onClick=${() => setRadarOpen(true)} className="pm-hide px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]" title="Where knowledge could be lost">Radar</button>
           <button id="present-toggle" type="button" onClick=${() => setPresent((v) => !v)} aria-pressed=${present} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">${present ? 'Exit presentation' : 'Present'}</button>
           <button onClick=${() => setGuideOpen(true)} className="pm-hide px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
         </div>
@@ -492,6 +495,7 @@ export function App() {
         : html`<span className=${'woc-item' + (w.current ? ' is-current' : '')} title=${w.blurb} aria-current=${w.current ? 'page' : undefined}>${w.name} <i>${w.role.toLowerCase()}</i></span>`}<//>`)}
     </footer>
     ${regSlot}
+    ${radarOpen && active ? html`<${RadarPanel} cards=${contextCards} project=${active} onView=${onViewHit} onClose=${() => setRadarOpen(false)} />` : null}
     <${HandoverModal} isOpen=${isHandoverOpen} onClose=${() => setHandoverOpen(false)} activePersona=${activePersona} activeRef=${active ? active.Project_ReferenceID : null} onPickProject=${(r) => setProject(r)} onViewCard=${onViewHit} />
     ${guideOpen ? html`<div className="fixed inset-0 z-50" style=${{ background: 'rgba(15,23,42,0.30)' }} onClick=${() => setGuideOpen(false)}>
       <aside onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} aria-label="Continuum Guide panel" style=${{ position: 'fixed', top: 0, right: 0, height: '100vh', width: '40vw', minWidth: '480px', maxWidth: '94vw', background: 'linear-gradient(180deg,#F0F7FF 0%,#F3ECFF 55%,#FFF9F0 100%)', borderLeft: '1px solid #A8C6F0', boxShadow: '-8px 0 24px rgba(31,74,122,.16)', display: 'flex', flexDirection: 'column', zIndex: 51 }}>

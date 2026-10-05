@@ -1,0 +1,9 @@
+/* Banner component (HUI-04, first migrated component): storage error and update available.
+   Values come from css/tokens.css. They match the inline styles they replace, checked by tests/smoke.mjs. */
+.banner{display:flex;gap:var(--space-gap);align-items:center;flex-wrap:wrap;padding:var(--space-banner-y) var(--space-banner-x);font-size:var(--fs-banner);border:1px solid}
+.banner--danger{background:var(--color-danger-bg);color:var(--color-danger-fg);border-color:var(--color-danger-border)}
+.banner--info{background:var(--color-info-bg);color:var(--color-info-fg);border-color:var(--color-info-border)}
+.banner__btn{background:var(--color-surface);border:1px solid;border-radius:var(--radius-pill);padding:4px 14px;font-size:var(--fs-banner-btn);cursor:pointer}
+.banner--danger .banner__btn{border-color:var(--color-danger-border);padding:4px 12px}
+.banner--info .banner__btn{border-color:var(--color-info-border)}
+.banner__link{background:transparent;border:none;text-decoration:underline;font-size:var(--fs-banner-btn);cursor:pointer}

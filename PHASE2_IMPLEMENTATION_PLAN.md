@@ -151,4 +151,16 @@ Known gaps carried into Release 3:
 - The package `.zip` is uncompressed (store only) to avoid a library.
 - Opening the app from a second device on a real network is still unverified and needs the user.
 
-Next: Release 3 (KNW-03, RAD-01/02, HUI-02, IMP-05/06, HUI-04), scope to be decided after pilot feedback, in a fresh thread.
+Release 3 done (5 Oct), thread "Phase 2 Release 3":
+- IMP-05 (#58): one bookmarklet left (`static/bookmarklet.js`, copy visible text only, no clicking, no network). The two others were removed. In the app, capture is off until a source host is approved; only whitelisted fields are kept.
+- IMP-06 (#59): `.eml` and `.vtt` import with preview. Message ID, sent date, subject and file hash on the Source record; attachments listed, not imported; HTML reduced to text; speaker, timestamp and cue range kept for transcripts. Lines marked "Decision:" or "Action:" become Draft proposals (never recorded decisions); Copilot or Teams recaps are labelled Inference.
+- HUI-02, KNW-03, RAD-02 (#60): Presentation Mode (view only, session only), Knowledge panel on every card (approved contributors, independent sources, verified vs draft reuse, decisions, handovers), "Reuse in another project" creating a Draft that keeps original provenance (`reusedFrom`), compounding loop in `docs/EVIDENCE_STRENGTH.md`.
+- RAD-01 and HUI-04 (#61): Continuity Radar (`docs/CONTINUITY_RADAR.md`, rules in `core/radar.js`, no people scoring); design tokens in `css/tokens.css`, banner component migrated to `css/components/banner.css`, `scripts/css-usage.mjs --check` in CI guards generated CSS (baseline `docs/css-baseline.json`).
+
+Known gaps carried out of Release 3:
+- Extraction of decisions and actions needs explicit "Decision:" or "Action:" markers; free text is not interpreted.
+- A reuse becomes "verified" when its copy is approved; there is no automatic refresh of a reused copy when the original gains evidence (the panel shows how many entries were added since).
+- Radar scans cards in the database only, not items still in the Harvester staging list. Radar levels are fixed rules, not configurable.
+- HUI-04 migrated only the banner component; the Tailwind block in `styles.css` is untouched. Computed-style checks run in Chromium (covers Edge); Safari is not tested in CI. The CSS usage scan sees literal class names only.
+- Bookmarklet: no per-source approval beyond the host name; the user still has to install it as a bookmark.
+- Carried over, still needing the user: mark `critical-tests` as a required check; open the app from a second device on a real network. `ONION_PERSONA` still unset by default (pilot test-aid mode); no separate decisions list; handover zip uncompressed; RAID cards whose text was replaced by an approved update re-import as new.

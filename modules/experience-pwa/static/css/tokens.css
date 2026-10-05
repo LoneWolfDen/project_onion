@@ -1,0 +1,14 @@
+/* HUI-04 design tokens. Plain CSS custom properties, no build step. Loaded before component CSS.
+   Rule: styles.css (the generated Tailwind block) is not edited or shrunk until `node scripts/css-usage.mjs --check` passes.
+   Migrate one component at a time into css/components/ and read its values from here. */
+:root{
+  /* feedback colours (banners) */
+  --color-danger-bg:#FEE2E2;--color-danger-fg:#7F1D1D;--color-danger-border:#FCA5A5;
+  --color-info-bg:#E0F2FE;--color-info-fg:#0C4A6E;--color-info-border:#7DD3FC;
+  --color-surface:#fff;
+  /* shape and spacing */
+  --radius-pill:999px;
+  --space-banner-y:10px;--space-banner-x:16px;--space-gap:12px;
+  /* type (HUI-01 floor stays in typography.css) */
+  --fs-banner:15px;--fs-banner-btn:14px;
+}

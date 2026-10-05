@@ -110,13 +110,19 @@ Follows the backlog's releases but regroups by dependency. Each step ships as it
 - **Repo guards in CI**: tracked-DB, path, secret, and gitleaks checks.
 - **Definition of done per item**: acceptance criteria mapped to a test name in the PR description; CI green; one demo-dataset run in a real browser.
 
-## 6. Questions for the user
+## 6. Decisions and open questions
 
-1. STR-01/02: confirm the delivery-lead persona and single-user pilot, which lets PRV-04 stay P1 and defers Graph/MCP work.
-2. Provide the agreed RAID template and sanitised GDP export headers (blocks steps 15).
-3. PRV-05: should emails be redacted? Current code deliberately keeps them.
-4. Is any credential known to have been committed before? If so it needs rotation regardless of this plan.
+Decided (5 Oct):
+1. Primary user is a delivery lead and the pilot is single-user. **The persona drop-down stays** as a test aid for privacy and scope features (PRV-04, Presentation Mode, Radar); it is not a security boundary in single-user mode.
+2. Emails are **kept**, not redacted. PRV-05 consolidates screening around phones, configured patterns and noise words only; emails remain visible in the redaction preview as intentionally preserved.
+3. No credential was ever committed, so no rotation is needed. The FND-01 history scan stays as a confirming CI check.
+4. Chroma database files are deleted from git (PR `claude/fnd02-untrack-chroma`).
+
+Still open (blocks only step 15):
+- Agreed RAID template.
+- Sanitised GDP export headers.
+Everything else can proceed without them; IMP-02 is built generically so RAID/GDP become mapping templates later.
 
 ## 7. Suggested first PR
 
-Step 0 plus FND-02/03 (repo guards, untrack Chroma, remove machine paths). It is small, mechanical, low-risk, and makes the later work safer.
+Step 0 plus FND-03 (FND-02 is already in its own PR) (repo guards, untrack Chroma, remove machine paths). It is small, mechanical, low-risk, and makes the later work safer.

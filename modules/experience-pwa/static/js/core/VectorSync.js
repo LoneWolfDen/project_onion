@@ -166,7 +166,14 @@ export function vectorScoreForDistance(dist) {
   if (!Number.isFinite(d)) return 0.55;
   return Math.max(0.5, Math.round((0.95 - d * 0.33) * 100) / 100);
 }
-export async function flushVectorQueue() {
+// Single-flight: overlapping triggers (online event, 60s timer, SW message,
+// post-mirror drain) share one drain instead of double-posting every entry.
+let flushInFlight = null;
+export function flushVectorQueue() {
+  if (!flushInFlight) flushInFlight = drainQueue().finally(() => { flushInFlight = null; });
+  return flushInFlight;
+}
+async function drainQueue() {
   const q = readQueue();
   if (!q.length) return { flushed: 0, pending: 0 };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return { flushed: 0, pending: q.length, offline: true };
@@ -188,11 +195,17 @@ export async function flushVectorQueue() {
       remaining.push({ ...entry, attempts: (entry.attempts || 0) + 1, error: String((e && e.message) || e).slice(0, 200) });
     }
   }
-  writeQueue(remaining);
+  // Entries queued while we were awaiting the network are not in `q`; re-read
+  // so writing back `remaining` does not erase them. A newer upsert for the
+  // same id supersedes a stale entry we failed to send.
+  const sent = (e, list) => list.some((x) => x && x.at === e.at && x.op === e.op && String(x.id) === String(e.id));
+  const added = readQueue().filter((e) => e && !sent(e, q));
+  const keep = remaining.filter((e) => !(e.op === 'upsert' && added.some((a) => a.op === 'upsert' && String(a.id) === String(e.id))));
+  writeQueue([...keep, ...added]);
   // Only mark when something actually flushed — never blanket-flip on a
   // failed/offline drain (that would fake ✅ on still-queued items).
   try { if (flushed > 0) markQueueMirrored(flushedIds.length ? flushedIds : flushed); } catch (e) {}
-  return { flushed, pending: remaining.length };
+  return { flushed, pending: keep.length + added.length };
 }
 export function mirrorToVector(op, cardOrId) {
   try {

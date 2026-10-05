@@ -1,0 +1,12 @@
+/* HUI-02 Presentation Mode. Applies only with <html data-presentation="on">; nothing here changes saved data.
+   Larger text, less secondary detail, bigger key actions, diagnostic and admin controls hidden. */
+html[data-presentation="on"] body{zoom:1.25}
+html[data-presentation="on"] #harvester-open-btn,
+html[data-presentation="on"] #harvester-backdrop,
+html[data-presentation="on"] #diagnostics-panel,
+html[data-presentation="on"] #layout-flag,
+html[data-presentation="on"] .onion-card details,
+html[data-presentation="on"] .pm-hide{display:none !important}
+html[data-presentation="on"] .onion-card-title{font-size:18px;font-weight:700}
+html[data-presentation="on"] .onion-card button{min-height:36px;font-size:14px}
+#presentation-banner{background:#FFF5D6;color:#92400E;border-bottom:1px solid #FDE68A;padding:8px 16px;font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}

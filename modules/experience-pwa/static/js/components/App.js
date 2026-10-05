@@ -7,6 +7,8 @@ import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ImportWizard } from './ImportWizard.js';
 import { MailImportDialog } from './MailImportDialog.js';
+import { makeReuse } from '../core/compounding.js';
+import { forPresentation, hiddenCount, applyPresentation } from '../core/presentation.js';
 import { RAID_FIELDS, raidValidate, raidContent, raidTitle, provenanceText, reimportDiff, diffSummary, raidRowKey, GDP_FIELDS, gdpSelect, gdpContent, gdpTitle } from '../core/importTemplates.js';
 import { ProjectModal } from './ProjectModal.js';
 import { HandoverModal } from './HandoverModal.js';
@@ -83,6 +85,8 @@ export function App() {
   const [staged, setStaged] = useState([]);
   const [importJob, setImportJob] = useState(null);
   const [mailJob, setMailJob] = useState(null);
+  const [present, setPresent] = useState(false); // session only: never saved, so the app always opens normally
+  useEffect(() => { applyPresentation(document, present); }, [present]);
   const [importedSources, setImportedSources] = useState(() => { try { return JSON.parse(localStorage.getItem('continuum_import_sources') || '[]'); } catch (e) { return []; } });
   const [hStatus, setHStatus] = useState('');
   const [clip, setClip] = useState('');
@@ -259,6 +263,15 @@ export function App() {
   const GDP_ADAPTER = { name: 'gdp', label: 'GDP export', fields: GDP_FIELDS, strict: true, select: gdpSelect, content: gdpContent };
   const onGdpFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: GDP_ADAPTER }); };
   const onRaidFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: RAID_ADAPTER }); };
+  // RAD-02: reuse makes a private Draft in the other project through the normal review step; the original is untouched.
+  const onReuseCard = (card, target) => {
+    try {
+      const r = makeReuse(card, target, { by: activePersona });
+      setStaged((p) => p.concat([toPayload({ ...r, source: r.source, privacy: 'My Notes (Private)' }, activePersona)]));
+      logEvent('reuse', 'reuse.draft_created', {});
+      setHStatus('Draft created in ' + target.project_name + '. Open Harvester Control to review and approve it. The original card is unchanged.');
+    } catch (e) { setHStatus('Could not reuse this card: ' + String((e && e.message) || e)); }
+  };
   const onMailFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setMailJob({ file: f }); };
   // IMP-06: emails and transcripts stage as private drafts; proposed decisions and actions are never confirmed decisions.
   const onMailStage = ({ source, items }) => {
@@ -438,14 +451,17 @@ export function App() {
   });
   const scopedBaseFor = (pMode) => active ? scopeByPrivacyMode((db.timeline || []).filter(matchActive).concat((db.notes || []).filter(matchActive)), pMode || privacy) : [];
   // Re-evaluated on every render: switching activePersona dropdown automatically refreshes timeline + Smart Assistant context.
-  const contextCards = scopedBaseFor(privacy);
-  const personaTimeline = scopeByPrivacyMode(db.timeline || [], privacy);
-  const personaNotes = scopeByPrivacyMode(db.notes || [], privacy);
-  const timelineSlot = active ? html`<${TimelineCard} project=${active} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} onSync=${handleSyncCard} onDelete=${onDeleteCard} onEdit=${onEditCard} />` : null;
+  const pv = (arr) => (present ? forPresentation(arr) : arr);
+  const contextCards = pv(scopedBaseFor(privacy));
+  const personaTimeline = pv(scopeByPrivacyMode(db.timeline || [], privacy));
+  const personaNotes = pv(scopeByPrivacyMode(db.notes || [], privacy));
+  const hiddenN = present && active ? hiddenCount(scopeByPrivacyMode((db.timeline || []).filter(matchActive).concat((db.notes || []).filter(matchActive)), privacy)) : 0;
+  const timelineSlot = active ? html`<${TimelineCard} project=${active} allCards=${(db.timeline || []).concat(db.notes || [])} projects=${db.projects} onReuse=${onReuseCard} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} onSync=${handleSyncCard} onDelete=${onDeleteCard} onEdit=${onEditCard} />` : null;
   const askRaw = String(ask || '').trim();
   const hits = (askRaw ? contextCards.filter((t) => matchesAssistantQuery(t, askRaw)) : contextCards).slice(0, 3);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
     <${StorageBanner} />
+    ${present ? html`<div id="presentation-banner" role="status"><b>Presentation Mode</b><span>Private and draft content is hidden${active ? ' (' + hiddenN + ' card' + (hiddenN === 1 ? '' : 's') + ')' : ''}. Nothing is changed or deleted.</span><button id="present-exit" type="button" onClick=${() => setPresent(false)} style=${{ marginLeft: 'auto', padding: '4px 14px', borderRadius: '9999px', border: '1px solid #92400E', background: '#fff' }}>Exit</button></div>` : null}
     <${UpdateBanner} />
     <div className="sticky top-0 z-20 border-b border-[#d6e8ff]" style=${{ background: 'linear-gradient(90deg,#D6F5E8 0%,#D6E8FF 100%)' }}>
       <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
@@ -459,7 +475,8 @@ export function App() {
         <div className="flex items-center gap-2">
           <label className="text-[11px] text-[#6b7280]">Persona</label><select value=${activePersona} onChange=${(e) => setActivePersona(e.target.value)} className="bg-white border border-[#bfdbfe] rounded-full px-3 py-1 text-[11px] font-medium" title="Switch persona view">${PERSONAS.map((p) => html`<option key=${p} value=${p}>${p}</option>`)}</select>
           <div className="text-[11px] text-[#6b7280] italic flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse inline-block"></span>Sync latest</div>
-          <button onClick=${() => setGuideOpen(true)} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
+          <button id="present-toggle" type="button" onClick=${() => setPresent((v) => !v)} aria-pressed=${present} className="px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">${present ? 'Exit presentation' : 'Present'}</button>
+          <button onClick=${() => setGuideOpen(true)} className="pm-hide px-3 py-1 rounded-full bg-white border border-[#bfdbfe] text-[11px]">Guide</button>
         </div>
       </div>
     </div>

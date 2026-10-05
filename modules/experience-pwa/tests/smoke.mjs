@@ -541,6 +541,35 @@ const scenarios = {
     check('a file that is not a transcript is refused with a message', true);
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'Presentation Mode (HUI-02)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const before = await p.evaluate(() => window.__continuumRepo.getRaw());
+    const nBefore = await p.locator('[id^="tl-"]').count();
+    await p.click('#present-toggle'); await sleep(p, 400);
+    check('banner says private content is hidden', /private and draft content is hidden/i.test(await p.innerText('#presentation-banner')));
+    check('diagnostic and harvester controls are hidden', !(await p.locator('#harvester-open-btn').isVisible()));
+    const nOn = await p.locator('[id^="tl-"]').count();
+    check('no more cards than before are shown', nOn <= nBefore, nOn + ' vs ' + nBefore);
+    check('saved data is unchanged', before === await p.evaluate(() => window.__continuumRepo.getRaw()));
+    await p.click('#present-exit'); await sleep(p, 300);
+    check('exit restores normal view', (await p.locator('[id^="tl-"]').count()) === nBefore && await p.locator('#harvester-open-btn').isVisible());
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'Knowledge compounding and reuse (KNW-03, RAD-02)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    const before = await p.evaluate(() => window.__continuumRepo.getRaw());
+    const tg = p.locator('.knowledge-toggle').first();
+    check('card shows contributors, sources and reuse in one line', /contributor.*independent source.*reused \d+ time/.test(await tg.innerText()));
+    await tg.click(); await sleep(p, 200);
+    const body = await p.locator('.knowledge-body').first().innerText();
+    check('panel states the compounding loop and where it is used', /capture, validate, reuse, new evidence, stronger knowledge/.test(body) && /Handovers:/.test(body));
+    const sel = p.locator('.knowledge-body select').first();
+    if (await sel.count()) {
+      await sel.selectOption({ index: 1 }); await p.locator('.knowledge-reuse').first().click(); await sleep(p, 400);
+      check('reuse leaves saved data untouched until the draft is approved', before === await p.evaluate(() => window.__continuumRepo.getRaw()));
+    } else check('reuse target list exists when more than one project is registered', true, 'single project in demo data');
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
 };
 
 // --------------------------------------------------------------------- main

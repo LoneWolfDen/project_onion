@@ -331,6 +331,29 @@ const scenarios = {
     check('rows staged privately with status message', /Staged 1 RAID rows/.test(t) && /private until approved/.test(t), t.slice(0, 80));
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'GDP import (IMP-04)': async ({ p, errors }) => {
+    await p.click('#harvester-open-btn'); await sleep(p, 600);
+    const cols = ['Engagement Name','Account Name','GDP ID','Project ID','PeopleSoft Engagement ID','Delivery Model','Practice','Location of Delivery','Opportunity ID','SMP Link','Business Unit / BSV','Service Type','GDD','GDM','PrgM','EM / DL','BDM / AM / SAM','National Account Owner','OSG POA','OSG BOA','Sales Organization','Start Date','End Date','Phase','Status Date','Summary','Schedule','Schedule Comments','CSAT','CSAT Comments','Budget','Budget Comments','Engagement Risk','Engagement Risk Comments','Resources','Resources Comments','Status Indicator','Risk Profile','Risk Survey Date','Security Profile Date','Engagement Status','Target Technology Platform'];
+    const row = (o) => cols.map((c) => o[c] || '').join(',');
+    const file = (h, rows) => ({ name: 'gdp.csv', mimeType: 'text/csv', buffer: Buffer.from([h.join(','), ...rows].join('\n')) });
+    const input = p.locator('input[type=file]').nth(0);
+    await input.setInputFiles(file(cols.map((c) => (c === 'Status Date' ? 'Status Dt' : c)), [row({ 'Project ID': '7302010' })]));
+    await p.waitForSelector('#import-wizard');
+    await p.waitForSelector('#import-missing', { timeout: 5000 }).catch(() => {});
+    check('renamed required header is reported and blocks import', await p.locator('#import-missing').count() === 1 && await p.locator('#import-confirm').isDisabled());
+    await p.click('#import-cancel'); await sleep(p, 300);
+    await input.setInputFiles(file(cols, [
+      row({ 'Project ID': '7302010', 'Opportunity ID': 'O-730201', 'GDP ID': '7302', 'Status Date': '01/10/2026', Summary: 'On track', 'Status Indicator': 'Green' }),
+      row({ 'Project ID': '555', 'Opportunity ID': 'O-1', 'GDP ID': '9', 'Status Date': '01/10/2026', Summary: 'Other', 'Status Indicator': 'Red' }),
+    ]));
+    await p.waitForSelector('#import-note-0', { timeout: 5000 });
+    const notes = await p.evaluate(() => [0, 1, 2].map((i) => document.getElementById('import-note-' + i).textContent));
+    check('matched, other-project and no-ID rows are counted', /^1 rows match/.test(notes[0]) && /^1 rows belong to other/.test(notes[1]) && /^0 rows have no/.test(notes[2]), notes.join(' | '));
+    await p.click('#import-confirm'); await sleep(p, 600);
+    const t = await p.evaluate(() => document.getElementById('harvester-control-panel').innerText);
+    check('only the matching row is staged, privately', /Staged 1 GDP rows/.test(t) && /private until approved/.test(t), t.slice(0, 80));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
   'readable typography (HUI-01)': async ({ p, errors }) => {
     for (const [w, h] of [[1366, 768], [1920, 1080]]) {
       await p.setViewportSize({ width: w, height: h });

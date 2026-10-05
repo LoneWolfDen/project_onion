@@ -1,6 +1,7 @@
 // js/core/importTemplates.js — field lists for the import engine (IMP-03 RAID; GDP follows in IMP-04).
 // Canonical fields come from docs/IMPORT_TEMPLATES.md. Aliases cover older RAID templates.
 import { NOT_FOUND } from './importEngine.js';
+import { projectIdEquals } from './schema.js';
 
 export const RAID_FIELDS = [
   { key: 'raised', label: 'Date Raised', type: 'date', aliases: ['Raised', 'Raised On', 'Date Logged', 'Logged'] },
@@ -56,4 +57,52 @@ export function saveMap(fp, columns, norm) {
     all[fp] = Object.fromEntries(columns.filter((c) => c.field).map((c) => [norm(c.header), c.field]));
     localStorage.setItem(MAP_KEY, JSON.stringify(all));
   } catch (e) { /* storage unavailable: mapping is simply not remembered */ }
+}
+
+// ---- GDP export (IMP-04): fixed tool export, exact headers only -----------------------------
+const GDP_COLS = [
+  ['engagement', 'Engagement Name'], ['account', 'Account Name'], ['gdpId', 'GDP ID'], ['projectId', 'Project ID'],
+  ['psId', 'PeopleSoft Engagement ID'], ['model', 'Delivery Model'], ['practice', 'Practice'], ['location', 'Location of Delivery'],
+  ['oppId', 'Opportunity ID'], ['smp', 'SMP Link'], ['bu', 'Business Unit / BSV'], ['service', 'Service Type'],
+  ['gdd', 'GDD'], ['gdm', 'GDM'], ['prgm', 'PrgM'], ['emdl', 'EM / DL'], ['bdm', 'BDM / AM / SAM'], ['nao', 'National Account Owner'],
+  ['osgPoa', 'OSG POA'], ['osgBoa', 'OSG BOA'], ['salesOrg', 'Sales Organization'],
+  ['start', 'Start Date', 'date'], ['end', 'End Date', 'date'], ['phase', 'Phase'], ['statusDate', 'Status Date', 'date'],
+  ['summary', 'Summary'], ['schedule', 'Schedule'], ['scheduleC', 'Schedule Comments'], ['csat', 'CSAT'], ['csatC', 'CSAT Comments'],
+  ['budget', 'Budget'], ['budgetC', 'Budget Comments'], ['risk', 'Engagement Risk'], ['riskC', 'Engagement Risk Comments'],
+  ['resources', 'Resources'], ['resourcesC', 'Resources Comments'], ['status', 'Status Indicator'], ['riskProfile', 'Risk Profile'],
+  ['riskSurvey', 'Risk Survey Date', 'date'], ['secProfile', 'Security Profile Date', 'date'], ['engStatus', 'Engagement Status'], ['platform', 'Target Technology Platform'],
+];
+const GDP_REQUIRED = ['gdpId', 'projectId', 'oppId', 'statusDate', 'summary', 'status'];
+export const GDP_FIELDS = GDP_COLS.map(([key, label, type]) => ({ key, label, type, required: GDP_REQUIRED.includes(key) }));
+
+// A row belongs to the active project only through GDP ID, Project ID or Opportunity ID.
+export function gdpClassify(rec, project) {
+  const g = String(rec.values.gdpId || '').trim(), pid = String(rec.values.projectId || '').trim(), opp = String(rec.values.oppId || '').trim();
+  if (!g && !pid && !opp) return 'noKey';
+  const p = project || {};
+  const gid = String(p.gdp_id || p.gdpId || ((/project-details\/(\d+)/.exec(p.gdp_url || p.gdpUrl || '') || [])[1]) || '');
+  const hit = (g && gid && gid === g.replace(/\.0+$/, ''))
+    || (pid && (p.project_ids || []).some((h) => projectIdEquals(pid, h)))
+    || (opp && (p.opportunity_numbers || []).includes(opp));
+  return hit ? 'matched' : 'other';
+}
+export function gdpSelect(records, project) {
+  const sel = { matched: [], other: [], noKey: [] };
+  records.forEach((r) => sel[gdpClassify(r, project)].push(r));
+  return {
+    staged: sel.matched,
+    notes: ['' + sel.matched.length + ' rows match this project', sel.other.length + ' rows belong to other projects (not imported)', sel.noKey.length + ' rows have no GDP ID, Project ID or Opportunity ID (not imported)'],
+  };
+}
+export function gdpTitle(rec) { return 'GDP status ' + (rec.values.statusDate || NOT_FOUND) + ': ' + v(rec, 'status'); }
+export function gdpContent(rec) {
+  const dims = [['Schedule', 'schedule'], ['CSAT', 'csat'], ['Budget', 'budget'], ['Engagement Risk', 'risk'], ['Resources', 'resources']]
+    .map(([l, k]) => l + ': ' + v(rec, k) + ' (' + v(rec, k + 'C') + ')');
+  return [
+    'Overall: ' + v(rec, 'status') + ' | Phase: ' + v(rec, 'phase') + ' | As of: ' + v(rec, 'statusDate'),
+    'Summary: ' + v(rec, 'summary'),
+    ...dims,
+    'People: GDD ' + v(rec, 'gdd') + ', GDM ' + v(rec, 'gdm') + ', PrgM ' + v(rec, 'prgm') + ', EM/DL ' + v(rec, 'emdl') + ', BDM/AM/SAM ' + v(rec, 'bdm'),
+    'Start: ' + v(rec, 'start') + ' | End: ' + v(rec, 'end') + ' | Risk profile: ' + v(rec, 'riskProfile'),
+  ].join('\n');
 }

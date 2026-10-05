@@ -33,7 +33,7 @@ jobs:
           python-version: '3.12'
 
       - name: Unit tests
-        run: node --test modules/experience-pwa/tests/confidence.test.mjs
+        run: node --test modules/experience-pwa/tests/*.test.mjs
 
       # Pinned to the version the smoke script was developed against.
       - name: Install Playwright + Chromium

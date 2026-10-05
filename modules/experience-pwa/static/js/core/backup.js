@@ -5,7 +5,7 @@ export const BACKUP_FORMAT = 'continuum-backup';
 export const SCHEMA_VERSION = 1;
 export const APP_VERSION = '0.21';
 // Lightweight preferences only. Anything not listed here is left out of the file.
-export const PREFERENCE_KEYS = ['activePersona', 'enableBackgroundSync', 'OPENROUTER_MODEL'];
+export const PREFERENCE_KEYS = ['activePersona', 'enableBackgroundSync', 'OPENROUTER_MODEL', 'LLM_PROVIDER'];
 
 // Stable JSON (sorted keys) so the same content always hashes the same.
 export function canonicalJson(v) {

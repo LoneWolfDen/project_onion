@@ -1,5 +1,7 @@
 // js/main.js — ESM entry (local vendor, no CDN)
 import { App } from './components/App.js';
+import { registerServiceWorker } from './core/pwa.js';
+registerServiceWorker();
 try {
   const root = window.ReactDOM.createRoot(document.getElementById('root'));
   root.render(window.React.createElement(App));

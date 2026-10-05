@@ -3,6 +3,7 @@
 import { getRaw } from '../core/repo.js';
 import { recordDecision, clearDecision, isRecordedDecision, kindOf, kindMeta } from '../core/knowledge.js';
 import { buildConfidenceText, evidenceStrength } from '../core/confidence.js';
+import { KnowledgePanel } from './KnowledgePanel.js';
 import { aiEngineLabel } from '../core/AiClient.js';
 import { cardAge, formatWhen, toDate } from '../core/timeAgo.js';
 import { matchSentence } from '../core/matchExplain.js';
@@ -858,6 +859,7 @@ export function TimelineCard(props) {
         </div>
       </div>
       ${evidenceBox(d.ev, confTier)}
+      <${KnowledgePanel} card=${m} allCards=${props.allCards || timeline} projects=${props.projects} persona=${props.activePersona} onReuse=${props.onReuse} />
     </div>`;
   });
   return html`<div className="space-y-5">

@@ -24,7 +24,7 @@ const html = window.htm.bind(window.React.createElement);
 // KNW-01: structured fields that must survive staging, review and approval (category, RAID type, source id).
 export function carryFields(o) {
   const out = {};
-  ['category', 'raidType', 'importSourceId', 'kind', 'rowKey', 'inference'].forEach((k) => { if (o && o[k]) out[k] = o[k]; });
+  ['category', 'raidType', 'importSourceId', 'kind', 'rowKey', 'inference', 'reusedFrom', 'sourceIds'].forEach((k) => { if (o && o[k]) out[k] = o[k]; });
   return out;
 }
 export function toPayload(o, persona) {

@@ -5,6 +5,7 @@ import { piiScreen } from '../core/PiiGate.js';
 import { kindOf, kindMeta, statementId } from '../core/knowledge.js';
 import { buildPackage } from '../core/exportPackage.js';
 import { logEvent } from '../core/logger.js';
+import { recordHandoverUse } from '../core/compounding.js';
 import { makeZip } from '../core/zip.js';
 import { CATS, catMeta, categoryOf, buildHandover, packageHash, makeConfirmation, confirmationValid, NOT_FOUND } from '../core/handover.js';
 const htmlH = window.htm.bind(window.React.createElement);
@@ -140,6 +141,7 @@ const ch=projects.filter((p)=>selected[p.Project_ReferenceID]);
 const entries=ch.map((pj)=>({project:pj,perNote:String((perNotes||{})[pj.Project_ReferenceID]||''),groups:groupFor(pj)}));
 const h=await packageHash(entries,{timeframe,coverNotes,includeUnconfirmed});
 if(!confirmationValid(confirmation,h)){setConfirmation(null);setStatus('The content changed since you confirmed it. Review and confirm again before exporting.');return false;}
+try{entries.forEach((en)=>recordHandoverUse(window.localStorage,{hash:h,by:activePersona,project:(en.project&&en.project.project_name)||'',cardIds:en.groups.cards.map((c)=>c.id)}));}catch(e){}
 return true;}catch(e){setStatus('Could not verify the review: '+String((e&&e.message)||e));return false;}
 }
 async function downloadHtml(){

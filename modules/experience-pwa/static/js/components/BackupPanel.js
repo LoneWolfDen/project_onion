@@ -27,6 +27,16 @@ async function saveSnapshot(snapshot) {
   }
 }
 
+// Download a backup of the current data. Resolves true only if the file was produced.
+export async function downloadBackupNow() {
+  try {
+    const b = await buildBackup(readLocal(), readPrefs());
+    download('continuum-backup-' + stamp() + '.json', JSON.stringify(b, null, 2));
+    try { localStorage.setItem('onion_last_backup_at', b.generatedAt); } catch (e) {}
+    return true;
+  } catch (e) { return false; }
+}
+
 export function BackupPanel() {
   const [msg, setMsg] = useState('');
   const [pending, setPending] = useState(null); // { name, backup }

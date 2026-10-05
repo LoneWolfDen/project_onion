@@ -185,3 +185,21 @@ git commit -m "data(clients): add Airbus as Client Master PRIMARY FILTER — Dat
 git push origin feature/add-client-airbus
 # PR → Squash → tag v0.7-clients-added
 ```
+## Experience PWA — automated checks (added Oct 2026)
+
+```bash
+# unit tests (pure functions, no browser)
+node --test modules/experience-pwa/tests/confidence.test.mjs
+
+# browser smoke checks (Playwright + Chromium, demo dataset, ~1 min)
+node modules/experience-pwa/tests/smoke.mjs            # all scenarios
+node modules/experience-pwa/tests/smoke.mjs harvester  # one scenario (name substring)
+KEEP_SHOTS=/tmp/shots node modules/experience-pwa/tests/smoke.mjs   # also save screenshots
+```
+
+`smoke.mjs` starts `service.py` on :8002 itself (or reuses a running one), exits 1 on any
+failure. It needs the `playwright` package (`PLAYWRIGHT_MODULE=/path/to/playwright` if it is
+not resolvable) and a Chromium (`PLAYWRIGHT_CHROMIUM=/path/to/chromium`). It covers the
+backlog checklist in `docs/SONNET-FINAL-BACKLOG.md`: persona switching (no React #300),
+dynamic confidence + sentence, sort order, provenance, card menu, stage → Run AI → Review &
+Merge → Approve, PII, private pending-append visibility, and the 40vw Harvester/Guide sliders.

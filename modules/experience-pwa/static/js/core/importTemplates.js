@@ -1,6 +1,6 @@
 // js/core/importTemplates.js — field lists for the import engine (IMP-03 RAID; GDP follows in IMP-04).
 // Canonical fields come from docs/IMPORT_TEMPLATES.md. Aliases cover older RAID templates.
-import { NOT_FOUND } from './importEngine.js';
+import { NOT_FOUND, rowKey } from './importEngine.js';
 import { projectIdEquals } from './schema.js';
 
 export const RAID_FIELDS = [
@@ -46,6 +46,47 @@ export function raidTitle(rec) {
 export function provenanceText(rec, key = 'description') {
   const p = rec.provenance[key] || Object.values(rec.provenance)[0];
   return p ? p.file + ' › ' + p.sheet + ' › row ' + p.row : '';
+}
+
+// ---- RAID re-import diff (IMP-03 gap) ----------------------------------------------------------
+// A row is recognised by raised date + type + the start of the description (RAID_KEY_FIELDS).
+// Cards imported before row keys were stored are recognised from their content text.
+export const raidRowKey = (rec) => rowKey(rec, RAID_KEY_FIELDS);
+const clean = (x) => String(x == null ? '' : x).replace(/\s+/g, ' ').trim();
+export function raidKeyFromContent(content) {
+  const lines = String(content || '').split('\n');
+  const first = /^([^:]+):\s*([\s\S]*)$/.exec(lines[0] || '');
+  const raised = /^Raised:\s*(.*?)\s*\|/.exec(lines[1] || '');
+  if (!first || !raised) return '';
+  const v = (x) => (x === NOT_FOUND ? '' : x);
+  return raidRowKey({ values: { raised: v(raised[1]), type: first[1], description: first[2] } });
+}
+export function cardRaidKey(card) { return (card && card.rowKey) || raidKeyFromContent(card && (card.content || card.detail)); }
+
+// records: mapped RAID records. contentOf: record -> the text a card would hold (already screened).
+// existing: cards already in the project. Returns new rows, rows whose other fields changed (with the
+// card they update) and unchanged rows. A repeated key inside one file counts as the first one only.
+export function reimportDiff(records, existing, contentOf) {
+  const byKey = new Map();
+  (existing || []).forEach((c) => { if (c && String(c.type || '') === 'RAID') { const k = cardRaidKey(c); if (k && !byKey.has(k)) byKey.set(k, c); } });
+  const out = { added: [], changed: [], unchanged: [], duplicates: 0 };
+  const seen = new Set();
+  (records || []).forEach((rec) => {
+    const key = raidRowKey(rec);
+    if (seen.has(key)) { out.duplicates += 1; return; }
+    seen.add(key);
+    const card = byKey.get(key);
+    if (!card) { out.added.push({ rec, key }); return; }
+    if (clean(contentOf(rec)) === clean(card.content || card.detail)) out.unchanged.push({ rec, key, card });
+    else out.changed.push({ rec, key, card });
+  });
+  return out;
+}
+export function diffSummary(d, name) {
+  const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+  const parts = [d.added.length + ' new', n(d.changed.length, 'changed (staged as an update on its existing card)', 'changed (staged as updates on their existing cards)'), d.unchanged.length + ' unchanged (skipped)'];
+  if (d.duplicates) parts.push(n(d.duplicates, 'repeated row in the file (skipped)', 'repeated rows in the file (skipped)'));
+  return 'Re-import of ' + name + ': ' + parts.join(', ') + '.';
 }
 
 // Saved column mappings, per header fingerprint (localStorage; failures are harmless).

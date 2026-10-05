@@ -1,11 +1,12 @@
 // App orchestrator P1 — imports + state + helpers.
 import { OnionDB, readLocal, writeLocal } from '../core/FailoverDB.js';
 import { StorageBanner } from './StorageBanner.js';
+import { logEvent } from '../core/logger.js';
 import { UpdateBanner } from './UpdateBanner.js';
 import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ImportWizard } from './ImportWizard.js';
-import { RAID_FIELDS, raidValidate, raidContent, raidTitle, provenanceText, GDP_FIELDS, gdpSelect, gdpContent, gdpTitle } from '../core/importTemplates.js';
+import { RAID_FIELDS, raidValidate, raidContent, raidTitle, provenanceText, reimportDiff, diffSummary, raidRowKey, GDP_FIELDS, gdpSelect, gdpContent, gdpTitle } from '../core/importTemplates.js';
 import { ProjectModal } from './ProjectModal.js';
 import { HandoverModal } from './HandoverModal.js';
 import { WORLD_OF_CONTINUUM } from '../constants/worldOfContinuum.js';
@@ -258,17 +259,26 @@ export function App() {
   const onRaidFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: RAID_ADAPTER }); };
   const onImportStage = ({ records, source, warnings }) => {
     const isGdp = importJob && importJob.adapter.name === 'gdp';
-    const out = records.map((r, i) => {
+    // RAID re-import: only new and changed rows are staged; changed rows become updates on their existing card.
+    let diff = null; let todo = records.map((r) => ({ rec: r }));
+    if (!isGdp) {
+      const st = readLocal(); const mine = (st.timeline || []).concat(st.notes || []).filter((c) => c && (c.Project_ReferenceID === active.Project_ReferenceID || c.projectId === active.project_name));
+      diff = reimportDiff(records, mine, (r) => piiScreen(raidContent(r)).text);
+      todo = diff.added.concat(diff.changed);
+    }
+    const out = todo.map(({ rec: r, key, card: target }, i) => {
       const s = piiScreen(isGdp ? gdpContent(r) : raidContent(r));
       const src = provenanceText(r, isGdp ? 'summary' : 'description') + (isGdp ? ' (as of ' + (r.values.statusDate || 'Not found') + ')' : '');
       const rawText = isGdp ? gdpContent(r) : raidContent(r);
       const pid = (isGdp ? 'gdp-' : 'raid-') + source.id + '-' + r.row + '-' + Date.now() + '-' + i;
       retainOriginal(pid, rawText, s.text);
-      return toPayload({ id: pid, projectId: active.project_name, type: isGdp ? 'GDP' : 'RAID', title: piiScreen(isGdp ? gdpTitle(r) : raidTitle(r)).text, source: src, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)', category: isGdp ? 'delivery' : 'raid', raidType: isGdp ? '' : String(r.values.type || ''), importSourceId: source.id }, activePersona);
+      return toPayload({ id: pid, projectId: active.project_name, type: isGdp ? 'GDP' : 'RAID', title: piiScreen(isGdp ? gdpTitle(r) : raidTitle(r)).text, source: src, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)', category: isGdp ? 'delivery' : 'raid', raidType: isGdp ? '' : String(r.values.type || ''), importSourceId: source.id, rowKey: isGdp ? '' : raidRowKey(r), smartAppend: target ? { targetCardId: String(target.id), targetCardTitle: String(target.title || ''), matchScore: 1, matchReasons: ['Same RAID row (raised date, type, description)'] } : null }, activePersona);
     });
+    logEvent('import', 'import.staged', { rows: out.length, adapter: isGdp ? 'gdp' : 'raid', warnings: warnings.length });
+    if (diff) logEvent('import', 'import.reimport_diff', { added: diff.added.length, changed: diff.changed.length, unchanged: diff.unchanged.length });
     setStaged((p) => p.concat(out));
     setImportedSources((prev) => { const next = prev.concat([source]); try { localStorage.setItem('continuum_import_sources', JSON.stringify(next)); } catch (e) {} return next; });
-    setHStatus('Staged ' + out.length + (isGdp ? ' GDP' : ' RAID') + ' rows from ' + source.name + (warnings.length ? ' (' + warnings.length + ' warnings)' : '') + '. They stay private until approved.');
+    setHStatus((diff && (diff.changed.length + diff.unchanged.length) ? diffSummary(diff, source.name) + ' ' : '') + 'Staged ' + out.length + (isGdp ? ' GDP' : ' RAID') + ' rows from ' + source.name + (warnings.length ? ' (' + warnings.length + ' warnings)' : '') + '. They stay private until approved.');
     setImportJob(null);
   };
   const parseWb = async (file, source) => {
@@ -336,7 +346,7 @@ export function App() {
     setActiveRef(ref);
     setRegOpen(false);
   }} />` : null;
-  const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, title: s.text.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', author: activePersona || 'Brené', refs: [], updates: [] }); if (reset) reset(''); };
+  const onAddNote = async (text, pv, reset) => { const v = String(text || '').trim(); if (!v || !active) return; const s = piiScreen(v); await (window.OnionDB || OnionDB).saveNote({ project_name: active.project_name, Project_ReferenceID: active.Project_ReferenceID, projectId: active.project_name, original: s.text, rawOriginal: v, title: s.text.slice(0, 80), content: s.text, rephrased: s.text, privacy: pv || 'Team Shared', piiStatus: s.flag, syncStatus: 'pending_upload', author: activePersona || 'Brené', refs: [], updates: [] }); if (reset) reset(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); try { const api = (window.OnionDB || OnionDB); if (api.updateCardPrivacy) { await api.updateCardPrivacy(note.id, next); return; } await api.updateNotePrivacy(note.id, next); } catch (e) {} };
   const onDeleteCard = async (id) => { if (!id) return; try { const api = (window.OnionDB || OnionDB); if (api && api.deleteCard) await api.deleteCard(String(id)); } catch (e) {} };
   const onEditCard = async (id, patch) => { if (!id) return; try { const api = (window.OnionDB || OnionDB); if (api && api.updateCard) await api.updateCard(String(id), patch || {}); } catch (e) {} };

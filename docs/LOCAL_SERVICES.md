@@ -28,3 +28,10 @@ The vector service (`modules/vector-service/main.py`) is normally started with u
 
 - `python3 -m unittest discover -s modules/_shared/tests -v` (needs `pip install fastapi httpx`) covers the helper and each service. CI runs it.
 - `node scripts/check-repo.mjs` fails if a service source binds `0.0.0.0` or allows `*` CORS.
+
+## Vector service scope (PRV-04)
+
+- **Project is required** on `/ingest`, `/list` and `/ask`. Empty, `default` and `all` are refused (HTTP 400). For debugging only, start with `ONION_ALLOW_ALL_PROJECTS=1`.
+- **Persona.** Set `ONION_PERSONA=<name>` and the server decides who is asking (`persona_source: "server-derived"`); the persona sent by the browser is ignored and ingested cards are authored as that persona. Without it (single-user pilot) the browser's persona is used as a test aid and responses say `"client-supplied"`. The persona drop-down is not a security boundary in the pilot.
+- **Privacy metadata.** Every stored card carries `privacy` (`private` or `shared`), `is_private` and `persona_source`. `/list` hides other people's private cards, as `/ask` already did.
+- Tests: `python -m unittest discover -s modules/vector-service/tests -v` (needs `pip install fastapi httpx`; Chroma is stubbed).

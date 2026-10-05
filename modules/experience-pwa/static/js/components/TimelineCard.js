@@ -1,6 +1,7 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
 import { getRaw } from '../core/repo.js';
+import { recordDecision, clearDecision, isRecordedDecision, kindOf, kindMeta } from '../core/knowledge.js';
 import { buildConfidenceText, evidenceStrength } from '../core/confidence.js';
 import { aiEngineLabel } from '../core/AiClient.js';
 import { cardAge, formatWhen, toDate } from '../core/timeAgo.js';
@@ -506,7 +507,24 @@ export function TimelineCard(props) {
     } catch (e) {}
     try { setEditingId(null); setEditDraft(''); } catch (e) {}
   };
-  const onAddNote = async (text, privacyVal, reset) => { const v = String(text || '').trim(); if (!v || !project) return; const screened = piiScreen(v); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; const payload = { project_name: project.project_name, Project_ReferenceID: project.Project_ReferenceID, projectId: project.project_name, original: screened.text, title: screened.text.slice(0, 80), content: screened.text, rephrased: screened.text, privacy: privacyVal || 'Team Shared', piiStatus: screened.flag, syncStatus: 'pending_upload', author: props.activePersona || activePersona || 'Brené', refs: [], updates: [] }; try { if (!dbApi || !dbApi.saveNote) { setNoteMsg('Save failed — kept as draft'); return; } await dbApi.saveNote(payload); setNoteMsg('Saved locally (pending_upload)'); } catch (e2) { setNoteMsg('Save failed — kept as draft'); return; } if (reset) reset(''); else setDraft(''); };
+  // KNW-02: only a person's click records a decision; the AI never creates or confirms one.
+  const onToggleDecision = async (card) => {
+    try {
+      const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null;
+      if (!card || !dbApi || !dbApi.updateCard) return;
+      let patch;
+      if (isRecordedDecision(card)) { const c = clearDecision(card); patch = { decision: null, kind: c.kind || '' }; }
+      else {
+        const why = window.prompt('Record this as a decision. Why was it decided? (optional)', '');
+        if (why === null) return;
+        const d = recordDecision(card, { by: activePersona, rationale: why });
+        patch = { kind: d.kind, decision: d.decision };
+      }
+      setMenuOpenId(null);
+      await dbApi.updateCard(String(card.id), patch);
+    } catch (e) { try { window.alert(String((e && e.message) || e)); } catch (e2) {} }
+  };
+  const onAddNote = async (text, privacyVal, reset) => { const v = String(text || '').trim(); if (!v || !project) return; const screened = piiScreen(v); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; const payload = { project_name: project.project_name, Project_ReferenceID: project.Project_ReferenceID, projectId: project.project_name, original: screened.text, rawOriginal: v, title: screened.text.slice(0, 80), content: screened.text, rephrased: screened.text, privacy: privacyVal || 'Team Shared', piiStatus: screened.flag, syncStatus: 'pending_upload', author: props.activePersona || activePersona || 'Brené', refs: [], updates: [] }; try { if (!dbApi || !dbApi.saveNote) { setNoteMsg('Save failed — kept as draft'); return; } await dbApi.saveNote(payload); setNoteMsg('Saved locally (pending_upload)'); } catch (e2) { setNoteMsg('Save failed — kept as draft'); return; } if (reset) reset(''); else setDraft(''); };
   const onFlipPrivacy = async (note) => { if (!note || !note.id) return; const explicit = note.__nextPrivacy || null; const cur = String(note.__curPrivacy || note.privacy || 'Team Shared'); const next = explicit || ((cur === 'Private' || cur === 'My Notes (Private)' || cur === 'My Notes') ? 'Team Shared' : 'Private'); const dbApi = (typeof window !== 'undefined' && window.OnionDB) || null; try { if (dbApi && dbApi.updateCardPrivacy) { await dbApi.updateCardPrivacy(note.id, next); return; } if (dbApi && dbApi.updateNotePrivacy) { await dbApi.updateNotePrivacy(note.id, next); } } catch (e) {} };
   const onForceSyncTc = async () => { try { const a = (typeof window !== 'undefined' && window.OnionDB) || null; if (a && a.forceSync) { const r = await a.forceSync(); setNoteMsg('Marked ' + (r.synced || 0) + ' item(s) as uploaded (demo, no server call).'); } } catch (e) {} };
   const isPrivateCard = (m) => {
@@ -774,11 +792,12 @@ export function TimelineCard(props) {
       } catch (e) { return ''; }
     })();
 
-    return html`<div key=${key} id=${'tl-' + String(m.id || '')} className="bg-white border border-[#E6EAF2] rounded-[16px] p-4 mb-6 shadow-sm relative" style=${{ marginBottom: '24px' }}>
+    return html`<div key=${key} id=${'tl-' + String(m.id || '')} className="onion-card bg-white border border-[#E6EAF2] rounded-[16px] p-4 mb-6 shadow-sm relative" style=${{ marginBottom: '24px' }}>
       <div className="absolute top-3 right-3 flex items-center gap-1">
         <div className="relative">
           <button type="button" onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); setMenuOpenId(menuOpen ? null : String(m.id)); }} title="Card options" aria-label="Card options" className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">⋯</button>
-          ${menuOpen ? html`<div onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} className="absolute right-0 mt-1 rounded-[10px] bg-white border border-[#E6EAF2] overflow-hidden" style=${{ width: '140px', zIndex: 20, boxShadow: '0 8px 20px rgba(15,23,42,.14)' }}>
+          ${menuOpen ? html`<div onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} className="absolute right-0 mt-1 rounded-[10px] bg-white border border-[#E6EAF2] overflow-hidden" style=${{ width: '170px', zIndex: 20, boxShadow: '0 8px 20px rgba(15,23,42,.14)' }}>
+            <button type="button" disabled=${!activePersona || (m.syncStatus === 'pending_processing')} onClick=${() => onToggleDecision(m)} style=${{ whiteSpace: 'nowrap' }} className="w-full text-left px-3 py-2 text-[12px] text-[#1E293B] hover:bg-[#F8FAFC]">${isRecordedDecision(m) ? '↩️ Clear decision' : '📌 Record as decision'}</button>
             <button type="button" disabled=${!isCardOwner} onClick=${() => onStartEditCard(m)} style=${{ whiteSpace: 'nowrap' }} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-[#1E293B] hover:bg-[#F8FAFC]' : 'text-[#94A3B8] cursor-not-allowed')}>✏️ Edit Details</button>
             <button type="button" disabled=${!isCardOwner} onClick=${() => onDeleteCard(m.id)} style=${{ whiteSpace: 'nowrap' }} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
           </div>` : null}
@@ -787,7 +806,7 @@ export function TimelineCard(props) {
       </div>
       <div className="flex items-start gap-2 flex-wrap pr-10">
         <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-          <span className="text-[13px] font-semibold text-[#1E293B]">${m.title}</span>
+          <span className="onion-card-title text-[13px] font-semibold text-[#1E293B]">${m.title}</span>${isRecordedDecision(m) ? html`<span title=${'Decision recorded by ' + m.decision.by + ' on ' + String(m.decision.at).slice(0, 10) + (m.decision.rationale ? ': ' + m.decision.rationale : '')} className="ml-1 px-2 py-0.5 rounded-full text-[11px] font-semibold" style=${{ background: kindMeta('decision').bg, color: kindMeta('decision').tx }}>Decision · ${m.decision.by}</span>` : null}
           ${age ? html`<span title=${ageInfo.title} className="inline-flex items-center gap-1 text-[11px] italic px-2 py-0.5 rounded-full bg-[#F8FAFC] border border-[#E6EAF2] text-[#64748B]"><span style=${{ width: '6px', height: '6px', borderRadius: '999px', background: dot, display: 'inline-block' }}></span>${age}</span>` : null}
           ${engineBadge(m)}
         </div>

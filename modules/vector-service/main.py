@@ -8,6 +8,7 @@ import sys
 from pathlib import Path as _P
 sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
 import local_only
+import scope
 
 app = FastAPI(title="Project Onion Vector Service", version="1.0.1-privacyfix")
 
@@ -74,9 +75,17 @@ async def ingest_card(card: CardPayload):
             payload["client"] = payload["client_name"]
         if not payload.get("project") and payload.get("project_name"):
             payload["project"] = payload["project_name"]
+        project = scope.require_project(payload.get("project") or payload.get("Project_ReferenceID") or payload.get("project_name"))
+        payload["project"] = project
+        persona, persona_source = scope.resolve_persona(payload.get("author"))
+        if persona_source == "server-derived":
+            payload["author"] = persona
+        payload["persona_source"] = persona_source
         card_id = vector_store.ingest_card(payload)
         stored_private = "private" in str(payload.get("privacy", "") or "").lower() or str(payload.get("privacy", "") or "").strip().lower() in ("my notes", "my_notes", "my-notes", "mynotes") or bool(payload.get("is_private") or payload.get("isPrivate"))
         return {"status": "success", "id": card_id, "is_private": stored_private}
+    except scope.ScopeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error ingesting card: {str(e)}")
 
@@ -110,8 +119,12 @@ async def list_cards(request: AskRequest):
     Used by the PWA's guarded one-time sync (index.html) to check whether
     Chroma has data before ever overwriting FailoverDB local state."""
     try:
-        cards = vector_store.list_cards(project=request.project)
-        return {"count": len(cards), "cards": cards, "engine": "chromadb"}
+        project = scope.require_project(request.project)
+        persona, persona_source = scope.resolve_persona(request.activePersona)
+        cards = scope.filter_listing(vector_store.list_cards(project=project), persona)
+        return {"count": len(cards), "cards": cards, "engine": "chromadb", "persona_source": persona_source}
+    except scope.ScopeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing cards: {str(e)}")
 
@@ -120,10 +133,12 @@ async def ask_question(request: AskRequest):
     """Query the vector store with semantic search"""
     try:
         # Get top matches from vector store
+        project = scope.require_project(request.project)
+        persona, persona_source = scope.resolve_persona(request.activePersona)
         results = vector_store.query_vector_store(
             query_text=request.query,
-            project=request.project,
-            active_persona=request.activePersona,
+            project=project,
+            active_persona=persona,
             top_k=4
         )
         
@@ -148,7 +163,10 @@ async def ask_question(request: AskRequest):
             "answer": answer,
             "citations": citations,
             "retrieved": retrieved,
-            "engine": "chromadb"
+            "engine": "chromadb",
+            "persona_source": persona_source
         }
+    except scope.ScopeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")

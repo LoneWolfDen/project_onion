@@ -1,0 +1,25 @@
+name: Release gate
+
+# Release tags (v*) only stand if the critical trust-boundary tests, the full unit tests and the
+# repo hygiene checks pass on the tagged commit. A failed run means do not publish that tag.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  critical-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-repo.mjs
+      - run: node scripts/gen-sw-precache.mjs --check
+      - run: node --test modules/experience-pwa/tests/trust-boundary.test.mjs
+      - run: node --test modules/experience-pwa/tests/*.test.mjs

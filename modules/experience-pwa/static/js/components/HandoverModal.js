@@ -2,7 +2,10 @@
 // M365 Fluent parity: pastels, rounded-xl, backdrop blur. Offline-first via FailoverDB.
 import { OnionDB, readLocal } from '../core/FailoverDB.js';
 import { piiScreen } from '../core/PiiGate.js';
-import { kindOf, kindMeta } from '../core/knowledge.js';
+import { kindOf, kindMeta, statementId } from '../core/knowledge.js';
+import { buildPackage } from '../core/exportPackage.js';
+import { logEvent } from '../core/logger.js';
+import { makeZip } from '../core/zip.js';
 import { CATS, catMeta, categoryOf, buildHandover, packageHash, makeConfirmation, confirmationValid, NOT_FOUND } from '../core/handover.js';
 const htmlH = window.htm.bind(window.React.createElement);
 const ReactH = window.React;
@@ -88,7 +91,7 @@ function cardRow(c){
 const ref=shortHash(c.id);
 const pill=pillFor(categoryFor(c));
 const when=fmtDT(c.created_at||c.updated_at||c.timestamp);
-return '<li class="ho-card"><div class="ho-card-t">'+esc(c.title||'(untitled)')+' <a class="ho-hash" href="#card-'+esc(String(c.id||''))+'" title="Reference '+esc(String(c.id||''))+'">#'+esc(ref)+'</a></div><div class="ho-card-m"><span class="ho-pill" style="background:'+pill.bg+';border-color:'+pill.bd+';color:'+pill.tx+'">'+esc(pill.label)+'</span>'+(function(){const k=kindMeta(kindOf(c));return '<span class="ho-pill ho-kind" title="'+esc(k.hint)+'" style="background:'+k.bg+';color:'+k.tx+'">'+esc(k.label)+'</span>';})()+'<span>'+esc(c.source||c.type||'Timeline')+' | '+esc(when)+' | '+esc(c.syncStatus||'synced')+' | '+esc(c.privacy||'Team Shared')+'</span></div><div class="ho-card-b">'+esc(String(c.synthesizedText||c.content||c.detail||'').slice(0,600))+'</div></li>';
+return '<li class="ho-card"><div class="ho-card-t">'+esc(c.title||'(untitled)')+' <a class="ho-hash" href="#card-'+esc(String(c.id||''))+'" title="Reference '+esc(String(c.id||''))+'">#'+esc(ref)+'</a> <span class="ho-hash" title="Statement id, same in handover.md, handover.json and sources.csv">'+esc(statementId(c))+'</span></div><div class="ho-card-m"><span class="ho-pill" style="background:'+pill.bg+';border-color:'+pill.bd+';color:'+pill.tx+'">'+esc(pill.label)+'</span>'+(function(){const k=kindMeta(kindOf(c));return '<span class="ho-pill ho-kind" title="'+esc(k.hint)+'" style="background:'+k.bg+';color:'+k.tx+'">'+esc(k.label)+'</span>';})()+'<span>'+esc(c.source||c.type||'Timeline')+' | '+esc(when)+' | '+esc(c.syncStatus||'synced')+' | '+esc(c.privacy||'Team Shared')+'</span></div><div class="ho-card-b">'+esc(String(c.synthesizedText||c.content||c.detail||'').slice(0,600))+'</div></li>';
 }
 function exportHandoverHtml(model){
 const css='*{box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,sans-serif;background:#fbfdfb;color:#1E293B;margin:0;padding:24px;letter-spacing:-0.01em}'
@@ -152,8 +155,26 @@ const a=document.createElement('a');
 a.href=url;a.download='handover-pack-'+new Date().toISOString().slice(0,10)+'.html';
 document.body.appendChild(a);a.click();
 setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},400);
-setStatus('Interactive HTML report downloaded ('+model.projects.length+' project(s)).');
+logEvent('handover','handover.html_exported',{projects:model.projects.length});setStatus('Interactive HTML report downloaded ('+model.projects.length+' project(s)).');
 }catch(e){setStatus('HTML export failed: '+String((e&&e.message)||e));}
+setBusy(false);
+}
+async function downloadPackage(){
+try{
+if(!chosen.length){setStatus('Select at least one project first.');return;}
+setBusy(true);
+if(!(await gateOk())){setBusy(false);return;}
+const entries=chosen.map((pj)=>({project:pj,perNote:String((perNotes||{})[pj.Project_ReferenceID]||''),groups:groupFor(pj)}));
+const model=buildReportModel();
+let sources=[];try{sources=JSON.parse(localStorage.getItem('continuum_import_sources')||'[]');}catch(e){sources=[];}
+const files=await buildPackage(entries,{generatedAt:model.generatedAt,generatedBy:model.generatedBy,timeframe:model.timeframe,packageHash:pkgHash,confirmation,coverNotes},sources,[{name:'handover.html',content:exportHandoverHtml(model)}]);
+const blob=new Blob([makeZip(files)],{type:'application/zip'});
+const url=URL.createObjectURL(blob);const a=document.createElement('a');
+a.href=url;a.download='handover-package-'+new Date().toISOString().slice(0,10)+'.zip';
+document.body.appendChild(a);a.click();
+setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},400);
+logEvent('handover','handover.package_exported',{projects:chosen.length,files:files.length});setStatus('Package downloaded: handover.md, handover.html, handover.json, sources.csv, manifest.json.');
+}catch(e){setStatus('Package export failed: '+String((e&&e.message)||e));}
 setBusy(false);
 }
 async function exportPdf(){
@@ -254,6 +275,7 @@ ${confirmationValid(confirmation,pkgHash)?htmlH`<div id="ho-confirmed-at" style=
 <div className="ho-foot">
 <button onClick=${downloadHtml} disabled=${busy||!chosen.length||!exportOk} title=${!chosen.length?'Select at least one project to enable export':(!exportOk?'Review and confirm first':'Download full handover as HTML')} className="ho-btn ho-btn-primary">Generate Interactive HTML Report</button>
 <button onClick=${exportPdf} disabled=${busy||!chosen.length||!exportOk} title=${!chosen.length?'Select at least one project to enable export':(!exportOk?'Review and confirm first':'Open print-ready handover, then use Print → Save as PDF')} className="ho-btn ho-btn-dark">Export Clean PDF</button>
+<button id="ho-package" onClick=${downloadPackage} disabled=${busy||!chosen.length||!exportOk} title=${!chosen.length?'Select at least one project to enable export':(!exportOk?'Review and confirm first':'Download a .zip with handover.md, .html, .json, sources.csv and a hash manifest')} className="ho-btn ho-btn-dark">Download package (.zip)</button>
 <button onClick=${saveToMemory} disabled=${busy||!chosen.length} title=${!chosen.length?'Select at least one project to enable save':'Save handover card into project memory'} className="ho-btn ho-btn-green">Save Handover to Project Memory</button>
 </div></div></div></div></div>`;
 }

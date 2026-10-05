@@ -12,11 +12,12 @@
 //  - Same-origin GETs are network-first (fresh when online, cached copy when offline).
 //  - Card data and the vector API are never cached.
 // Bump SW_VERSION whenever this file's logic or the precache list changes.
-const SW_VERSION = 'continuum-sw-v7';
+const SW_VERSION = 'continuum-sw-v11';
 const CACHE = SW_VERSION;
 const PRECACHE = [
   '/',
   '/index.html',
+  '/css/hierarchy.css',
   '/css/styles.css',
   '/css/typography.css',
   '/icons/apple-touch-icon.png',
@@ -30,9 +31,11 @@ const PRECACHE = [
   '/js/components/AppRight.js',
   '/js/components/BackupPanel.js',
   '/js/components/ConfirmDialog.js',
+  '/js/components/DiagnosticsPanel.js',
   '/js/components/HandoverModal.js',
   '/js/components/HarvesterPanel.js',
   '/js/components/ImportWizard.js',
+  '/js/components/OriginalsPanel.js',
   '/js/components/PiiSettings.js',
   '/js/components/ProjectModal.js',
   '/js/components/StorageBanner.js',
@@ -48,10 +51,13 @@ const PRECACHE = [
   '/js/core/backup.js',
   '/js/core/confidence.js',
   '/js/core/destructive.js',
+  '/js/core/exportPackage.js',
   '/js/core/handover.js',
   '/js/core/importEngine.js',
   '/js/core/importTemplates.js',
   '/js/core/knowledge.js',
+  '/js/core/layoutFlag.js',
+  '/js/core/logger.js',
   '/js/core/matchExplain.js',
   '/js/core/persistence.js',
   '/js/core/pii.js',
@@ -61,6 +67,7 @@ const PRECACHE = [
   '/js/core/source.js',
   '/js/core/storageGuard.js',
   '/js/core/timeAgo.js',
+  '/js/core/zip.js',
   '/js/data/demoDataset.js',
   '/js/data/mockSeed.js',
   '/js/data/seedData.v2.js',

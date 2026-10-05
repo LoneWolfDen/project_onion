@@ -50,11 +50,11 @@ test('decision exists only when a person recorded it; AI cannot create or keep o
   assert.equal(K.kindOf(K.clearDecision(d)), 'fact');
 });
 
-test('statement ids are stable and differ by card', async () => {
+test('statement ids are stable and differ by card', () => {
   const c = card({ id: 'one', importSourceId: 's' });
-  assert.equal(await K.statementId(c), await K.statementId({ ...c, title: 'changed' }));
-  assert.notEqual(await K.statementId(c), await K.statementId({ ...c, id: 'two' }));
-  const st = await K.statementOf(c);
+  assert.equal(K.statementId(c), K.statementId({ ...c, title: 'changed' }));
+  assert.notEqual(K.statementId(c), K.statementId({ ...c, id: 'two' }));
+  const st = K.statementOf(c);
   assert.deepEqual(st.sourceIds, ['s']); assert.equal(st.kind, 'fact');
 });
 

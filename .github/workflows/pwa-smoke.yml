@@ -1,0 +1,57 @@
+name: PWA checks
+
+# Runs the Experience PWA unit tests and the Playwright smoke checks
+# (modules/experience-pwa/tests/) on every pull request and on pushes to main.
+# Mirrors docs/TESTING.md: `node --test` for pure functions, smoke.mjs for the
+# browser flow against the built-in demo dataset.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: pwa-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pwa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Unit tests
+        run: node --test modules/experience-pwa/tests/*.test.mjs
+
+      # Pinned to the version the smoke script was developed against.
+      - name: Install Playwright + Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      # smoke.mjs starts service.py itself (stdlib only, no pip install needed).
+      - name: Smoke checks
+        env:
+          KEEP_SHOTS: ${{ runner.temp }}/shots
+        run: node modules/experience-pwa/tests/smoke.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-smoke-screenshots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
+          retention-days: 7

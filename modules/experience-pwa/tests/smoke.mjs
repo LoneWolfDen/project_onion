@@ -234,6 +234,33 @@ const scenarios = {
     check('no page errors', !errors.length, errors.join(' | '));
   },
 
+  // DAT-05: reset/clear are explicit, explain themselves, and cancel changes nothing.
+  async 'destructive: reset and clear need confirmation'({ p, errors }) {
+    const raw = () => p.evaluate(() => localStorage.getItem('onion_db_state'));
+    const before = await raw();
+    await p.click('#harvester-open-btn'); await sleep(p, 500);
+    await p.click('button[title="AI configuration"]'); await sleep(p, 300);
+    await p.click('button:has-text("Reset Demo Dataset")');
+    await p.waitForSelector('#confirm-dialog');
+    const t = await p.innerText('#confirm-dialog');
+    check('reset dialog states what will be removed', /replaces your current data \(\d+ cards/.test(t), t.slice(0, 160));
+    await p.click('#confirm-cancel'); await sleep(p, 300);
+    check('cancel closes dialog and leaves data unchanged', (await p.locator('#confirm-dialog').count()) === 0 && (await raw()) === before);
+    await p.click('#clear-all-btn'); await p.waitForSelector('#confirm-dialog');
+    check('clear-all confirm is disabled until the phrase is typed', await p.locator('#confirm-go').isDisabled());
+    await p.fill('#confirm-phrase', 'delete all data');
+    check('wrong-case phrase keeps it disabled', await p.locator('#confirm-go').isDisabled());
+    await p.click('#confirm-cancel'); await sleep(p, 300);
+    check('data still unchanged after abandoned clear', (await raw()) === before);
+    await p.click('#clear-all-btn'); await p.waitForSelector('#confirm-dialog');
+    await p.uncheck('#confirm-backup');
+    await p.fill('#confirm-phrase', 'DELETE ALL DATA');
+    await p.click('#confirm-go');
+    await p.waitForFunction(() => { try { return JSON.parse(localStorage.getItem('onion_db_state')).timeline.length === 0; } catch (e) { return false; } }, null, { timeout: 10000 });
+    check('typed phrase clears all data', true);
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+
   // DAT-02: damaged saved data is kept, reported, and never overwritten.
   async 'storage: corrupt state shows banner and is preserved'({ p, errors }) {
     const damaged = '{"timeline":[{"id":"precious"';

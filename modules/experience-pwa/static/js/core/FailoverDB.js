@@ -494,6 +494,18 @@ export async function resetToDemoDataset() {
   try { localStorage.setItem('activePersona', 'Brené'); } catch (e) {}
   return state;
 }
+// Clear all data: removes every local data key and leaves an empty (not demo) dataset.
+// API/model settings are kept. Callers must confirm first (see core/destructive.js).
+export async function clearAllData() {
+  const empty = { clients: [], projects: [], timeline: [], notes: [], archived: [] };
+  // Write the empty dataset first: if the browser refuses, nothing else has been removed.
+  if (!tryWriteLocal(empty, { force: true })) throw new Error('Your browser could not store the cleared data, so nothing was changed.');
+  try {
+    DEMO_RESET_KEYS.filter((k) => k !== STORAGE_KEY).forEach((k) => localStorage.removeItem(k));
+    Object.keys(localStorage).filter((k) => k.indexOf('onion_review_draft_') === 0).forEach((k) => localStorage.removeItem(k));
+  } catch (e) {}
+  return empty;
+}
 export const OnionDB = new FailoverDB();
 try {
   const bootRaw = localStorage.getItem(STORAGE_KEY);

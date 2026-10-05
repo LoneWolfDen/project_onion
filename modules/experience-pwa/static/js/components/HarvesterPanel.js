@@ -5,7 +5,10 @@
 // New flow: Stage to Data Park → syncStatus pending_processing → Run AI Processing Engine
 // → processWithAI() → mark processed + dispatch onion:db-update.
 import { projectIdEquals } from '../core/schema.js';
-import { BackupPanel } from './BackupPanel.js';
+import { BackupPanel, downloadBackupNow } from './BackupPanel.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
+import { readLocal } from '../core/FailoverDB.js';
+import { CLEAR_PHRASE, removalSummary, describeRemoval, runGuarded } from '../core/destructive.js';
 import { piiScreen } from '../core/PiiGate.js';
 import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
 import { matchSentence } from '../core/matchExplain.js';
@@ -172,6 +175,9 @@ export function HarvesterPanel(props) {
   const [apiKey, setApiKey] = window.React.useState(() => { try { return localStorage.getItem('OPENROUTER_API_KEY') || ''; } catch (e) { return ''; } });
   const [model, setModel] = window.React.useState(() => { try { return localStorage.getItem('OPENROUTER_MODEL') || 'anthropic/claude-3-haiku'; } catch (e) { return 'anthropic/claude-3-haiku'; } });
   const [parkMsg, setParkMsg] = window.React.useState('');
+  const [confirmKind, setConfirmKind] = window.React.useState(null); // 'reset' | 'clear' | null
+  const [confirmBusy, setConfirmBusy] = window.React.useState(false);
+  const [confirmErr, setConfirmErr] = window.React.useState('');
   const [processing, setProcessing] = window.React.useState(false);
   const [parsedReviewQueue, setParsedReviewQueue] = window.React.useState([]);
   const [approving, setApproving] = window.React.useState(false);
@@ -713,21 +719,56 @@ export function HarvesterPanel(props) {
     } catch (e) { setParkMsg('Approve failed: ' + String((e && e.message) || e)); }
     setApproving(false);
   };
-  const onResetSeed = async () => {
+  const doResetDemo = async () => {
     setParkMsg('Resetting to the demo dataset…');
-    try {
-      const api = dbApi();
-      if (api && api.resetToDemoDataset) await api.resetToDemoDataset();
-      else {
-        const mod = await import('../core/FailoverDB.js');
-        if (mod && mod.resetToDemoDataset) await mod.resetToDemoDataset();
-      }
-      setParsedReviewQueue([]);
-      setParkMsg('Demo dataset restored ✅ — reloading…');
-      // Reload so the selected project, persona, filters and review queue start clean.
-      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 600);
-    } catch (e) { setParkMsg('Reset failed: ' + String((e && e.message) || e)); }
+    const api = dbApi();
+    if (api && api.resetToDemoDataset) await api.resetToDemoDataset();
+    else {
+      const mod = await import('../core/FailoverDB.js');
+      if (mod && mod.resetToDemoDataset) await mod.resetToDemoDataset();
+    }
+    setParsedReviewQueue([]);
+    setParkMsg('Demo dataset restored ✅ — reloading…');
+    // Reload so the selected project, persona, filters and review queue start clean.
+    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 600);
   };
+  const doClearAll = async () => {
+    const mod = await import('../core/FailoverDB.js');
+    await mod.clearAllData();
+    setParsedReviewQueue([]);
+    setParkMsg('All data cleared — reloading…');
+    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 600);
+  };
+  const onResetSeed = () => { setConfirmErr(''); setConfirmKind('reset'); };
+  const onClearAll = () => { setConfirmErr(''); setConfirmKind('clear'); };
+  const runConfirmed = async ({ wantBackup, input }) => {
+    const kind = confirmKind;
+    setConfirmBusy(true); setConfirmErr('');
+    try {
+      const r = await runGuarded({
+        confirmed: true, phrase: kind === 'clear' ? CLEAR_PHRASE : null, input, wantBackup,
+        backup: downloadBackupNow,
+        action: kind === 'clear' ? doClearAll : doResetDemo,
+      });
+      if (r.ran) setConfirmKind(null);
+      else if (r.reason === 'backup-failed') setConfirmErr('The backup could not be created, so nothing was changed. Untick the backup box to continue without one.');
+      else if (r.reason === 'phrase') setConfirmErr('The phrase does not match. Nothing was changed.');
+    } catch (e) { setConfirmErr('That failed: ' + String((e && e.message) || e) + ' Nothing else was changed.'); }
+    setConfirmBusy(false);
+  };
+  const confirmDialog = confirmKind ? (() => {
+    let sum = null; try { sum = removalSummary(readLocal()); } catch (e) { sum = null; }
+    const what = sum ? describeRemoval(sum) : 'all cards, projects, clients and notes';
+    return html`<${ConfirmDialog}
+      title=${confirmKind === 'clear' ? 'Clear ALL data?' : 'Reset to the demo dataset?'}
+      lines=${confirmKind === 'clear'
+        ? ['This permanently removes ' + what + ' from this browser and leaves Continuum empty.', 'API key and model settings are kept. This cannot be undone without a backup.']
+        : ['This replaces your current data (' + what + ') with the fictional demo dataset.', 'API key and model settings are kept. This cannot be undone without a backup.']}
+      confirmLabel=${confirmKind === 'clear' ? 'Clear all data' : 'Reset to demo'}
+      phrase=${confirmKind === 'clear' ? CLEAR_PHRASE : null}
+      busy=${confirmBusy} error=${confirmErr}
+      onConfirm=${runConfirmed} onCancel=${() => { setConfirmKind(null); setConfirmErr(''); }} />`;
+  })() : null;
   return html`<div>
     
     <button id="harvester-open-btn" type="button" onClick=${() => setOpen(true)}>🛸 Open Harvester Control</button>
@@ -773,6 +814,8 @@ export function HarvesterPanel(props) {
             <button type="button" onClick=${onResetSeed} title="Replace all local data with the fictional hackathon demo dataset (API key settings are kept)" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset Demo Dataset</button>
           </div>` : null}
           <${BackupPanel} />
+          <button type="button" id="clear-all-btn" onClick=${onClearAll} title="Permanently remove all local data (asks you to type a phrase)" style=${{ marginTop: '8px', width: '100%', background: '#fff', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>🗑 Clear all data…</button>
+          ${confirmDialog}
           <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>
             <select value=${kind} onChange=${(e) => setKind(e.target.value)} style=${{ background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '6px 8px', fontSize: '12px' }}>
               ${['Email', 'Excel', 'Scrape', 'Chat'].map((t) => html`<option key=${t} value=${t}>${t}</option>`)}

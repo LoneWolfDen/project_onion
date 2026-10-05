@@ -6,6 +6,7 @@ import { UpdateBanner } from './UpdateBanner.js';
 import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ImportWizard } from './ImportWizard.js';
+import { MailImportDialog } from './MailImportDialog.js';
 import { RAID_FIELDS, raidValidate, raidContent, raidTitle, provenanceText, reimportDiff, diffSummary, raidRowKey, GDP_FIELDS, gdpSelect, gdpContent, gdpTitle } from '../core/importTemplates.js';
 import { ProjectModal } from './ProjectModal.js';
 import { HandoverModal } from './HandoverModal.js';
@@ -81,6 +82,7 @@ export function App() {
   const [guideSrc, setGuideSrc] = useState('/static/docs/guide.html');
   const [staged, setStaged] = useState([]);
   const [importJob, setImportJob] = useState(null);
+  const [mailJob, setMailJob] = useState(null);
   const [importedSources, setImportedSources] = useState(() => { try { return JSON.parse(localStorage.getItem('continuum_import_sources') || '[]'); } catch (e) { return []; } });
   const [hStatus, setHStatus] = useState('');
   const [clip, setClip] = useState('');
@@ -257,6 +259,21 @@ export function App() {
   const GDP_ADAPTER = { name: 'gdp', label: 'GDP export', fields: GDP_FIELDS, strict: true, select: gdpSelect, content: gdpContent };
   const onGdpFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: GDP_ADAPTER }); };
   const onRaidFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setImportJob({ file: f, adapter: RAID_ADAPTER }); };
+  const onMailFile = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f && active) setMailJob({ file: f }); };
+  // IMP-06: emails and transcripts stage as private drafts; proposed decisions and actions are never confirmed decisions.
+  const onMailStage = ({ source, items }) => {
+    const out = items.map((it, i) => {
+      const s = piiScreen(it.content);
+      const pid = 'mail-' + source.id + '-' + i + '-' + Date.now();
+      retainOriginal(pid, it.content, s.text);
+      return toPayload({ id: pid, projectId: active.project_name, type: it.type, title: piiScreen(it.title).text, source: it.source, content: s.text, piiStatus: s.flag, privacy: 'My Notes (Private)', importSourceId: source.id, ...(it.kind ? { kind: it.kind } : {}), ...(it.category ? { category: it.category } : {}), ...(it.inference ? { inference: true } : {}) }, activePersona);
+    });
+    logEvent('import', 'import.staged', { rows: out.length, adapter: source.adapter, warnings: 0 });
+    setStaged((p) => p.concat(out));
+    setImportedSources((prev) => { const next = prev.concat([source]); try { localStorage.setItem('continuum_import_sources', JSON.stringify(next)); } catch (e) {} return next; });
+    setHStatus('Staged ' + out.length + ' item(s) from ' + source.name + '. Review them before approving.');
+    setMailJob(null);
+  };
   const onImportStage = ({ records, source, warnings }) => {
     const isGdp = importJob && importJob.adapter.name === 'gdp';
     // RAID re-import: only new and changed rows are staged; changed rows become updates on their existing card.
@@ -467,7 +484,7 @@ export function App() {
         <div className="woc-sig" title="Built by VY · LoneWolfDen: self-sufficient, unafraid of change, ready to explore"><svg className="woc-wolf" viewBox="0 0 64 64" aria-hidden="true"><circle cx="46" cy="14" r="11" fill="#E2E8F0"/><path fill="#64748B" d="M5 9.5 L13 9.5 L18.5 8 L20.5 3 L23.5 0.5 L25.5 9 L29.5 13.5 C33 17 35.5 22 38.5 28 C41.5 33 45 38 47.5 43.5 C49 46.5 50 49 50.5 51 C54.5 50 58.5 51 61.5 53.5 L63.5 57 C60 56 56 56 52.5 56.5 L51.5 59.5 L42.5 59.5 L40.5 56.5 L36.5 56.5 L35.5 59.5 L25.5 59.5 L26 57.5 L28 55.5 C28.5 50.5 28.5 45 27.5 40.5 L25 36.5 L26.5 33.5 L23.5 31 L24.5 28 L21.5 25.5 L19.5 21 L16.5 17.5 L10 15.5 L12.5 13 Z"/><path fill="#CBD5E1" d="M0 64 L6 60.5 L20 59.5 L34 60 L50 59.5 L60 60.5 L64 62 L64 64 Z"/></svg><span>-VY-</span></div>
       </aside>
     </div>` : null}
-    <${HarvesterPanel} project=${active} activePersona=${activePersona} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} onRaidFile=${onRaidFile} onGdpFile=${onGdpFile} />${importJob ? html`<${ImportWizard} file=${importJob.file} adapter=${importJob.adapter} project=${active} knownSources=${importedSources} onStage=${onImportStage} onCancel=${() => setImportJob(null)} />` : null}
+    <${HarvesterPanel} project=${active} activePersona=${activePersona} clientMeta=${clientMeta} staged=${staged} status=${hStatus} clip=${clip} setClip=${setClip} from=${hFrom} setFrom=${setHFrom} to=${hTo} setTo=${setHTo} open=${hOpen} setOpen=${setHOpen} onRaidFile=${onRaidFile} onGdpFile=${onGdpFile} onMailFile=${onMailFile} />${mailJob ? html`<${MailImportDialog} file=${mailJob.file} knownSources=${importedSources} onStage=${onMailStage} onCancel=${() => setMailJob(null)} />` : null}${importJob ? html`<${ImportWizard} file=${importJob.file} adapter=${importJob.adapter} project=${active} knownSources=${importedSources} onStage=${onImportStage} onCancel=${() => setImportJob(null)} />` : null}
   </div>`;
 
 

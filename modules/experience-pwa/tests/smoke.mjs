@@ -525,6 +525,22 @@ const scenarios = {
     check('changed row is staged as an update on its existing card', /Smart Append/.test(body));
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'Email and transcript import (IMP-06)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    await p.click('#harvester-open-btn'); await sleep(p, 600);
+    const eml = ['Message-ID: <smoke1@example.com>', 'Date: Mon, 05 Oct 2026 09:30:00 +0000', 'Subject: Smoke mail', 'From: a@example.com', 'To: b@example.com', 'Content-Type: multipart/mixed; boundary="B"', '', '--B', 'Content-Type: text/plain', '', 'Decision: smoke go live', '--B', 'Content-Type: application/pdf; name="x.pdf"', 'Content-Disposition: attachment; filename="x.pdf"', '', 'AAAA', '--B--', ''].join('\r\n');
+    await p.locator('#mail-file').setInputFiles({ name: 'smoke.eml', mimeType: 'message/rfc822', buffer: Buffer.from(eml) });
+    await p.waitForSelector('#mail-confirm'); 
+    const t = await p.innerText('#mail-import');
+    check('email preview shows message id, attachments not imported, and a draft', /smoke1@example.com/.test(t) && /not imported: x.pdf/.test(t) && /1 decision or action/.test(t), t.slice(0, 200));
+    await p.click('#mail-confirm'); await sleep(p, 600);
+    const body = await p.innerText('#harvester-control-panel');
+    check('proposed decision is staged as a draft title', /Proposed decision: smoke go live/.test(body));
+    await p.locator('#mail-file').setInputFiles({ name: 'bad.vtt', mimeType: 'text/vtt', buffer: Buffer.from('not a transcript') });
+    await p.waitForSelector('#mail-import [role=alert]');
+    check('a file that is not a transcript is refused with a message', true);
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
 };
 
 // --------------------------------------------------------------------- main

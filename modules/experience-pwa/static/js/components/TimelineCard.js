@@ -1,6 +1,6 @@
 // TimelineCard — Status Cards feed (rich independent blocks) + YOUR NOTES.
 // Key Moments compact list lives in AppCenter.js to match high-fidelity design.
-import { confidenceBreakdown, confidenceTier } from '../core/confidence.js';
+import { confidenceBreakdown, confidenceTier, buildConfidenceText } from '../core/confidence.js';
 import { aiEngineLabel } from '../core/AiClient.js';
 import { cardAge, formatWhen, toDate } from '../core/timeAgo.js';
 import { matchSentence } from '../core/matchExplain.js';
@@ -394,9 +394,10 @@ function evidenceFor(m) {
 }
 function evidenceBox(ev, tier) {
   const n = ev.origins.length;
+  const conf = buildConfidenceText(ev, tier);
   const count = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   return html`<div className="mt-2 p-2.5 rounded-[10px] bg-[#F8FAFC] border border-[#E6EAF2] text-[11px] text-[#334155]">
-    <div><span className="font-semibold text-[#1E293B]">Evidence strength: ${tier}</span> (${ev.pct}%) — based on ${count(n, 'independent source', 'independent sources')}: ${ev.origins.join(', ')} · ${count(ev.entries, 'source entry', 'source entries')}.${ev.drafts ? ' ' + count(ev.drafts, 'draft update', 'draft updates') + ' not counted until shared.' : ''}</div>
+    <div><span className="font-semibold text-[#1E293B]">${conf.lead}</span> (${ev.pct}%).${conf.sources ? ' Sources: ' + conf.sources + '.' : ''} ${count(ev.entries, 'source entry', 'source entries')}.${ev.drafts ? ' ' + count(ev.drafts, 'draft update', 'draft updates') + ' not counted until shared.' : ''}</div>
     <details className="mt-1"><summary className="cursor-pointer text-[#1F4A7A]">How is this calculated?</summary>
       <div className="mt-1 text-[#475569]">${ev.base} base + ${ev.originBoost} (${count(n, 'source', 'sources')} × 8, max 32) + ${ev.rowBoost} (${count(ev.extraRows, 'extra entry', 'extra entries')} × 3, max 9) = ${ev.pct}%${ev.capped ? ' (capped at 97)' : ''}. High ≥ 85, Medium ≥ 60. Hashtags, AI summaries and unshared drafts are not counted.</div>
     </details>
@@ -785,9 +786,9 @@ export function TimelineCard(props) {
       <div className="absolute top-3 right-3 flex items-center gap-1">
         <div className="relative">
           <button type="button" onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); setMenuOpenId(menuOpen ? null : String(m.id)); }} title="Card options" aria-label="Card options" className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">⋯</button>
-          ${menuOpen ? html`<div onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} className="absolute right-0 mt-1 w-32 rounded-[10px] bg-white border border-[#E6EAF2] shadow-lg z-20 overflow-hidden">
-            <button type="button" disabled=${!isCardOwner} onClick=${() => onStartEditCard(m)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-[#1E293B] hover:bg-[#F8FAFC]' : 'text-[#94A3B8] cursor-not-allowed')}>✏️ Edit Details</button>
-            <button type="button" disabled=${!isCardOwner} onClick=${() => onDeleteCard(m.id)} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
+          ${menuOpen ? html`<div onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} className="absolute right-0 mt-1 rounded-[10px] bg-white border border-[#E6EAF2] overflow-hidden" style=${{ width: '140px', zIndex: 20, boxShadow: '0 8px 20px rgba(15,23,42,.14)' }}>
+            <button type="button" disabled=${!isCardOwner} onClick=${() => onStartEditCard(m)} style=${{ whiteSpace: 'nowrap' }} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-[#1E293B] hover:bg-[#F8FAFC]' : 'text-[#94A3B8] cursor-not-allowed')}>✏️ Edit Details</button>
+            <button type="button" disabled=${!isCardOwner} onClick=${() => onDeleteCard(m.id)} style=${{ whiteSpace: 'nowrap' }} className=${'w-full text-left px-3 py-2 text-[12px] ' + (isCardOwner ? 'text-red-600 hover:bg-red-50' : 'text-[#94A3B8] cursor-not-allowed')}>🗑️ Delete</button>
           </div>` : null}
         </div>
         <button onClick=${() => flip(setOpenProv, m.id)} title=${open ? 'Collapse' : 'Expand'} aria-label=${open ? 'Collapse card' : 'Expand card'} aria-expanded=${open ? 'true' : 'false'} className="w-7 h-7 rounded-full bg-white border border-[#E6EAF2] text-[14px] text-[#1F4A7A] flex items-center justify-center">${open ? '-' : '+'}</button>

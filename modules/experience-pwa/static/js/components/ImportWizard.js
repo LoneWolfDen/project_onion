@@ -4,6 +4,7 @@
 import * as E from '../core/importEngine.js';
 import { makeSource, findDuplicate } from '../core/source.js';
 import { loadSavedMap, saveMap } from '../core/importTemplates.js';
+import { summariseRedactions } from '../core/pii.js';
 const html = window.htm.bind(window.React.createElement);
 const { useState, useEffect, useMemo } = window.React;
 
@@ -57,6 +58,7 @@ export function ImportWizard({ file, adapter, project, knownSources, onStage, on
   const missing = adapter.fields.filter((f) => f.required && !used.has(f.key));
   const mapped = useMemo(() => (sheet ? E.mapRows(sheet.rows, headerRow, columns, adapter.fields, file.name, sheet.name) : { records: [], warnings: [] }), [columns, sheet]);
   const picked = useMemo(() => (adapter.select ? adapter.select(mapped.records, project) : { staged: mapped.records, notes: [] }), [mapped]);
+  const redaction = useMemo(() => summariseRedactions(picked.staged.map((r) => (adapter.content ? adapter.content(r) : Object.values(r.values).join('\n')))), [picked]);
   const staging = useMemo(() => E.stageAll(picked.staged, adapter.validate), [picked]);
 
   const setField = (idx, key) => setColumns((cs) => cs.map((c) => {
@@ -103,6 +105,7 @@ export function ImportWizard({ file, adapter, project, knownSources, onStage, on
       <thead><tr>${adapter.fields.filter((f) => used.has(f.key)).map((f) => html`<th key=${f.key} style=${{ textAlign: 'left', padding: '3px 8px' }}>${f.label}</th>`)}</tr></thead>
       <tbody>${picked.staged.slice(0, 5).map((r, i) => html`<tr key=${i}>${adapter.fields.filter((f) => used.has(f.key)).map((f) => html`<td key=${f.key} style=${{ padding: '3px 8px', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>${r.values[f.key] === '' ? E.NOT_FOUND : String(r.values[f.key])}</td>`)}</tr>`)}</tbody>
     </table></div>
+    <div id="import-redactions" style=${{ fontSize: '13px', marginTop: '6px' }}>Privacy screening: ${redaction.lines.join('; ')}.</div>
     ${picked.notes.map((n, i) => html`<div key=${'n' + i} id=${'import-note-' + i} style=${{ fontSize: '13px' }}>${n}</div>`)}
     ${mapped.warnings.slice(0, 5).map((w, i) => html`<div key=${i} style=${{ fontSize: '13px', color: '#9A3412' }}>Row ${w.row}, ${w.column}: ${w.message}</div>`)}
     ${!staging.ok ? html`<div id="import-errors" role="alert" style=${{ color: '#7F1D1D', marginTop: '8px' }}>Nothing will be imported until these are fixed in the file (${staging.errors.length} rows):${staging.errors.slice(0, 5).map((e, i) => html`<div key=${i}>Row ${picked.staged[e.index].row}: ${e.message}</div>`)}</div>` : null}

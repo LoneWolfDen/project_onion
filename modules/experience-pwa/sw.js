@@ -11,7 +11,7 @@
 //  - Same-origin GETs are network-first (fresh when online, cached copy when offline).
 //  - Card data and the vector API are never cached.
 // Bump SW_VERSION whenever this file's logic or the precache list changes.
-const SW_VERSION = 'continuum-sw-v3';
+const SW_VERSION = 'continuum-sw-v4';
 const CACHE = SW_VERSION;
 const PRECACHE = [
   '/',
@@ -32,6 +32,7 @@ const PRECACHE = [
   '/js/components/HandoverModal.js',
   '/js/components/HarvesterPanel.js',
   '/js/components/ImportWizard.js',
+  '/js/components/PiiSettings.js',
   '/js/components/ProjectModal.js',
   '/js/components/StorageBanner.js',
   '/js/components/TimelineCard.js',
@@ -51,6 +52,7 @@ const PRECACHE = [
   '/js/core/importTemplates.js',
   '/js/core/matchExplain.js',
   '/js/core/persistence.js',
+  '/js/core/pii.js',
   '/js/core/pwa.js',
   '/js/core/schema.js',
   '/js/core/source.js',

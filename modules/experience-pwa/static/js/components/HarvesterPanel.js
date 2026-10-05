@@ -11,6 +11,7 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { readLocal } from '../core/FailoverDB.js';
 import { CLEAR_PHRASE, removalSummary, describeRemoval, runGuarded } from '../core/destructive.js';
 import { piiScreen } from '../core/PiiGate.js';
+import { PiiSettings } from './PiiSettings.js';
 import { processWithAI, aiEngineLabel } from '../core/AiClient.js';
 import { matchSentence } from '../core/matchExplain.js';
 import { PERSONAS, getDefaultPersona } from '../constants/personas.js';
@@ -303,7 +304,7 @@ export function HarvesterPanel(props) {
     // was correctly redacted. If src.title is explicit it is trusted as-is
     // (caller-provided/edited); the auto-derived fallback now uses the
     // screened text.
-    const clipTitle = String(src.title || screened.text.slice(0, 80) || 'Bookmarklet scrape');
+    const clipTitle = piiScreen(String(src.title || screened.text.slice(0, 80) || 'Bookmarklet scrape')).text;
     return {
       id: String(src.id || ('clip-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 10000))),
       projectId: String(src.projectId || canonicalProjectId || ''),
@@ -351,7 +352,7 @@ export function HarvesterPanel(props) {
         const payload = buildClipboardPayload(items[i], i);
         const text = payload.content || payload.title || '';
         const ai = await processWithAI(text, payload.type || 'Scrape');
-        const clipStagedTitle = payload.title || (text || '').slice(0, 80) || 'Bookmarklet scrape';
+        const clipStagedTitle = piiScreen(String(payload.title || (text || '').slice(0, 80))).text || 'Bookmarklet scrape';
         const clipSmartAppend = buildSmartAppendFor(text + ' ' + clipStagedTitle, clipStagedTitle, ai, text);
         // (Task 3 Dual-Mode) vector semantic fallback for clipboard path.
         let clipSmart = clipSmartAppend || null;
@@ -797,6 +798,7 @@ export function HarvesterPanel(props) {
           </div>
           ${showGear ? html`<div style=${{ marginTop: '8px', padding: '8px', background: '#fff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
             <${AiSettings} />
+            <${PiiSettings} />
             <button type="button" onClick=${onResetSeed} title="Replace all local data with the fictional hackathon demo dataset (AI settings are kept)" style=${{ marginTop: '8px', width: '100%', background: '#FDE8F0', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>↺ Reset Demo Dataset</button>
           </div>` : null}
           <${BackupPanel} />

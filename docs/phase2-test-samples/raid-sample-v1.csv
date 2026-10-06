@@ -1,0 +1,5 @@
+Date Raised,RAID Type,Description,Probability,Impact,Overall Impact,Status / Comments / Mitigation Steps,Assigned To,Status,Due Date,Closed Date
+01-09-2026,Risk,Key integration vendor may miss the November API delivery date,0.6,0.8,0.48,Weekly check-in with vendor; fallback mock agreed,Alex Morgan,Open,30-10-2026,
+03-09-2026,Issue,Test environment unavailable for two days due to licence expiry,0.9,0.5,0.45,Licence renewed; monitoring added,Priya Shah,Closed,05-09-2026,06-09-2026
+10-09-2026,Assumption,Client SMEs are available for UAT in the week of 16 November,0.4,0.6,0.24,Confirm in steering committee,Sam Lee,Open,15-10-2026,
+15-09-2026,Dependency,Network change window needed from client IT before go-live,0.5,0.7,0.35,Request raised with client IT,Jordan Kim,Open,20-11-2026,

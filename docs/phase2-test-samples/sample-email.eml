@@ -1,0 +1,28 @@
+From: Casey Rowan <casey.rowan@example.com>
+To: Alex Morgan <alex.morgan@example.com>
+Subject: Steering committee follow-up
+Date: Mon, 28 Sep 2026 10:15:00 +0100
+Message-ID: <steerco-0928@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="B1"
+
+--B1
+Content-Type: text/plain; charset=utf-8
+
+Hi Alex,
+
+Thanks for joining today. Summary below. Call me on 07700 900123 if anything is unclear.
+
+Decision: Go-live moves to 14 December to protect UAT.
+Action: Alex to confirm the vendor delivery date by Friday.
+The budget forecast is unchanged.
+
+Regards,
+Casey
+--B1
+Content-Type: application/pdf; name="plan.pdf"
+Content-Disposition: attachment; filename="plan.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQKJSVFT0YK
+--B1--

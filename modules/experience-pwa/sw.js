@@ -12,7 +12,7 @@
 //  - Same-origin GETs are network-first (fresh when online, cached copy when offline).
 //  - Card data and the vector API are never cached.
 // Bump SW_VERSION whenever this file's logic or the precache list changes.
-const SW_VERSION = 'continuum-sw-v12';
+const SW_VERSION = 'continuum-sw-v13';
 const CACHE = SW_VERSION;
 const PRECACHE = [
   '/',
@@ -35,11 +35,14 @@ const PRECACHE = [
   '/js/components/BackupPanel.js',
   '/js/components/CapabilityPanel.js',
   '/js/components/ConfirmDialog.js',
+  '/js/components/ContextBanner.js',
+  '/js/components/CopilotReplyPanel.js',
   '/js/components/DiagnosticsPanel.js',
   '/js/components/HandoverModal.js',
   '/js/components/HarvesterPanel.js',
   '/js/components/ImportWizard.js',
   '/js/components/KnowledgePanel.js',
+  '/js/components/LinkedAppsPanel.js',
   '/js/components/MailImportDialog.js',
   '/js/components/OriginalsPanel.js',
   '/js/components/PiiSettings.js',
@@ -55,10 +58,12 @@ const PRECACHE = [
   '/js/core/PiiGate.js',
   '/js/core/VectorSync.js',
   '/js/core/aiConfig.js',
+  '/js/core/appLink.js',
   '/js/core/backup.js',
   '/js/core/capabilities.js',
   '/js/core/compounding.js',
   '/js/core/confidence.js',
+  '/js/core/copilot.js',
   '/js/core/destructive.js',
   '/js/core/exportPackage.js',
   '/js/core/handover.js',

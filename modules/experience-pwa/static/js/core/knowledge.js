@@ -13,7 +13,11 @@ export const KINDS = [
   { key: 'assumption', label: 'Assumption', bg: '#FFF5D6', tx: '#92400E', hint: 'Not backed by a source yet' },
   { key: 'action', label: 'Action', bg: '#F1F5F9', tx: '#334155', hint: 'Something someone has to do' },
   { key: 'ai_suggestion', label: 'AI suggestion', bg: '#F0E6FF', tx: '#5B2EBF', hint: 'Written by the mock or fallback AI; needs a person to confirm' },
+  { key: 'inference', label: 'Inference', bg: '#F0E6FF', tx: '#5B2EBF', hint: 'Written by Copilot or another AI from your evidence; not a fact' },
+  { key: 'recommendation', label: 'Recommendation', bg: '#FDF2F8', tx: '#9D174D', hint: 'Advice, not a fact' },
 ];
+// Text written outside Continuum by an AI (for example a pasted Copilot reply). Never a Fact or a Decision.
+export const EXTERNAL_AI_ORIGINS = ['copilot-pasted', 'ai-pasted'];
 const KIND_KEYS = KINDS.map((k) => k.key);
 export const kindMeta = (key) => KINDS.find((k) => k.key === key) || KINDS[3];
 
@@ -45,6 +49,7 @@ export function isRecordedDecision(card) {
 
 export function kindOf(card) {
   const c = card || {};
+  if (EXTERNAL_AI_ORIGINS.includes(c.origin)) return c.kind === 'recommendation' ? 'recommendation' : 'inference';
   if (isRecordedDecision(c)) return 'decision';
   let k = KIND_KEYS.includes(c.kind) && c.kind !== 'decision' ? c.kind : '';
   if (!k) {

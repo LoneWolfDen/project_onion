@@ -53,3 +53,14 @@ test('radar output never names or scores people', () => {
   assert.doesNotMatch(out, /Walter|Malcolm/);
   assert.doesNotMatch(out, /score|rank|performance/i);
 });
+
+test('items waiting in the Harvester list raise a waiting-for-review risk', async () => {
+  const { radarFor, stagingRisk } = await import('../static/js/core/radar.js');
+  const now = Date.parse('2026-10-06T00:00:00Z');
+  assert.equal(stagingRisk([], now), null);
+  assert.equal(stagingRisk([{ created_at: '2026-10-05T00:00:00Z' }], now).level, 'medium');
+  assert.equal(stagingRisk([{ created_at: '2026-09-01T00:00:00Z' }], now).level, 'high');
+  assert.equal(stagingRisk(Array.from({ length: 10 }, () => ({})), now).level, 'high');
+  const r = radarFor([], { project_name: 'X' }, now, [{ created_at: '2026-10-05T00:00:00Z' }]);
+  assert.equal(r.byRule.waiting_review.length, 1);
+});

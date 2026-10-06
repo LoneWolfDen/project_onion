@@ -83,3 +83,12 @@ test('documented reachability: one source Low, two Medium, three need 1 extra en
   assert.equal(evidenceStrength(mk(4)).tier, 'High');
   assert.equal(evidenceStrength({ source: 'S0', nodes: [] }).tier, 'Low');
 });
+
+test('a pasted Copilot reply is Inference or Recommendation, never Fact or Decision', async () => {
+  const { kindOf } = await import('../static/js/core/knowledge.js');
+  const base = { id: 'x', origin: 'copilot-pasted', importSourceId: 's1' };
+  assert.equal(kindOf(base), 'inference');
+  assert.equal(kindOf({ ...base, kind: 'fact' }), 'inference');
+  assert.equal(kindOf({ ...base, kind: 'recommendation' }), 'recommendation');
+  assert.equal(kindOf({ ...base, decision: { by: 'Ana', at: '2026-01-01' } }), 'inference');
+});

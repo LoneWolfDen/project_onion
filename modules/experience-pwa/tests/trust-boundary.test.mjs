@@ -79,6 +79,9 @@ test('no-AI answers only repeat text from scoped cards and never invent facts', 
   for (const banned of ['PO-88921', 'Infosec', 'VNet', 'Raj', 'security clearance']) assert.ok(!hit.answer.includes(banned), banned);
   const miss = mockQaFallback('what is the budget forecast?', cards, 'Both', 'Ana');
   assert.deepEqual(miss.sources, []);
-  assert.match(miss.answer, /nothing was inferred/);
-  assert.match(mockQaFallback('anything', [], 'Both', '').answer, /No sources are available/);
+  assert.match(miss.answer, /Not found: .*nothing was inferred/);
+  assert.match(miss.answer, /Searched 1 card/);
+  assert.match(hit.answer, /\[(Fact|Assumption)\] "Gateway review"/);
+  assert.match(mockQaFallback('gateway', [{ ...cards[0], draft: true }], 'Both', '').answer, /\[Needs confirmation\]/);
+  assert.match(mockQaFallback('anything', [], 'Both', '').answer, /Not found: no sources are available/);
 });

@@ -7,6 +7,8 @@
 // — never throws to caller (always resolves). aiEngine is 'live' | 'mock' | 'fallback'
 // so every card can say honestly which engine produced its summary.
 import { resolveRemote, getModel, PROVIDERS, reasonText } from './aiConfig.js';
+import { kindOf, kindMeta } from './knowledge.js';
+import { isPending } from './handover.js';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Offline keyword rules. Whole words only: a bare substring test made
@@ -227,23 +229,27 @@ function scopeCardsByPrivacy(cards, privacyMode, activePersona) {
   // enforce card.author === activePersona (same rules as App.js).
   return arr.filter((c) => privacyMatchesCard(c || {}, mode, activePersona));
 }
-// No-AI answer path: lists approved-scope cards whose text shares words with the question.
-// Every word in the answer comes from the cards themselves; nothing is composed or invented.
+// No-AI answer path: lists scoped cards whose text shares words with the question, each labelled
+// with its statement kind (Needs confirmation for drafts). Every word comes from the cards; nothing is
+// composed or invented. The search scope is always stated.
 export function mockQaFallback(question, scopedCards, privacyMode, activePersona) {
   const persona = (activePersona == null ? '' : String(activePersona));
-  const scope = ' in the current privacy scope' + (persona ? ' for ' + persona : '');
   const cards = Array.isArray(scopedCards) ? scopedCards : [];
-  if (!cards.length) return { answer: 'No sources are available' + scope + '. Switch scope or add cards first.', sources: [] };
+  const scopeLine = 'Searched ' + cards.length + ' card' + (cards.length === 1 ? '' : 's') + ' (view: ' + String(privacyMode || 'Both') + (persona ? ', as ' + persona : '') + '). No AI.';
+  if (!cards.length) return { answer: 'Not found: no sources are available in this view. ' + scopeLine, sources: [] };
   const toks = String(question || '').toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 3);
   const text = (c) => String((c && (c.title || '')) + ' ' + (c && (c.synthesizedText || c.content || c.detail || ''))).toLowerCase();
   const hits = cards.map((c) => ({ c, n: toks.filter((t) => text(c).indexOf(t) !== -1).length })).filter((h) => h.n > 0).sort((x, y) => y.n - x.n).slice(0, 3);
-  if (!hits.length) return { answer: 'No card' + scope + ' mentions that. No AI provider is on, so nothing was inferred.', sources: [] };
+  if (!hits.length) return { answer: 'Not found: no card mentions that, so nothing was inferred. ' + scopeLine, sources: [] };
+  const label = (c) => (isPending(c) ? 'Needs confirmation' : kindMeta(kindOf(c)).label);
   const lines = hits.map(({ c }) => {
     const body = String(c.synthesizedText || c.content || c.detail || '').slice(0, 220);
-    return '"' + String(c.title || c.id || 'Untitled card') + '" (' + String(c.source || c.type || 'Timeline') + ')' + (body ? ': ' + body : '') + (c.id ? ' [Card ' + String(c.id) + ']' : '');
+    return '[' + label(c) + '] "' + String(c.title || c.id || 'Untitled card') + '" (' + String(c.source || c.type || 'Timeline') + ')' + (body ? ': ' + body : '') + (c.id ? ' [Card ' + String(c.id) + ']' : '');
   });
-  return { answer: 'No AI: ' + hits.length + ' matching card(s). ' + lines.join(' | '), sources: hits.map(({ c }) => String(c.source || c.type || 'Timeline')) };
+  return { answer: hits.length + ' matching card(s). ' + scopeLine + ' ' + lines.join(' | '), sources: hits.map(({ c }) => String(c.source || c.type || 'Timeline')) };
 }
+// Remote answers are Inference: labelled with the model and the scope searched.
+function aiPrefix(model, n) { return '[Inference, AI: ' + String(model || 'remote model') + ', searched ' + n + ' card' + (n === 1 ? '' : 's') + ', check the cited cards] '; }
 export async function askSmartAssistant(question, contextCards, privacyMode, activePersona) {
   const q = String(question || '');
   const mode = String(privacyMode || 'Both');
@@ -283,11 +289,11 @@ export async function askSmartAssistant(question, contextCards, privacyMode, act
       const raw = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
       try {
         const parsed = JSON.parse(String(raw).trim());
-        if (parsed && typeof parsed.answer === 'string') return { answer: String(parsed.answer).slice(0, 2000), sources: Array.isArray(parsed.sources) ? parsed.sources.map(String).slice(0, 12) : [] };
+        if (parsed && typeof parsed.answer === 'string') return { answer: aiPrefix(model, scoped.length) + String(parsed.answer).slice(0, 2000), sources: Array.isArray(parsed.sources) ? parsed.sources.map(String).slice(0, 12) : [] };
       } catch (e) {
         const m = String(raw).match(/\{[\s\S]*\}/);
-        if (m) { try { const p2 = JSON.parse(m[0]); if (p2 && typeof p2.answer === 'string') return { answer: String(p2.answer).slice(0, 2000), sources: Array.isArray(p2.sources) ? p2.sources.map(String).slice(0, 12) : [] }; } catch (e2) {} }
-        if (String(raw).trim()) return { answer: String(raw).slice(0, 2000), sources: lite.slice(0, 3).map((c) => String(c.source || 'Timeline')) };
+        if (m) { try { const p2 = JSON.parse(m[0]); if (p2 && typeof p2.answer === 'string') return { answer: aiPrefix(model, scoped.length) + String(p2.answer).slice(0, 2000), sources: Array.isArray(p2.sources) ? p2.sources.map(String).slice(0, 12) : [] }; } catch (e2) {} }
+        if (String(raw).trim()) return { answer: aiPrefix(model, scoped.length) + String(raw).slice(0, 2000), sources: lite.slice(0, 3).map((c) => String(c.source || 'Timeline')) };
       }
       throw new Error('Empty LLM answer');
     } catch (err) {

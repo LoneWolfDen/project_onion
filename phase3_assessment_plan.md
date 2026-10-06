@@ -184,3 +184,12 @@ Done in the first Phase 3 pull request (workstreams W1, W2 and part of W4):
 - `docs/PILOT_CHECKLIST.md` lists the manual checks that need a person.
 
 Still open: W3 (RAID row key on the card, decisions list and export section, radar over staging items, "nothing found" import feedback), WebKit CI job, the pilot run, the copy-out / paste-back workflow and the AI proposal and local-model items (W6). The "World of Continuum" footer still links to two personal Codespaces URLs that cannot be checked from here.
+
+Second Phase 3 pull request (6 Oct):
+- Cross-app handover: footer links to the Finance Engine and Pre-Sales Accelerator carry the active project's identifiers in `#ctx=`; Continuum opens on an incoming link already filtered (ref, then project ID, opportunity, GDP ID; never by name), or says it found none or several. App addresses can be set per device (Harvester → Linked apps). Contract: `docs/APP_HANDOVER_CONTRACT.md`; prompt for the other repos: `docs/prompts/CROSS_APP_HANDOVER_PROMPT.md`. Recommendation: keep `Project_ReferenceID` as Continuum's opaque, immutable ref and join across apps on business IDs.
+- Copilot Pattern A: the package now has `decisions.csv` and `copilot-prompts.md`, and a Confirmed decisions section; "Paste a Copilot reply" stores replies as private Drafts that are always Inference or Recommendation. Assessment of patterns A, B and C: `docs/COPILOT_ASSESSMENT.md`.
+- Smart Assistant without AI states the search scope and labels each match with its statement kind (drafts as Needs confirmation, nothing found as Not found); remote answers are labelled Inference with the model.
+- Radar: new "Waiting for review" rule for items left in the Harvester list. Mail and transcript import explain what to do when no "Decision:" or "Action:" line is found.
+- RAID row key: already stored on cards since Release 2 (`rowKey`); only cards approved before then fall back to content matching.
+
+Still open: WebKit CI job, promoting a pasted Inference to an accepted Recommendation, Pattern B direct writes and Pattern C (need tenant decisions), the pilot run and the manual checks in `docs/PILOT_CHECKLIST.md`.

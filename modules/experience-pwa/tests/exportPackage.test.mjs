@@ -16,7 +16,7 @@ const sources = [{ id: 'src_1', name: 'raid.xlsx', kind: 'xlsx', adapter: 'raid'
 
 test('package has md, json, csv and a manifest with SHA-256 of each file', async () => {
   const files = await buildPackage(entries, meta, sources, [{ name: 'handover.html', content: '<html></html>' }]);
-  assert.deepEqual(files.map((f) => f.name), ['handover.md', 'handover.html', 'handover.json', 'sources.csv', 'manifest.json']);
+  assert.deepEqual(files.map((f) => f.name), ['handover.md', 'handover.html', 'handover.json', 'sources.csv', 'decisions.csv', 'copilot-prompts.md', 'manifest.json']);
   const man = JSON.parse(files.at(-1).content);
   for (const f of files.slice(0, -1)) assert.equal(man.files[f.name], await sha256Hex(f.content), f.name);
   assert.equal(man.packageHash, meta.packageHash);
@@ -52,4 +52,21 @@ test('zip: valid signatures, entry count and crc', () => {
   assert.equal(v.getUint32(0, true), 0x04034b50);
   assert.equal(v.getUint32(z.length - 22, true), 0x06054b50);
   assert.equal(v.getUint16(z.length - 22 + 10, true), 2);
+});
+
+test('confirmed decisions get their own section and decisions.csv; copilot prompts carry the rules', async () => {
+  const dState = { timeline: [card({ id: 'd1', title: 'Go nightly batch', importSourceId: 'src_1', decision: { by: 'Ana', at: '2026-09-02T00:00:00Z', rationale: 'Cheaper' } }), card({ id: 'n1', title: 'Plain note', importSourceId: 'src_1' })] };
+  const e = [{ project: proj, perNote: '', groups: buildHandover(dState, proj) }];
+  const files = Object.fromEntries((await buildPackage(e, meta, sources)).map((f) => [f.name, f.content]));
+  assert.match(files['handover.md'], /### Confirmed decisions \(1\)\n\n- \[S-[0-9a-f]+\] Go nightly batch \(decided by Ana, 2026-09-02\)\. Why: Cheaper/);
+  const rows = files['decisions.csv'].trim().split('\r\n');
+  assert.equal(rows.length, 2);
+  assert.match(rows[1], /Go nightly batch,Ana,2026-09-02T00:00:00Z,Cheaper,src_1/);
+  assert.match(files['copilot-prompts.md'], /Never present anything as a confirmed fact/);
+  assert.match(files['copilot-prompts.md'], /Not found in the package/);
+});
+
+test('no decisions shows Not found in the decisions section', async () => {
+  const files = Object.fromEntries((await buildPackage(entries, meta, sources)).map((f) => [f.name, f.content]));
+  assert.match(files['handover.md'], /### Confirmed decisions \(0\)\n\nNot found/);
 });

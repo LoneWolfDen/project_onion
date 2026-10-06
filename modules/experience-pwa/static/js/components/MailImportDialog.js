@@ -61,7 +61,7 @@ export function MailImportDialog({ file, knownSources, onStage, onCancel }) {
     </tbody></table>
     ${!isVtt && parsed.attachments.length ? html`<div id="mail-attachments">Attachments listed, not imported: ${parsed.attachments.map((a) => a.name).join(', ')}</div>` : null}
     ${!isVtt && parsed.htmlOnly ? html`<div style=${{ fontSize: '13px' }}>Only an HTML body was found. It was reduced to plain text; nothing was loaded from the web.</div>` : null}
-    <div id="mail-drafts" style=${{ margin: '8px 0' }}>${drafts ? drafts + ' decision or action line(s) found (marked "Decision:" or "Action:"). They are staged as Drafts for you to review, never as confirmed decisions.' : 'No lines marked "Decision:" or "Action:" were found.'}</div>
+    <div id="mail-drafts" style=${{ margin: '8px 0' }}>${drafts ? drafts + ' decision or action line(s) found (marked "Decision:" or "Action:"). They are staged as Drafts for you to review, never as confirmed decisions.' : 'No lines marked "Decision:" or "Action:" were found, so no decisions or actions were proposed (free text is never interpreted). The message is still imported; add a marker in the source or write the item yourself as a note.'}</div>
     <div style=${{ fontSize: '13px', color: '#64748b' }}>Privacy screening runs on the text before it is staged: ${piiScreen(items[0].content).flag}. Emails stay as written.</div>
     <div style=${{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
       <button id="mail-cancel" type="button" style=${btn} onClick=${onCancel}>Cancel</button>

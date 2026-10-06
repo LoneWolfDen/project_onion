@@ -48,6 +48,9 @@ jobs:
       - name: Repo hygiene (runtime DBs, personal paths, secrets)
         run: node scripts/check-repo.mjs
 
+      - name: CSS dependencies still defined (HUI-04)
+        run: node scripts/css-usage.mjs --check
+
       - name: Local services are loopback-only
         run: |
           python -m pip install -q fastapi httpx

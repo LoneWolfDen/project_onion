@@ -19,8 +19,8 @@ export function StorageBanner() {
     return () => window.removeEventListener('onion:storage-error', h);
   }, []);
   if (!status) return null;
-  return html`<div role="alert" className="storage-banner" style=${{ background: '#FEE2E2', color: '#7F1D1D', border: '1px solid #FCA5A5', padding: '10px 16px', fontSize: '15px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+  return html`<div role="alert" className="banner banner--danger storage-banner">
     <strong>Storage problem:</strong><span>${status.message}</span>
-    ${status.recoveryKey ? html`<button type="button" onClick=${() => downloadRecovery(status.recoveryKey)} style=${{ background: '#fff', border: '1px solid #FCA5A5', borderRadius: '999px', padding: '4px 12px', fontSize: '14px' }}>Download recovery file</button>` : null}
+    ${status.recoveryKey ? html`<button type="button" className="banner__btn" onClick=${() => downloadRecovery(status.recoveryKey)}>Download recovery file</button>` : null}
   </div>`;
 }

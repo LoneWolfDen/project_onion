@@ -570,6 +570,31 @@ const scenarios = {
     } else check('reuse target list exists when more than one project is registered', true, 'single project in demo data');
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'Continuity Radar (RAD-01)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    await p.click('#radar-open'); await p.waitForSelector('#radar-panel');
+    const t = await p.innerText('#radar-panel');
+    check('radar shows rules and a count', /high, \d+ medium/.test(t) && /How levels are decided/.test(t), t.slice(0, 160));
+    check('radar says it is not about people', /not the performance of any person/.test(t));
+    const link = p.locator('.radar-link').first();
+    if (await link.count()) { await link.click(); await sleep(p, 300); check('a risk link closes the radar and goes to the card', !(await p.locator('#radar-panel').count())); }
+    else check('radar has no card risks to link in demo data', true);
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'Banner component migrated to tokens (HUI-04)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    // The computed styles must equal the inline styles the banner used before the migration.
+    await p.evaluate(() => window.dispatchEvent(new CustomEvent('onion:storage-error', { detail: { message: 'test', recoveryKey: 'onion_db_corrupt_x' } })));
+    await p.waitForSelector('.storage-banner');
+    const cs = await p.evaluate(() => { const g = (el, ps) => Object.fromEntries(ps.map((k) => [k, getComputedStyle(el)[k]])); const b = document.querySelector('.storage-banner'); const btn = b.querySelector('button'); return { b: g(b, ['backgroundColor', 'color', 'borderTopColor', 'borderTopWidth', 'paddingTop', 'paddingLeft', 'fontSize', 'display', 'columnGap']), btn: g(btn, ['backgroundColor', 'borderTopColor', 'borderRadius', 'paddingTop', 'paddingLeft', 'fontSize']) }; });
+    check('error banner matches its previous look', cs.b.backgroundColor === 'rgb(254, 226, 226)' && cs.b.color === 'rgb(127, 29, 29)' && cs.b.borderTopColor === 'rgb(252, 165, 165)' && cs.b.borderTopWidth === '1px' && cs.b.paddingTop === '10px' && cs.b.paddingLeft === '16px' && cs.b.fontSize === '15px' && cs.b.display === 'flex' && cs.b.columnGap === '12px', JSON.stringify(cs.b));
+    check('error banner button matches its previous look', cs.btn.backgroundColor === 'rgb(255, 255, 255)' && cs.btn.borderTopColor === 'rgb(252, 165, 165)' && cs.btn.paddingTop === '4px' && cs.btn.paddingLeft === '12px' && cs.btn.fontSize === '14px' && parseFloat(cs.btn.borderRadius) >= 100, JSON.stringify(cs.btn));
+    await p.evaluate(() => { window.__onionWaitingWorker = {}; window.dispatchEvent(new Event('onion:sw-update')); });
+    await p.waitForSelector('#update-banner');
+    const up = await p.evaluate(() => { const b = document.querySelector('#update-banner'); const s = getComputedStyle(b); const l = getComputedStyle(b.querySelector('#update-later')); return { bg: s.backgroundColor, fg: s.color, bd: s.borderTopColor, pad: s.paddingTop + ' ' + s.paddingLeft, fs: s.fontSize, later: l.textDecorationLine + ' ' + l.borderTopStyle }; });
+    check('update banner matches its previous look', up.bg === 'rgb(224, 242, 254)' && up.fg === 'rgb(12, 74, 110)' && up.bd === 'rgb(125, 211, 252)' && up.pad === '10px 16px' && up.fs === '15px' && /underline none/.test(up.later), JSON.stringify(up));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
 };
 
 // --------------------------------------------------------------------- main

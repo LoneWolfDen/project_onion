@@ -38,7 +38,9 @@ function toVectorPayload(card) {
   } catch (e) {}
   return {
     id: String(c.id || ''),
-    author: String(c.author || c.contributor || 'Walter'),
+    // No demo author: an unnamed card is refused by the service rather than
+    // mirrored under someone else's name.
+    author: String(c.author || c.contributor || ''),
     client: String(c.client || c.client_name || ''),
     client_name: String(c.client_name || c.client || ''),
     project: String(c.project || c.project_name || ''),
@@ -146,27 +148,43 @@ export async function querySimilarCards(text, project, activePersona, topK) {
       const top = retrieved[0] || {};
       const dist = Number(top.distance);
       // Literal similarity gate (WP: routing must use similarity >= 0.85, not
-      // the legacy dist > 1.2 Chroma-distance check). Map cosine distance
-      // (0 = identical, 2 = maximally distant) to a 0..1 similarity score.
-      const similarity = Math.max(0, Math.min(1, 1 - (dist / 2)));
-      if (!Number.isFinite(dist) || similarity < 0.85) return { match: null, engine: 'chromadb' };
+      // the legacy dist > 1.2 Chroma-distance check). The service reports the
+      // distance space it was built with, because the same number means
+      // different things under cosine and L2.
+      const space = (j && j.space) || 'cosine';
+      const similarity = similarityForDistance(dist, space);
+      if (!Number.isFinite(dist) || similarity < MERGE_GATE) return { match: null, engine: 'chromadb' };
       let title = String(top.id || '');
       try {
         const doc = String(top.document || '');
         const m = doc.match(/Title:\s*([^\n]+)/);
         if (m && m[1].trim()) title = m[1].trim().slice(0, 80);
       } catch (e) {}
-      return { match: { id: String(top.id || ''), title, distance: dist, reasons: ['vector similarity (dist ' + dist.toFixed(2) + ')'] }, engine: 'chromadb' };
+      return { match: { id: String(top.id || ''), title, distance: dist, space, similarity, reasons: ['vector similarity ' + similarity.toFixed(2) + ' (' + space + ' distance ' + dist.toFixed(2) + ')'] }, engine: 'chromadb' };
     } catch (e) {}
   }
   return { match: null, engine: 'offline' };
 }
-export function vectorScoreForDistance(dist) {
-  // Map Chroma cosine distance (0 = identical) to 0..1 merge score for UI parity
-  // with legacy matchScore: 0 -> 0.95, 1.2 -> ~0.55. Floor 0.5 (it matched).
+// Distance means nothing without the space it was measured in. Under cosine, Chroma's
+// distance is 1 - cos, so 0..2. Under its L2 default the distance is squared, and with
+// normalised embeddings that is 2 - 2cos, so 0..4. An unknown space is treated as cosine
+// (what the service declares) rather than guessed at.
+export function similarityForDistance(dist, space) {
+  const d = Number(dist);
+  if (!Number.isFinite(d)) return 0;
+  const sp = String(space || 'cosine').toLowerCase();
+  const scale = (sp === 'l2' || sp === 'squared_l2') ? 4 : 2;
+  return Math.max(0, Math.min(1, 1 - (d / scale)));
+}
+export const MERGE_GATE = 0.85;
+export function vectorScoreForDistance(dist, space) {
+  // Merge score shown in the UI. Only hits at or above the gate are ever shown, so the
+  // score spreads that band: a perfect match reads 0.95, one just at the gate 0.55.
   const d = Number(dist);
   if (!Number.isFinite(d)) return 0.55;
-  return Math.max(0.5, Math.round((0.95 - d * 0.33) * 100) / 100);
+  const sim = similarityForDistance(d, space);
+  const score = 0.55 + ((sim - MERGE_GATE) / (1 - MERGE_GATE)) * 0.4;
+  return Math.max(0.5, Math.min(0.95, Math.round(score * 100) / 100));
 }
 // Single-flight: overlapping triggers (online event, 60s timer, SW message,
 // post-mirror drain) share one drain instead of double-posting every entry.

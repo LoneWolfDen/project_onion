@@ -172,11 +172,26 @@ test('REGRESSION: overlapping flushes post each card once', async () => {
   assert.equal(calls.filter((c) => c.method === 'POST').length, 2);
 });
 
-test('vectorScoreForDistance maps distance to a 0.5..0.95 merge score', () => {
+test('vectorScoreForDistance maps the shown band to a 0.5..0.95 merge score', () => {
   assert.equal(VS.vectorScoreForDistance(0), 0.95);
-  assert.equal(VS.vectorScoreForDistance(1.2), 0.55);
+  assert.equal(VS.vectorScoreForDistance(0.3), 0.55); // the gate
   assert.equal(VS.vectorScoreForDistance(10), 0.5);
   assert.equal(VS.vectorScoreForDistance('x'), 0.55);
+});
+
+test('similarity depends on the distance space the service reports', () => {
+  // cosine distance 1 - cos (0..2); squared L2 over normalised vectors is 2 - 2cos (0..4),
+  // so the same number is a much closer match under L2.
+  assert.equal(VS.similarityForDistance(0.3, 'cosine'), 0.85);
+  assert.equal(VS.similarityForDistance(0.6, 'l2'), 0.85);
+  assert.equal(VS.similarityForDistance(0.3, undefined), 0.85, 'unknown space is treated as cosine');
+  assert.equal(VS.similarityForDistance('x', 'cosine'), 0);
+});
+
+test('a card with no author is never mirrored under someone elses name', () => {
+  VS.queueVectorOp('upsert', { id: 'noauthor', project: 'Apollo' });
+  const q = JSON.parse(globalThis.localStorage.getItem('onion_vector_queue') || '[]');
+  assert.equal(q[q.length - 1].card.author, '');
 });
 
 test('querySimilarCards: needs similarity >= 0.85 (distance <= 0.3) and never throws', async () => {

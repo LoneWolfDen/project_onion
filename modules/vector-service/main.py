@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Dict, List, Any, Optional
 import json
 
-from store import vector_store
+from store import vector_store, DISTANCE_SPACE, configured_top_k
 import sys
 from pathlib import Path as _P
 sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "_shared"))
@@ -17,7 +17,7 @@ local_only.apply(app)
 
 class CardPayload(BaseModel):
     id: str
-    author: str = "Walter"
+    author: str = ""
     client: Optional[str] = None
     client_name: Optional[str] = None
     project: Optional[str] = None
@@ -56,8 +56,10 @@ class AskResponse(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "ok", "engine": "ChromaDB"}
+    """Health check. Reports what the store holds and which distance space it was built
+    with, so the PWA can score distances correctly and a store built under Chroma's old
+    L2 default shows up instead of scoring wrong in silence."""
+    return {"status": "ok", "engine": "ChromaDB", "space": DISTANCE_SPACE, "store": vector_store.stats()}
 
 @app.post("/ingest")
 async def ingest_card(card: CardPayload):
@@ -139,7 +141,7 @@ async def ask_question(request: AskRequest):
             query_text=request.query,
             project=project,
             active_persona=persona,
-            top_k=4
+            top_k=configured_top_k(),
         )
         
         # Format response
@@ -156,14 +158,17 @@ async def ask_question(request: AskRequest):
         # Create citations from IDs
         citations = [result["id"] for result in retrieved]
         
-        # Simple answer placeholder (in a real implementation, this would be the LLM response)
-        answer = f"Found {len(retrieved)} relevant results for your query. See citations below."
-        
+        # This endpoint retrieves; it does not answer. Saying so keeps the PWA from
+        # presenting a retrieval count as an AI answer (trust rule: no composed text here).
+        answer = f"Retrieved {len(retrieved)} card(s) by similarity. No answer was composed."
+
         return {
             "answer": answer,
             "citations": citations,
             "retrieved": retrieved,
             "engine": "chromadb",
+            "space": vector_store.space,
+            "top_k": configured_top_k(),
             "persona_source": persona_source
         }
     except scope.ScopeError as e:

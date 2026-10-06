@@ -389,7 +389,7 @@ export function HarvesterPanel(props) {
             if (vs && vs.querySimilarCards) {
               const r = await vs.querySimilarCards(text + ' ' + clipStagedTitle, (project && project.project_name) || '', getPersona());
               if (r && r.match && r.match.id) {
-                const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance) : 0.6;
+                const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance, r.match.space) : 0.6;
                 clipSmart = { targetCardId: String(r.match.id), targetCardTitle: String(r.match.title || r.match.id || ''), matchScore: score, matchReasons: (r.match.reasons || []).slice(), matchEngine: 'vector', matchDistance: r.match.distance, stagedRawNode: { kind: 'RAW', text: String(text || '').slice(0, 500) }, stagedAiNode: { kind: 'AI', text: String((ai && ai.synthesizedText) || '').slice(0, 500) } };
               }
             }
@@ -531,7 +531,7 @@ export function HarvesterPanel(props) {
             if (vs && vs.querySimilarCards) {
               const r = await vs.querySimilarCards(text + ' ' + stagedTitle, (project && project.project_name) || '', getPersona());
               if (r && r.match && r.match.id) {
-                const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance) : 0.6;
+                const score = vs.vectorScoreForDistance ? vs.vectorScoreForDistance(r.match.distance, r.match.space) : 0.6;
                 smartAppend = {
                   targetCardId: String(r.match.id),
                   targetCardTitle: String(r.match.title || r.match.id || ''),
@@ -908,7 +908,7 @@ export function HarvesterPanel(props) {
             ${parsedReviewQueue.map((c, idx) => html`<div key=${String(c.sourceId || '') + '-' + idx} style=${{ background: '#fff', border: '1px solid #ddd6fe', borderRadius: '10px', padding: '8px' }}>
               <div style=${{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style=${{ fontSize: '12px', fontWeight: 800, background: '#ede9fe', border: '1px solid #c4b5fd', color: '#5b21b6', borderRadius: '9999px', padding: '1px 8px' }}>${'Impact: ' + ((typeof c.impactScore === 'number' ? c.impactScore : 0.7) >= 0.5 ? 'Key moment' : 'Routine') + ' (' + (typeof c.impactScore === 'number' ? c.impactScore.toFixed(2) : '0.70') + ')'}</span>
-                <span style=${{ fontSize: '12px', color: '#6b7280' }}>${(Array.isArray(c.tags) ? c.tags : []).join(' ') || '#Auto_Tagged'}</span>
+                <span style=${{ fontSize: '12px', color: '#6b7280' }}>${(Array.isArray(c.tags) ? c.tags : []).join(' ') || 'No tags'}</span>
                 ${aiEngineLabel(c.aiEngine, c.aiModel) ? html`<span title=${c.aiFallbackReason || 'Engine that produced this summary'} style=${{ fontSize: '12px', fontWeight: 700, borderRadius: '9999px', padding: '1px 8px', border: '1px solid ' + (c.aiEngine === 'live' ? '#A7F3D0' : '#FCD34D'), background: c.aiEngine === 'live' ? '#ECFDF5' : '#FFFBEB', color: c.aiEngine === 'live' ? '#065F46' : '#92400E' }}>${aiEngineLabel(c.aiEngine, c.aiModel)}</span>` : null}
                 <button type="button" title="Discard noisy card" onClick=${() => discardReviewCard(idx)} style=${{ marginLeft: 'auto', background: '#fff', border: '1px solid #fecaca', borderRadius: '9999px', width: '24px', height: '24px', cursor: 'pointer', fontSize: '12px' }}>🗑️</button>
               </div>

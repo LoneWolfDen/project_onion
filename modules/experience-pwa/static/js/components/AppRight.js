@@ -1,5 +1,6 @@
 // AppRight.js — RIGHT Smart Assistant (verbatim v0.18 Tailwind + dynamic Filter Aid from scoped #tags).
 const htmlR = window.htm.bind(window.React.createElement);
+import { normalizeTags } from '../core/tags.js';
 // Exact-phrase search helper (Smart Assistant hits filtering):
 // Respects single/double quotes — e.g. #Risk_Watch + 'Not Signed' treats
 // 'Not Signed' as one exact substring, not two words ("Not","Signed").
@@ -62,6 +63,9 @@ function renderCitedAnswer(answer, onView) {
   if (!parts.length) parts.push(text);
   return parts;
 }
+// Filter Aid chips come from the tags cards actually carry, mapped to the closed
+// vocabulary in core/tags.js. Hashtag-looking words inside card text are not tags:
+// scraping them turned stray words in pasted content into chips that filtered nothing.
 function uniqueTagsFromContext(contextCards, keywords) {
   const seen = {};
   const out = [];
@@ -72,10 +76,7 @@ function uniqueTagsFromContext(contextCards, keywords) {
     if (!seen[t]) { seen[t] = 1; out.push(t); }
   };
   (Array.isArray(contextCards) ? contextCards : []).forEach((c) => {
-    (Array.isArray(c && c.tags) ? c.tags : []).forEach(pushTag);
-    const hay = [(c && c.title) || '', (c && c.detail) || '', (c && c.content) || '', (c && c.synthesizedText) || ''].join(' ');
-    const found = String(hay || '').match(/#[A-Za-z0-9_]+/g) || [];
-    found.forEach(pushTag);
+    normalizeTags(Array.isArray(c && c.tags) ? c.tags : []).tags.forEach(pushTag);
   });
   if (!out.length) (Array.isArray(keywords) ? keywords : []).forEach((k) => {
     const t = String(k || '').trim();

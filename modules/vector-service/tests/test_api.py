@@ -13,8 +13,12 @@ sys.path.insert(0, str(MOD.parent / "_shared"))
 
 
 class FakeCollection:
-    def __init__(self):
+    def __init__(self, metadata=None):
         self.rows = {}
+        self.metadata = dict(metadata or {})
+
+    def count(self):
+        return len(self.rows)
 
     def upsert(self, documents, metadatas, ids):
         for d, m, i in zip(documents, metadatas, ids):
@@ -32,7 +36,9 @@ class FakeCollection:
 
 
 fake = types.ModuleType("chromadb")
-fake.PersistentClient = lambda path: types.SimpleNamespace(get_or_create_collection=lambda n: FakeCollection())
+fake.PersistentClient = lambda path: types.SimpleNamespace(
+    get_or_create_collection=lambda n, metadata=None: FakeCollection(metadata)
+)
 cfg = types.ModuleType("chromadb.config")
 cfg.Settings = object
 sys.modules.setdefault("chromadb", fake)
@@ -89,6 +95,30 @@ class ApiTests(unittest.TestCase):
         r = self.post("/list", {"query": "", "project": "P-1", "activePersona": "Bo", "privacyMode": "Both"}).json()
         self.assertEqual([c["id"] for c in r["cards"]], ["mine"])
         self.assertEqual(r["persona_source"], "server-derived")
+
+    def test_health_states_the_distance_space(self):
+        r = self.c.get("/health", headers={"Origin": "http://localhost:8002"}).json()
+        self.assertEqual(r["space"], "cosine")
+        self.assertTrue(r["store"]["space_ok"])
+        self.assertEqual(r["store"]["top_k"], 6)
+
+    def test_no_demo_client_or_author_is_stored(self):
+        os.environ["ONION_PERSONA"] = "Ana"
+        self.post("/ingest", {"id": "bare", "title": "t", "project_name": "P-1", "Project_ReferenceID": "P-1"})
+        meta = self.main.vector_store.collection.rows["bare"][1]
+        self.assertEqual((meta["client"], meta["author"]), ("", "Ana"))
+
+    def test_ingest_without_a_persona_is_refused(self):
+        r = self.post("/ingest", {"id": "bare", "title": "t", "project_name": "P-1", "Project_ReferenceID": "P-1"})
+        self.assertEqual(r.status_code, 400)
+
+    def test_top_k_is_configurable_and_clamped(self):
+        from store import configured_top_k
+        self.assertEqual(configured_top_k({}), 6)
+        self.assertEqual(configured_top_k({"ONION_VECTOR_TOP_K": "12"}), 12)
+        self.assertEqual(configured_top_k({"ONION_VECTOR_TOP_K": "500"}), 20)
+        self.assertEqual(configured_top_k({"ONION_VECTOR_TOP_K": "0"}), 1)
+        self.assertEqual(configured_top_k({"ONION_VECTOR_TOP_K": "nonsense"}), 6)
 
 
 if __name__ == "__main__":

@@ -90,6 +90,30 @@ const scenarios = {
     check('project click keeps UI', (await p.innerText('body')).includes('Lantern-202') && !errors.length);
   },
 
+  async 'filter aid uses only the tag vocabulary'({ p, errors }) {
+    // Chips come from card.tags mapped to core/tags.js, never from #words inside card text.
+    const seeded = await p.evaluate(() => {
+      const st = JSON.parse(localStorage.getItem('onion_db_state') || '{}');
+      const tl = st.timeline || [];
+      if (!tl.length) return null;
+      tl[0].tags = ['#Risk_Watch', '#Invented_Tag'];
+      tl[0].detail = String(tl[0].detail || '') + ' see #Batch_Window_Note for context';
+      st.timeline = tl;
+      localStorage.setItem('onion_db_state', JSON.stringify(st));
+      return true;
+    });
+    check('seed card available to tag', seeded === true);
+    await p.reload(); await sleep(p, 1200);
+    const chips = await p.evaluate(() => {
+      const aid = [...document.querySelectorAll('div')].find((d) => /^Filter Aid/.test(d.textContent || '') && d.querySelector('button'));
+      return aid ? [...aid.querySelectorAll('button')].map((b) => b.textContent.trim()) : [];
+    });
+    check('Filter Aid shows the card\'s vocabulary tag', chips.includes('#Risk_Watch'), chips.join(','));
+    check('a tag outside the vocabulary is not a chip', !chips.includes('#Invented_Tag'), chips.join(','));
+    check('a #word inside card text is not a chip', !chips.includes('#Batch_Window_Note'), chips.join(','));
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+
   async 'card feed'({ p, errors }) {
     const body = await p.innerText('body');
     const pcts = [...body.matchAll(/\((\d+)%\)/g)].map((m) => m[1]);

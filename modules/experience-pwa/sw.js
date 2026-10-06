@@ -12,7 +12,7 @@
 //  - Same-origin GETs are network-first (fresh when online, cached copy when offline).
 //  - Card data and the vector API are never cached.
 // Bump SW_VERSION whenever this file's logic or the precache list changes.
-const SW_VERSION = 'continuum-sw-v13';
+const SW_VERSION = 'continuum-sw-v14';
 const CACHE = SW_VERSION;
 const PRECACHE = [
   '/',
@@ -83,6 +83,7 @@ const PRECACHE = [
   '/js/core/schema.js',
   '/js/core/source.js',
   '/js/core/storageGuard.js',
+  '/js/core/tags.js',
   '/js/core/timeAgo.js',
   '/js/core/zip.js',
   '/js/data/demoDataset.js',

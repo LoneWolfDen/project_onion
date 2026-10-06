@@ -9,6 +9,7 @@
 //  - A package hash lets the review gate prove that what was confirmed is what is exported.
 import { canonicalJson, sha256Hex } from './backup.js';
 import { KINDS, kindOf, sourceIdsOf } from './knowledge.js';
+import { tagKey } from './tags.js';
 
 export const NOT_FOUND = 'Not found';
 export const CATS = [
@@ -22,7 +23,8 @@ export const CATS = [
 ];
 const CAT_KEYS = CATS.map((c) => c.key);
 
-// Structured tags the AI/processing steps already attach. A tag is a field, not a keyword in text.
+// The category each tag of the closed vocabulary in tags.js belongs to.
+// A tag is a field, not a keyword in text: every key below must exist in tags.js TAG_KEYS.
 export const TAG_CATEGORY = {
   milestone_tracked: 'delivery', timezone_shift: 'delivery', decision_record: 'delivery',
   invoice_mentioned: 'finances', client_feedback: 'feedback', client_issue: 'feedback',
@@ -30,7 +32,6 @@ export const TAG_CATEGORY = {
   action_item: 'internal', lesson_learned: 'internal', lesson_applied: 'internal',
   risk_watch: 'raid',
 };
-const tagKey = (t) => String(t || '').replace(/^#/, '').trim().toLowerCase();
 
 export function categoryOf(card) {
   const own = String((card && card.category) || '').trim().toLowerCase();

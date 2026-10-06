@@ -9,28 +9,21 @@
 import { resolveRemote, getModel, PROVIDERS, reasonText } from './aiConfig.js';
 import { kindOf, kindMeta } from './knowledge.js';
 import { isPending } from './handover.js';
+import { tagsFromText, normalizeTags, TAG_PROMPT_LIST } from './tags.js';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Offline keyword rules. Whole words only: a bare substring test made
-// "report", "support" and "opportunity" look like purchase orders.
-const MOCK_RULES = {
-  invoice: /\b(po|invoices?|invoiced|invoicing|payments?|billing)\b/,
-  risk: /\b(risks?|raid|overruns?|delay|delays|delayed|blockers?)\b/,
-  milestone: /\b(payroll|milestones?|sow|contracts?)\b/,
-  furlough: /\bfurlough/,
-  impact: /\b(po|invoices?|invoicing|risks?|overruns?|milestones?|payroll)\b/,
-};
+// Whole words only: a bare substring test made "report", "support" and
+// "opportunity" look like purchase orders.
+const IMPACT_RULE = /\b(po|pos|invoices?|invoicing|risks?|overruns?|milestones?|payroll)\b/;
 
 function mockResult(text, type) {
   const clean = String(text || '').slice(0, 220);
   const lower = String(text || '').toLowerCase();
-  // Tags only say what the text mentions, never an outcome it does not state.
-  const tags = ['#Mock_Tagged'];
-  if (MOCK_RULES.invoice.test(lower)) tags.push('#Invoice_Mentioned');
-  if (MOCK_RULES.risk.test(lower)) tags.push('#Risk_Watch');
-  if (MOCK_RULES.milestone.test(lower)) tags.push('#Milestone_Tracked');
-  if (MOCK_RULES.furlough.test(lower)) tags.push('#Furlough_Flag');
-  const impactScore = MOCK_RULES.impact.test(lower) ? 0.9 : 0.35;
+  // Tags come from the closed vocabulary in tags.js and only say what the text
+  // mentions, never an outcome it does not state. No engine marker is added as a
+  // tag: aiEngine already records which engine produced the card.
+  const tags = tagsFromText(lower);
+  const impactScore = IMPACT_RULE.test(lower) ? 0.9 : 0.35;
   // No mergeHint or structured fields: the mock has not compared anything or
   // extracted any values, so it must not claim to have (trust rule CF-3).
   return {
@@ -75,29 +68,28 @@ export function privacyMatchesCard(cardOrPrivacy, mode, activePersona) {
 
 // Shared JSON-parse logic for both OpenRouter and Anthropic raw text responses.
 // Try strict JSON first, then extract {...} block, then fall back to raw text.
+// A model can only pick tags from the vocabulary. Anything else it invents is kept as
+// tagSuggestions — visible as an unconfirmed suggestion, never as a tag that files the card.
+function fromParsed(parsed, raw) {
+  const { tags, unmapped } = normalizeTags(parsed.tags);
+  return {
+    synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
+    tags,
+    tagSuggestions: unmapped.length ? unmapped : undefined,
+    impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
+    mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
+    structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
+  };
+}
 function parseAiJson(raw, input, kind) {
   try {
-    const parsed = JSON.parse(String(raw).trim());
-    return {
-      synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
-      tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
-      impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
-      mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
-      structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
-    };
+    return fromParsed(JSON.parse(String(raw).trim()), raw);
   } catch (e) {
     const m = String(raw).match(/\{[\s\S]*\}/);
-    if (m) {
-      const parsed = JSON.parse(m[0]);
-      return {
-        synthesizedText: String(parsed.synthesizedText || raw).slice(0, 2000),
-        tags: Array.isArray(parsed.tags) ? parsed.tags.map(String) : ['#Auto_Tagged'],
-        impactScore: Math.max(0, Math.min(1, Number(parsed.impactScore ?? 0.7))),
-        mergeHint: parsed.mergeHint ? String(parsed.mergeHint) : undefined,
-        structured: (parsed.structured && typeof parsed.structured === 'object') ? parsed.structured : undefined,
-      };
-    }
-    return { synthesizedText: String(raw).slice(0, 2000) || mockResult(input, kind).synthesizedText, tags: ['#Auto_Tagged'], impactScore: 0.7 };
+    if (m) return fromParsed(JSON.parse(m[0]), raw);
+    const text = String(raw).slice(0, 2000);
+    // Unparseable reply: keep the text, and tag it from the words it actually uses.
+    return { synthesizedText: text || mockResult(input, kind).synthesizedText, tags: tagsFromText(text || input), impactScore: 0.7 };
   }
 }
 
@@ -128,8 +120,9 @@ async function callOpenRouter(input, kind, enrichWithAggregation) {
               'You are an enterprise data parser for Project Continuum. ' +
               'Given raw harvested text, return ONLY valid JSON with keys: ' +
               'synthesizedText (string, concise executive summary preserving Project/Opp/GDP/SoW/PO identifiers), ' +
-              'tags (array of hashtag strings), impactScore (number 0.0 to 1.0, <0.5 = routine chatter). ' +
-              'No markdown, no extra keys.',
+              'tags (array, chosen ONLY from this list, omit any that do not apply: ' + TAG_PROMPT_LIST + '), ' +
+              'impactScore (number 0.0 to 1.0, <0.5 = routine chatter). ' +
+              'Do not invent tags outside the list. No markdown, no extra keys.',
           },
           { role: 'user', content: '[' + kind + '] ' + input },
         ],
@@ -141,7 +134,6 @@ async function callOpenRouter(input, kind, enrichWithAggregation) {
     return enrichWithAggregation(Object.assign(parseAiJson(raw, input, kind), { aiEngine: 'live', aiModel: PROVIDERS.openrouter.label + ' | ' + model }));
   } catch (err) {
     const fb = mockResult(input, kind);
-    fb.tags = (fb.tags || []).concat(['#Mock_Fallback']);
     fb.aiEngine = 'fallback';
     fb.aiFallbackReason = 'OpenRouter: ' + String((err && err.message) || err).slice(0, 120);
     return fb;
@@ -160,8 +152,9 @@ async function callAnthropic(input, kind, enrichWithAggregation) {
       'You are an enterprise data parser for Project Continuum. ' +
       'Given raw harvested text, return ONLY valid JSON with keys: ' +
       'synthesizedText (string, concise executive summary preserving Project/Opp/GDP/SoW/PO identifiers), ' +
-      'tags (array of hashtag strings), impactScore (number 0.0 to 1.0, <0.5 = routine chatter). ' +
-      'No markdown, no extra keys.\n\n[' + kind + '] ' + input;
+      'tags (array, chosen ONLY from this list, omit any that do not apply: ' + TAG_PROMPT_LIST + '), ' +
+      'impactScore (number 0.0 to 1.0, <0.5 = routine chatter). ' +
+      'Do not invent tags outside the list. No markdown, no extra keys.\n\n[' + kind + '] ' + input;
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -185,7 +178,6 @@ async function callAnthropic(input, kind, enrichWithAggregation) {
     // Anthropic failed. Do NOT retry through another provider: the user only agreed
     // to send content to Anthropic. Fall back to the local rules and say so.
     const fb = mockResult(input, kind);
-    fb.tags = (fb.tags || []).concat(['#Mock_Fallback']);
     fb.aiEngine = 'fallback';
     fb.aiFallbackReason = 'Anthropic: ' + String((err && err.message) || err).slice(0, 120);
     return enrichWithAggregation(fb);

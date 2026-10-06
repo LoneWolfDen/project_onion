@@ -14,6 +14,7 @@ Only documents that describe the current implementation are listed here. Everyth
 - `docs/LOCAL_SERVICES.md`: loopback-only services, origin checks, vector service scope.
 - `docs/SECRET_HANDLING.md`: credential rules.
 - `docs/APP_HANDOVER_CONTRACT.md`: how Continuum, Finance Engine and Pre-Sales Accelerator open each other on the same project; `docs/prompts/CROSS_APP_HANDOVER_PROMPT.md` is the prompt for the other repos.
+- `docs/VECTOR_AND_TAGS_PLAN.md`: how tags are created (the closed vocabulary in `core/tags.js`) and how the Chroma store is built and queried, with what remains to do.
 - `docs/COPILOT_ASSESSMENT.md`: Microsoft 365 Copilot patterns A, B and C, and the chat assistant rules.
 
 ## Testing

@@ -227,44 +227,22 @@ function scopeCardsByPrivacy(cards, privacyMode, activePersona) {
   // enforce card.author === activePersona (same rules as App.js).
   return arr.filter((c) => privacyMatchesCard(c || {}, mode, activePersona));
 }
-function mockQaFallback(question, scopedCards, privacyMode, activePersona) {
-  const q = String(question || '').toLowerCase();
-  const mode = String(privacyMode || 'Both');
+// No-AI answer path: lists approved-scope cards whose text shares words with the question.
+// Every word in the answer comes from the cards themselves; nothing is composed or invented.
+export function mockQaFallback(question, scopedCards, privacyMode, activePersona) {
   const persona = (activePersona == null ? '' : String(activePersona));
-  // Respect the already-scoped set only: NEVER fall back to hardcoded
-  // persona-blind answers that could leak another persona's private note.
-  // If scoping removed everything, return an explicit empty-scope message.
-  if (!Array.isArray(scopedCards) || scopedCards.length === 0) {
-    return { answer: 'No scoped sources are available in the current privacy scope' + (persona ? ' for ' + persona : '') + '. Switch scope or ingest more cards to enable synthesis.', sources: [] };
-  }
-  const scopedSources = (Array.isArray(scopedCards) ? scopedCards : []).slice(0, 3).map((c) => String((c && (c.source || c.title || c.id)) || 'Timeline'));
-  const citeFor = (c) => (c && c.id) ? ' [Card ' + String(c.id) + ']' : '';
-  const wittyFallback = 'While I\'d love to weigh in on that, my security clearance only covers our active project data — try asking about a scoped card, tag, or milestone.';
-  const hit = /why|delayed|delay|blocked|block/i.test(q) || /\bpo\b|po-\d+/i.test(q);
-  if (hit && mode === 'My Notes') {
-    const topMy = scopedCards[0] || null;
-    return { answer: 'The Apollo migration is currently delayed pending AWS gateway VNet peering approval from Client Infosec.' + citeFor(topMy) + (persona ? ' (scoped to ' + persona + '\'s My Notes)' : ''), sources: scopedSources.length ? scopedSources : ['Scoped My Notes'] };
-  }
-  if (hit) {
-    const topHit = scopedCards[0] || null;
-    return { answer: 'Work is halted because PO-88921 funding Infosec consultants is depleted.' + citeFor(topHit) + ' However, Lead Dev Raj identified a legacy on-prem gateway workaround that can bypass the block immediately pending Delivery Manager sign-off.', sources: scopedSources.length ? scopedSources : ['Timeline'] };
-  }
-  // Witty fallback when the question does not match scoped evidence (offline parity with LLM RULE 2).
-  const looksOutOfScope = q.trim().length > 0 && !scopedCards.some((c) => {
-    const hay = String((c && (c.title || '')) + ' ' + (c && (c.synthesizedText || c.content || c.detail || ''))).toLowerCase();
-    const toks = q.split(/[^a-z0-9]+/).filter((t) => t && t.length > 3);
-    return toks.some((t) => hay.indexOf(t) !== -1);
+  const scope = ' in the current privacy scope' + (persona ? ' for ' + persona : '');
+  const cards = Array.isArray(scopedCards) ? scopedCards : [];
+  if (!cards.length) return { answer: 'No sources are available' + scope + '. Switch scope or add cards first.', sources: [] };
+  const toks = String(question || '').toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 3);
+  const text = (c) => String((c && (c.title || '')) + ' ' + (c && (c.synthesizedText || c.content || c.detail || ''))).toLowerCase();
+  const hits = cards.map((c) => ({ c, n: toks.filter((t) => text(c).indexOf(t) !== -1).length })).filter((h) => h.n > 0).sort((x, y) => y.n - x.n).slice(0, 3);
+  if (!hits.length) return { answer: 'No card' + scope + ' mentions that. No AI provider is on, so nothing was inferred.', sources: [] };
+  const lines = hits.map(({ c }) => {
+    const body = String(c.synthesizedText || c.content || c.detail || '').slice(0, 220);
+    return '"' + String(c.title || c.id || 'Untitled card') + '" (' + String(c.source || c.type || 'Timeline') + ')' + (body ? ': ' + body : '') + (c.id ? ' [Card ' + String(c.id) + ']' : '');
   });
-  if (looksOutOfScope) {
-    const topWitty = scopedCards[0] || null;
-    return { answer: wittyFallback + (topWitty && topWitty.id ? ' Closest scoped reference is available here:' + citeFor(topWitty) : ''), sources: scopedSources };
-  }
-  const top = (Array.isArray(scopedCards) && scopedCards.length ? scopedCards[0] : null) || null;
-  if (!top) return { answer: 'No scoped sources are available in the current privacy scope' + (persona ? ' for ' + persona : '') + '. Switch scope or ingest more cards to enable synthesis.', sources: [] };
-  const title = String(top.title || top.id || 'Untitled card');
-  const source = String(top.source || top.type || 'Timeline');
-  const body = String(top.synthesizedText || top.content || top.detail || '').slice(0, 220);
-  return { answer: 'Based on ' + String(scopedCards.length) + ' scoped source(s), the most relevant is "' + title + '" from ' + source + (body ? ': ' + body : '.') + citeFor(top), sources: [source] };
+  return { answer: 'No AI: ' + hits.length + ' matching card(s). ' + lines.join(' | '), sources: hits.map(({ c }) => String(c.source || c.type || 'Timeline')) };
 }
 export async function askSmartAssistant(question, contextCards, privacyMode, activePersona) {
   const q = String(question || '');

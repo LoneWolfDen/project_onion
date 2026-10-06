@@ -39,11 +39,11 @@ function toVectorPayload(card) {
   return {
     id: String(c.id || ''),
     author: String(c.author || c.contributor || 'Walter'),
-    client: String(c.client || c.client_name || 'Acme Corp'),
-    client_name: String(c.client_name || c.client || 'Acme Corp'),
-    project: String(c.project || c.project_name || 'Apollo-123'),
-    project_name: String(c.project_name || c.project || 'Apollo-123'),
-    projectId: String(c.projectId || c.project_name || c.project || 'apollo-123'),
+    client: String(c.client || c.client_name || ''),
+    client_name: String(c.client_name || c.client || ''),
+    project: String(c.project || c.project_name || ''),
+    project_name: String(c.project_name || c.project || ''),
+    projectId: String(c.projectId || c.project_name || c.project || ''),
     Project_ReferenceID: String(c.Project_ReferenceID || c.anchor_id || ''),
     opportunity_id: String(c.opportunity_id || ((c.opportunity_numbers || [])[0]) || ''),
     type: String(c.type || 'Note'),
@@ -115,7 +115,8 @@ export function queueVectorOp(op, cardOrId) {
     q.push({ op: 'delete', id: String((cardOrId && cardOrId.id) || cardOrId || ''), at, attempts: 0 });
   } else {
     const card = cardOrId || {};
-    if (!card.id) return q.length;
+    // A card with no project is never filed under a default one: the vector service requires a project (PRV-04).
+    if (!card.id || !String(card.project || card.project_name || '').trim()) return q.length;
     const rest = q.filter((e) => !(e && e.op === 'upsert' && String(e.id) === String(card.id)));
     rest.push({ op: 'upsert', id: String(card.id), card: toVectorPayload(card), at, attempts: 0 });
     writeQueue(rest);

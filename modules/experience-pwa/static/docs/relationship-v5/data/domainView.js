@@ -22,18 +22,18 @@ const KIND_BY_GROUP = {
 };
 
 const STATUS = {
-  client_master: ['live', 'modules/platform-anchor/seed_clients.py'],
-  project_card:  ['live', 'modules/platform-anchor/service.py'],
+  client_master: ['live', 'archive/modules/platform-anchor/seed_clients.py'],
+  project_card:  ['live', 'archive/modules/platform-anchor/service.py'],
   sp_comm_plan:  ['partial', 'Link registered on anchor; document not crawled yet'],
   sp_risk_log:   ['partial', 'experience-pwa App.js: XLSX upload parser'],
   sp_esc:        ['partial', 'Link registered on anchor; Opp ID from file name'],
-  gdp_dash:      ['partial', 'modules/gdp-adapter/service.py'],
-  gdp_excel:     ['partial', 'modules/integrations-gdp-adapter/parse.js'],
-  connected:     ['live', 'modules/connected-bookmarklet'],
+  gdp_dash:      ['partial', 'archive/modules/gdp-adapter/service.py'],
+  gdp_excel:     ['partial', 'archive/modules/integrations-gdp-adapter/parse.js'],
+  connected:     ['live', 'archive/modules/connected-bookmarklet'],
   emails:        ['vision', 'Not built: no Microsoft Graph consent'],
   teams_chats:   ['vision', 'Not built: no Microsoft Graph consent'],
   teams_vtt:     ['vision', 'Not built: no Microsoft Graph consent'],
-  raid_agg:      ['partial', 'modules/domain-cards-store; conversation sources not built'],
+  raid_agg:      ['partial', 'archive/modules/domain-cards-store; conversation sources not built'],
 };
 
 // One-line card subtitle. Presentation only: the full identifiers, fields and

@@ -129,28 +129,8 @@ class GuardTests(EnvCase):
 
 
 class RealServiceTests(EnvCase):
-    SERVICES = [
-        "modules/platform-anchor/service.py",
-        "modules/domain-cards-store/service.py",
-        "modules/gdp-adapter/service.py",
-        "modules/admin-relationship/service.py",
-    ]
-
-    def test_each_service_is_loopback_and_origin_guarded(self):
-        for rel in self.SERVICES:
-            with self.subTest(service=rel):
-                mod = load_service(rel)
-                c = TestClient(mod.app, base_url="http://localhost:9000")
-                r = c.get("/", headers={"Origin": EVIL})
-                self.assertIsNone(r.headers.get("access-control-allow-origin"), rel)
-                r = c.get("/", headers={"Origin": GOOD})
-                self.assertEqual(r.headers.get("access-control-allow-origin"), GOOD, rel)
-                self.assertEqual(TestClient(mod.app, base_url="http://attacker.example").get("/").status_code, 400, rel)
-
-    def test_anchor_clear_endpoint_rejects_foreign_origin(self):
-        mod = load_service("modules/platform-anchor/service.py")
-        c = TestClient(mod.app, base_url="http://localhost:8000")
-        self.assertEqual(c.delete("/anchors/clear", headers={"Origin": EVIL}).status_code, 403)
+    # Retired services live under archive/modules and are no longer tested.
+    SERVICES = []
 
     def test_no_service_source_binds_wildcard_or_allows_star_cors(self):
         for rel in self.SERVICES + ["modules/vector-service/main.py", "modules/experience-pwa/service.py"]:

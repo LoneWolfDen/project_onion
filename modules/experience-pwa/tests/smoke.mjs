@@ -581,6 +581,23 @@ const scenarios = {
     else check('radar has no card risks to link in demo data', true);
     check('no page errors', !errors.length, errors.join(' | '));
   },
+  'Capability check and in-app guide pages (Phase 3)': async ({ p, errors }) => {
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    await p.click('#harvester-open-btn'); await sleep(p, 300);
+    await p.locator('#cap-toggle').scrollIntoViewIfNeeded(); await p.click('#cap-toggle'); await p.waitForSelector('#cap-body li[data-cap]', { timeout: 5000 });
+    const t = await p.innerText('#cap-body');
+    check('capability check lists browser features', /Offline start/.test(t) && /Durable storage/.test(t));
+    check('it says Teams chats cannot be read and agents are not built', /Teams channels and group chats\s+Cannot read/.test(t) && /Agents, MCP servers, Graph APIs\s+Not built/.test(t));
+    check('IndexedDB is reported available', (await p.getAttribute('[data-cap="idb"]', 'data-status')) === 'yes');
+    await p.check('[data-declare="copilot"]');
+    check('advice follows the ticked licence', /paste-back/.test(await p.innerText('#cap-advice')));
+    await closeDrawer(p);
+    for (const path of ['/static/docs/guide.html', '/static/docs/relationship-v5/', '/static/docs/Continuum-V4-Final.html', '/static/docs/RAG-Architecture.html', '/static/docs/Project-Onion-Data-Model.html', '/manifest.webmanifest']) {
+      const r = await p.request.get(BASE + path);
+      check('page loads: ' + path, r.status() === 200, String(r.status()));
+    }
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
   'Banner component migrated to tokens (HUI-04)': async ({ p, errors }) => {
     await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
     // The computed styles must equal the inline styles the banner used before the migration.

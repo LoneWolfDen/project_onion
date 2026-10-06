@@ -2,7 +2,7 @@
 
 Status: concept only, no implementation. Date: 2026-09-29.
 Replaces: `Continuum-Demo.html` (v0.11 demo), `Continuum-V4-Final.html` (v4) and the partial port in `static/docs/guide-app/`.
-Canonical data: `data/seed/relationship_model.json`, `docs/RELATIONSHIP_MODEL.md`, `docs/DATA_DICTIONARY.md`.
+Canonical data: `data/seed/relationship_model.json`, `archive/docs/RELATIONSHIP_MODEL.md`, `archive/docs/DATA_DICTIONARY.md`.
 
 ---
 
@@ -198,7 +198,7 @@ Edges: the 17 edges in the JSON, showing `condition`, `field`, `label` and `desc
 | 9 Learn | Learning | mint | Vector build, search / RAG | `vector-service`, `07-search-rag` |
 | 10 Hub | Hub | soft tri-pastel gradient | Continuum (experience PWA) | `experience-pwa` |
 
-The module column is a **proposal to verify**. There are numbered and named duplicates (`04-harvester` vs `platform-*`). The implementer confirms which folder is live and records the choice in `docs/DECISION_LOG.md` before build. Any node without a confirmed module ships as `planned`.
+The module column is a **proposal to verify**. There are numbered and named duplicates (`04-harvester` vs `platform-*`). The implementer confirms which folder is live and records the choice in `archive/docs/DECISION_LOG.md` before build. Any node without a confirmed module ships as `planned`.
 
 ### 6.3 Status (both views)
 

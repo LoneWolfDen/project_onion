@@ -1,8 +1,8 @@
 # HARVESTER_ARCHITECTURE.md — Project Continuum Data Aggregation Framework
 > Version: v1.0-harvester-architecture — 2026-09-21
 > Status: Official Documentation — Hackathon Technical Review Ready
-> Source of Truth: `data/seed/relationship_model.json v0.11` + `docs/RELATIONSHIP_MODEL.md` + `GLOBAL_BRAIN.md v1.0-continuum-narrative`
-> Scope: `modules/04-harvester` + Resilient Edge Fallbacks
+> Source of Truth: `data/seed/relationship_model.json v0.11` + `archive/docs/RELATIONSHIP_MODEL.md` + `archive/root/GLOBAL_BRAIN.md v1.0-continuum-narrative`
+> Scope: `archive/modules/04-harvester` + Resilient Edge Fallbacks
 
 This document formalizes the Harvester design patterns, ingestion boundaries, and user lifecycle scripts for **Project Continuum (Project Onion)**. Documentation-only. No application code is changed.
 
@@ -120,12 +120,12 @@ No GDP significance formula. No unmapped fields. DATA_DICTIONARY+Template1/2/3+G
 ---
 ## 5. Appendix — Normative References
 - data/seed/relationship_model.json v0.11 absolute schema truth.
-- docs/RELATIONSHIP_MODEL.md typed enum + one-to-many order (Account EXACT->RefID EXACT->project_ids EXACT->opp EXACT->gdp EXACT/URL_CONTAINS->connected URL_CONTAINS->sharepoint URL_CONTAINS->teams allowlist).
+- archive/docs/RELATIONSHIP_MODEL.md typed enum + one-to-many order (Account EXACT->RefID EXACT->project_ids EXACT->opp EXACT->gdp EXACT/URL_CONTAINS->connected URL_CONTAINS->sharepoint URL_CONTAINS->teams allowlist).
 - docs/SOURCES_CONFIG.md SharePoint paths, GDP URL+Excel, Email/Teams/VTT/Chatter filters, PII scope, Re/Fw exclusion.
-- GLOBAL_BRAIN.md v1.0-continuum-narrative Concept Draft (Collector/Workspace/Ask/Refinery/Vault/Radar + 9-field contract).
+- archive/root/GLOBAL_BRAIN.md v1.0-continuum-narrative Concept Draft (Collector/Workspace/Ask/Refinery/Vault/Radar + 9-field contract).
 - docs/PROVENANCE_MODEL.md actual-links model.
 - docs/PII_AWS_ARCHITECTURE.md production target; client-side regex gate is offline mirror.
-- modules/04-harvester PRD/DECISIONS/API.yaml idempotency hash(url+lastModified+anchor_id), events-only, freshness+HEAD EventBridge 6h.
-- modules/domain-fusion-engine/CONTRACT.md weekly bucket, noise filter, Top-5, confidence display.
+- archive/modules/04-harvester PRD/DECISIONS/API.yaml idempotency hash(url+lastModified+anchor_id), events-only, freshness+HEAD EventBridge 6h.
+- archive/modules/domain-fusion-engine/CONTRACT.md weekly bucket, noise filter, Top-5, confidence display.
 - One bookmarklet on disk: experience-pwa/static/bookmarklet.js (IMP-05). It copies visible text to the clipboard only, never expands the page, and is off in the app until a source host is approved. The two earlier bookmarklets were removed.
 *End of HARVESTER_ARCHITECTURE.md — documentation-only; no application code changed.*

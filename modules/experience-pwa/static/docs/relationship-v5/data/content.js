@@ -119,8 +119,8 @@ export const GUIDE = {
   run: [
     ['Start the PWA (serves this page)', 'python3 modules/experience-pwa/service.py'],
     ['Open this page', 'http://localhost:8002/static/docs/relationship-v5/'],
-    ['Anchor service (optional)', 'python3 modules/platform-anchor/service.py   # :8000'],
-    ['Cards store (optional)', 'python3 modules/domain-cards-store/service.py   # :8001'],
+    ['Anchor service (optional)', 'python3 archive/modules/platform-anchor/service.py   # :8000'],
+    ['Cards store (optional)', 'python3 archive/modules/domain-cards-store/service.py   # :8001'],
     ['Vector service (optional)', 'cd modules/vector-service && uvicorn main:app --port 8006'],
   ],
   reading: [

@@ -14,6 +14,13 @@ const problems = [];
 const RUNTIME = [/(^|\/)chroma_data\//, /\.sqlite3?$/i, /(^|\/)(data_level0|header|length|link_lists)\.bin$/];
 for (const f of files) if (RUNTIME.some((re) => re.test(f))) problems.push(`runtime file tracked: ${f}`);
 
+// 1b. Editor/backup copies must not be tracked (FND-01).
+for (const f of files) if (/\.bak($|[._-])|_bak\.js$/.test(f)) problems.push(`backup copy tracked: ${f}`);
+
+// 1c. Retired services stay in archive/; only these module folders are live.
+const LIVE_MODULES = new Set(['_shared', 'experience-pwa', 'vector-service']);
+for (const f of files) { const m = /^modules\/([^/]+)\//.exec(f); if (m && !LIVE_MODULES.has(m[1])) problems.push(`unexpected module folder (archive it): ${f}`); }
+
 // 2. Content checks. Vendored libraries and this script are skipped.
 const SKIP = [/(^|\/)vendor\//, /\.min\.js$/, /^scripts\/check-repo\.mjs$/, /\.(png|jpe?g|gif|ico|pdf|woff2?|bin)$/i];
 const CONTENT = [

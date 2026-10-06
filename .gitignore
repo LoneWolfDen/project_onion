@@ -172,3 +172,4 @@ modules/vector-service/chroma_data/
 **/*_bak.js
 **/*.bak.js
 **/fixed-backups/
+*.bak.*

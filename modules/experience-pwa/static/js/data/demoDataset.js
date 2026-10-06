@@ -1,7 +1,7 @@
 // js/data/demoDataset.js — fictional hackathon demo dataset (hackathon-demo-v1).
 // Separate from mockSeed.js, which stays the test seed. Every company, person,
 // domain (.example is reserved and never resolves) and ID here is invented.
-// Design, scenarios and expected results: docs/HACKATHON_DEMO_DATA.md.
+// Design, scenarios and expected results: docs/demo/HACKATHON_DEMO_DATA.md.
 // Rules the data relies on: each reference ID (AP-/R-/PO-/FW-REQ-/SoW-) is on
 // exactly one card; "Only me" cards carry no reference IDs and no tags.
 // Records store ageDays; buildDemoState(now) turns them into real dates so

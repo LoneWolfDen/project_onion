@@ -69,3 +69,16 @@ test('same input gives the same package bytes (hash is reproducible)', async () 
   const state = { timeline: [card({ id: 'x' })] };
   assert.deepEqual(await pkg(state, A), await pkg(state, A));
 });
+
+test('no-AI answers only repeat text from scoped cards and never invent facts', async () => {
+  const { mockQaFallback } = await import('../static/js/core/AiClient.js');
+  const cards = [{ id: 'k1', title: 'Gateway review', content: 'Review booked for Friday.', source: 'Note' }];
+  const hit = mockQaFallback('why was the gateway delayed? PO funding blocked', cards, 'Both', 'Ana');
+  assert.match(hit.answer, /Gateway review/);
+  assert.match(hit.answer, /\[Card k1\]/);
+  for (const banned of ['PO-88921', 'Infosec', 'VNet', 'Raj', 'security clearance']) assert.ok(!hit.answer.includes(banned), banned);
+  const miss = mockQaFallback('what is the budget forecast?', cards, 'Both', 'Ana');
+  assert.deepEqual(miss.sources, []);
+  assert.match(miss.answer, /nothing was inferred/);
+  assert.match(mockQaFallback('anything', [], 'Both', '').answer, /No sources are available/);
+});

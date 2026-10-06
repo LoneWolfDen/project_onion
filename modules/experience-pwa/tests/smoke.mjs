@@ -16,6 +16,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { contextFor, linkFor, readContext } from '../static/js/core/appLink.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const moduleDir = path.resolve(here, '..');
@@ -596,6 +597,33 @@ const scenarios = {
       const r = await p.request.get(BASE + path);
       check('page loads: ' + path, r.status() === 200, String(r.status()));
     }
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+  'Cross-app handover and Copilot paste-back (Phase 3)': async ({ p, errors }) => {
+    const ctx = (o) => ({ ...contextFor({ Project_ReferenceID: '', project_name: 'From finance', project_ids: [], opportunity_numbers: [] }, 'finance'), ...o });
+    await p.goto(linkFor(BASE + '/app', ctx({ pid: ['07302020'] }))); await p.waitForSelector('#ctx-banner', { timeout: 15000 });
+    check('a link with a project ID opens that project', /showing Lantern-202, matched by project ID/.test(await p.innerText('#ctx-banner')));
+    check('the breadcrumb follows', /Lantern-202/.test(await p.innerText('body')));
+    check('the fragment is removed after reading', !(await p.evaluate(() => location.hash)));
+    const href = await p.getAttribute('a.woc-item[data-app="finance"]', 'href');
+    const out = href ? readContext({ hash: new URL(href).hash }) : null;
+    check('footer link carries the active project', !!out && out.name === 'Lantern-202' && out.pid.includes('7302020') && out.from === 'continuum', href);
+    check('footer link carries identifiers only', !!out && Object.keys(out).sort().join() === 'at,client,from,gdp,name,opp,pid,ref,v');
+    await p.goto(linkFor(BASE + '/app', ctx({ opp: ['O-999999'], name: 'Unknown' }))); await p.waitForSelector('#ctx-banner', { timeout: 15000 });
+    check('an unknown project selects nothing and says so', (await p.getAttribute('#ctx-banner', 'data-status')) === 'not_found');
+    await p.click('#ctx-banner .banner__btn'); await sleep(p, 400);
+    check('register is offered with the IDs filled in', await p.evaluate(() => [...document.querySelectorAll('input')].some((i) => i.value === 'O-999999') && [...document.querySelectorAll('input')].some((i) => i.value === 'Unknown')));
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    await p.click('#harvester-open-btn'); await sleep(p, 300);
+    await p.fill('[data-app-url="finance"]', 'http://localhost:3005'); await p.click('#linked-apps-save'); await closeDrawer(p);
+    await p.goto(BASE + '/app'); await p.waitForSelector('[id^="tl-"]', { timeout: 15000 });
+    check('a saved app address is used by the footer', /^http:\/\/localhost:3005#ctx=/.test(await p.getAttribute('a.woc-item[data-app="finance"]', 'href')));
+    await p.click('#harvester-open-btn'); await sleep(p, 300);
+    await p.fill('#copilot-reply-text', 'Owner of R-72 is not stated [S-1a2b3c4d5e].'); await p.click('#copilot-reply-save'); await p.waitForSelector('#copilot-reply-msg');
+    check('a Copilot reply is saved as a private Draft', /private Draft on Beacon-201, citing 1 statement/.test(await p.innerText('#copilot-reply-msg')));
+    const saved = await p.evaluate(() => JSON.parse(window.__continuumRepo.getRaw()).notes.find((n) => n.origin === 'copilot-pasted'));
+    check('stored with origin, draft and Inference kind', !!saved && saved.draft === true && saved.kind === 'inference');
+    await closeDrawer(p);
     check('no page errors', !errors.length, errors.join(' | '));
   },
   'Banner component migrated to tokens (HUI-04)': async ({ p, errors }) => {

@@ -3,6 +3,8 @@ import { OnionDB, readLocal, writeLocal } from '../core/FailoverDB.js';
 import { StorageBanner } from './StorageBanner.js';
 import { logEvent } from '../core/logger.js';
 import { UpdateBanner } from './UpdateBanner.js';
+import { ContextBanner } from './ContextBanner.js';
+import { readContext, resolveProject, contextFor, linkFor, loadAppUrls } from '../core/appLink.js';
 import { TimelineCard } from './TimelineCard.js';
 import { HarvesterPanel, toPayload } from './HarvesterPanel.js';
 import { ImportWizard } from './ImportWizard.js';
@@ -89,6 +91,21 @@ export function App() {
   const [radarOpen, setRadarOpen] = useState(false);
   const [present, setPresent] = useState(false); // session only: never saved, so the app always opens normally
   useEffect(() => { applyPresentation(document, present); }, [present]);
+  // Cross-app handover: another app opened us with #ctx=... (docs/APP_HANDOVER_CONTRACT.md).
+  const [linkCtx, setLinkCtx] = useState(null);
+  const [linkResult, setLinkResult] = useState(null);
+  useEffect(() => {
+    const take = () => { const c = readContext(window.location); if (c) { setLinkCtx(c); setLinkResult(null); try { history.replaceState(null, '', window.location.pathname); } catch (e) {} } };
+    take();
+    window.addEventListener('hashchange', take);
+    return () => window.removeEventListener('hashchange', take);
+  }, []);
+  useEffect(() => {
+    if (!linkCtx || linkResult || !(db.projects || []).length) return;
+    const r = resolveProject(linkCtx, (db.projects || []).filter((p) => p && !p.archived));
+    setLinkResult(r);
+    if (r.status === 'matched') setProject(r.project.Project_ReferenceID);
+  }, [linkCtx, linkResult, db]);
   const [importedSources, setImportedSources] = useState(() => { try { return JSON.parse(localStorage.getItem('continuum_import_sources') || '[]'); } catch (e) { return []; } });
   const [hStatus, setHStatus] = useState('');
   const [clip, setClip] = useState('');
@@ -461,10 +478,13 @@ export function App() {
   const timelineSlot = active ? html`<${TimelineCard} project=${active} allCards=${(db.timeline || []).concat(db.notes || [])} projects=${db.projects} onReuse=${onReuseCard} timeline=${personaTimeline} notes=${personaNotes} privacyFilter=${privacy} activePersona=${activePersona} focusId=${focusId} approved=${approved} onAddNote=${onAddNote} onFlipPrivacy=${onFlipPrivacy} onApprove=${handleApproveCard} onSync=${handleSyncCard} onDelete=${onDeleteCard} onEdit=${onEditCard} />` : null;
   const askRaw = String(ask || '').trim();
   const hits = (askRaw ? contextCards.filter((t) => matchesAssistantQuery(t, askRaw)) : contextCards).slice(0, 3);
+  const appUrls = loadAppUrls(window.localStorage);
+  const appLink = (w) => linkFor(appUrls[w.id] || w.url, active ? contextFor(active) : null);
   return html`<div className="min-h-screen bg-[#fbfdfb] text-[13px] font-[Inter,system-ui] antialiased">
     <${StorageBanner} />
     ${present ? html`<div id="presentation-banner" role="status"><b>Presentation Mode</b><span>Private and draft content is hidden${active ? ' (' + hiddenN + ' card' + (hiddenN === 1 ? '' : 's') + ')' : ''}. Nothing is changed or deleted.</span><button id="present-exit" type="button" onClick=${() => setPresent(false)} style=${{ marginLeft: 'auto', padding: '4px 14px', borderRadius: '9999px', border: '1px solid #92400E', background: '#fff' }}>Exit</button></div>` : null}
     <${UpdateBanner} />
+    <${ContextBanner} ctx=${linkCtx} result=${linkResult} onPick=${(r) => { setProject(r); setLinkCtx(null); }} onRegister=${() => { const c = linkCtx; setLinkCtx(null); openReg(); if (c) { setMName(c.name || ''); if (c.opp.length) { setMOppList(c.opp.slice()); setMOpp(c.opp[0]); setMOppConnList(c.opp.map((o) => ({ oppId: o, connectedUrl: '' }))); } if (c.pid.length) { setMProjList(c.pid.slice()); setMProj(c.pid[0]); } } }} onClose=${() => setLinkCtx(null)} />
     <div className="sticky top-0 z-20 border-b border-[#d6e8ff]" style=${{ background: 'linear-gradient(90deg,#D6F5E8 0%,#D6E8FF 100%)' }}>
       <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
@@ -490,12 +510,12 @@ export function App() {
     </div>
     <footer className="woc-footer" aria-label="World of Continuum">
       <span className="woc-brand">World of Continuum</span><span className="woc-dot" aria-hidden="true">·</span>
-      ${WORLD_OF_CONTINUUM.map((w, i) => html`<${window.React.Fragment} key=${w.id}>${i ? html`<span className="woc-arrow" aria-hidden="true">→</span>` : null}${w.url && !w.current
-        ? html`<a className="woc-item" href=${w.url} target="_blank" rel="noopener" title=${w.blurb}>${w.name} <i>${w.role.toLowerCase()}</i></a>`
+      ${WORLD_OF_CONTINUUM.map((w, i) => html`<${window.React.Fragment} key=${w.id}>${i ? html`<span className="woc-arrow" aria-hidden="true">→</span>` : null}${appLink(w) && !w.current
+        ? html`<a className="woc-item" data-app=${w.id} href=${appLink(w)} target="_blank" rel="noopener" title=${w.blurb + (active ? ' Opens ' + active.project_name + '.' : '')}>${w.name} <i>${w.role.toLowerCase()}</i></a>`
         : html`<span className=${'woc-item' + (w.current ? ' is-current' : '')} title=${w.blurb} aria-current=${w.current ? 'page' : undefined}>${w.name} <i>${w.role.toLowerCase()}</i></span>`}<//>`)}
     </footer>
     ${regSlot}
-    ${radarOpen && active ? html`<${RadarPanel} cards=${contextCards} project=${active} onView=${onViewHit} onClose=${() => setRadarOpen(false)} />` : null}
+    ${radarOpen && active ? html`<${RadarPanel} cards=${contextCards} project=${active} staged=${(staged || []).filter((x) => x && (x.Project_ReferenceID === active.Project_ReferenceID || x.project_name === active.project_name || x.projectId === active.project_name))} onView=${onViewHit} onClose=${() => setRadarOpen(false)} />` : null}
     <${HandoverModal} isOpen=${isHandoverOpen} onClose=${() => setHandoverOpen(false)} activePersona=${activePersona} activeRef=${active ? active.Project_ReferenceID : null} onPickProject=${(r) => setProject(r)} onViewCard=${onViewHit} />
     ${guideOpen ? html`<div className="fixed inset-0 z-50" style=${{ background: 'rgba(15,23,42,0.30)' }} onClick=${() => setGuideOpen(false)}>
       <aside onClick=${(e) => { if (e && e.stopPropagation) e.stopPropagation(); }} aria-label="Continuum Guide panel" style=${{ position: 'fixed', top: 0, right: 0, height: '100vh', width: '40vw', minWidth: '480px', maxWidth: '94vw', background: 'linear-gradient(180deg,#F0F7FF 0%,#F3ECFF 55%,#FFF9F0 100%)', borderLeft: '1px solid #A8C6F0', boxShadow: '-8px 0 24px rgba(31,74,122,.16)', display: 'flex', flexDirection: 'column', zIndex: 51 }}>

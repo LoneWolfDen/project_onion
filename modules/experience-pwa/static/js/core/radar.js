@@ -12,6 +12,7 @@ export const RULES = {
   stale: { label: 'Stale card', text: 'An open, approved card has had no approved activity for 30 days (medium) or 90 days (high).', mediumDays: 30, highDays: 90 },
   missing_evidence: { label: 'Missing evidence', text: 'An approved card has no source recorded (high), or a decision or risk rests on one source only (medium).' },
   unreviewed_decision: { label: 'Unreviewed decision', text: 'Something looks like a decision (decision tag or "Proposed decision") but no person has recorded it as one. Medium.' },
+  waiting_review: { label: 'Waiting for review', text: 'Imported or pasted items are still in the Harvester list and nobody has approved or dismissed them: 1 to 9 items (medium), 10 or more or any older than 14 days (high).', highCount: 10, highDays: 14 },
   thin_handover: { label: 'Thin handover coverage', text: 'Fewer than half of the six handover areas have an approved item (medium); fewer than a third (high).', areas: ['delivery', 'finances', 'raid', 'ops', 'feedback', 'internal'] },
 };
 const ORDER = { high: 0, medium: 1 };
@@ -64,9 +65,21 @@ export function coverageRisk(cards, project) {
   return risk('thin_handover', share < 1 / 3 ? 'high' : 'medium', null, cov.covered.length + ' of ' + cov.total + ' handover areas have an approved item. Missing: ' + cov.missing.join(', ') + '.', { projectRef: (project && project.Project_ReferenceID) || '', title: (project && project.project_name) || 'Project', missing: cov.missing });
 }
 
-export function radarFor(cards, project, now = Date.now()) {
+// Staged items (the Harvester list) for this project that nobody has reviewed yet.
+export function stagingRisk(staged, now = Date.now()) {
+  const items = (Array.isArray(staged) ? staged : []).filter(Boolean);
+  if (!items.length) return null;
+  const ages = items.map((x) => toDate(x.created_at || x.staged_at || x.at || x.timestamp)).filter(Boolean).map((d) => Math.floor((now - d.getTime()) / 86400000));
+  const oldest = ages.length ? Math.max(...ages) : 0;
+  const high = items.length >= RULES.waiting_review.highCount || oldest >= RULES.waiting_review.highDays;
+  return risk('waiting_review', high ? 'high' : 'medium', null, items.length + ' item' + (items.length === 1 ? '' : 's') + ' waiting in the Harvester list' + (oldest ? ', oldest ' + oldest + ' days' : '') + '. Approve or dismiss them so they are not lost.', { count: items.length, oldestDays: oldest });
+}
+
+export function radarFor(cards, project, now = Date.now(), staged = []) {
   const list = (Array.isArray(cards) ? cards : []).filter(Boolean);
   const risks = cardRisks(list, now);
+  const sr = stagingRisk(staged, now);
+  if (sr) risks.push(sr);
   const cr = coverageRisk(list, project);
   if (cr) risks.push(cr);
   risks.sort((a, b) => ORDER[a.level] - ORDER[b.level] || a.rule.localeCompare(b.rule));

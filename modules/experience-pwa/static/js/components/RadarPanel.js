@@ -7,8 +7,8 @@ const card = { background: '#fff', borderRadius: '16px', padding: '20px', width:
 const btn = { padding: '6px 14px', borderRadius: '9999px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '14px', cursor: 'pointer' };
 const LEVEL = { high: { bg: '#FFE4E6', tx: '#9F1239', label: 'High' }, medium: { bg: '#FFF5D6', tx: '#92400E', label: 'Medium' } };
 
-export function RadarPanel({ cards, project, onView, onClose }) {
-  const r = radarFor(cards, project);
+export function RadarPanel({ cards, project, staged, onView, onClose }) {
+  const r = radarFor(cards, project, Date.now(), staged);
   return html`<div style=${box} role="presentation"><div id="radar-panel" role="dialog" aria-modal="true" aria-labelledby="radar-title" style=${card}>
     <div style=${{ display: 'flex', alignItems: 'center', gap: '10px' }}><div id="radar-title" style=${{ fontSize: '18px', fontWeight: 700 }}>Continuity Radar${project ? ': ' + project.project_name : ''}</div><span style=${{ marginLeft: 'auto', fontSize: '14px' }}>${r.counts.high} high, ${r.counts.medium} medium</span><button id="radar-close" type="button" style=${btn} onClick=${onClose}>Close</button></div>
     <div style=${{ fontSize: '13px', color: '#64748b', margin: '6px 0 10px' }}>Shows knowledge likely to be lost. It measures coverage of knowledge, not the performance of any person. Handover coverage: ${r.coverage.covered.length} of ${r.coverage.total} areas.</div>

@@ -5,7 +5,7 @@
 //   data/seed/clients.json         Acme Corp · acme.com
 //   data/seed/anchors_persist.json APOLLO-123 · OPP-8891 · GDP 8399 · Risk_Log_Apollo.xlsx
 //   data/seed/cards.json           timeline#Week33 · source_rows Row12 + Row18 · significance_score 0.9
-//   GLOBAL_BRAIN.md                "Week 33: Laptop 50%->100% [Row12+Row18]"
+//   archive/root/GLOBAL_BRAIN.md                "Week 33: Laptop 50%->100% [Row12+Row18]"
 //   core/VectorSync.js             similarity gate 0.85
 //
 // Step fields: `nodes` / `edges` are leaf IDs (lib/layout.js folds them onto
@@ -30,7 +30,7 @@ export const STORY_STEPS = [
     detail: {
       heading: 'Risk Log · Row 12',
       rows: [['File', '…/Planning Documents/Risk_Log_Apollo.xlsx'], ['Row', 'Row12'], ['Week', 'Week 33'], ['Laptops', '50%']],
-      source: 'data/seed/anchors_persist.json · GLOBAL_BRAIN.md',
+      source: 'data/seed/anchors_persist.json · archive/root/GLOBAL_BRAIN.md',
     },
   },
   {
@@ -77,7 +77,7 @@ export const STORY_STEPS = [
     detail: {
       heading: 'Human gate 2 · one card',
       rows: [['Card', 'timeline#Week33'], ['Open', 'item raised'], ['Partial', 'Row12 · 50%'], ['Closed', 'Row18 · 100%'], ['Sources', 'Row12 + Row18']],
-      source: 'data/seed/cards.json · GLOBAL_BRAIN.md',
+      source: 'data/seed/cards.json · archive/root/GLOBAL_BRAIN.md',
     },
   },
   {

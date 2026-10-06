@@ -26,7 +26,6 @@ function stampVectorPending(rec) {
 }
 const STORAGE_KEY = 'onion_db_state';
 const LEGACY_KEYS = ['onion_db_storage', 'onion_db_state_v2', 'onion_db'];
-const API_BASES = ['http://localhost:8000', 'http://localhost:8001'];
 function tagPending(entity) {
   try { entity.syncStatus = 'pending_upload'; } catch (e) {}
   return entity;
@@ -133,17 +132,6 @@ export function tryWriteLocal(state, opts) {
   if (force) resolveStorageProblem(); else clearStorageError();
   try { window.dispatchEvent(new CustomEvent('onion:db-update', { detail: { at: new Date().toISOString() } })); } catch (err) {}
   return true;
-}
-async function tryFetch(path, options) {
-  let lastErr = null;
-  for (const base of API_BASES) {
-    try {
-      const res = await fetch(base + path, options);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    } catch (err) { lastErr = err; }
-  }
-  throw lastErr || new Error('all API bases unreachable');
 }
 class FailoverDB {
   async getClients() { return readLocal().clients; }

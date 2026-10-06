@@ -249,7 +249,7 @@ Footer line: *"Engineering acceptance criteria: ⋯ Engineering → Model check.
 
 ## 9. Story mode: "One risk, told twice, becomes one card"
 
-The primary story is the Risk Log row scenario. It is grounded in the repo (`docs/DECISION_LOG.md`: Acme Corp, O-5030460, Week 33, Row12 + Row18, Laptop 50% → 100%). The fallback story, a Connected Chatter post linked by EXACT OppID, is backlog. Only the Risk Log story is built for v5.
+The primary story is the Risk Log row scenario. It is grounded in the repo (`archive/docs/DECISION_LOG.md`: Acme Corp, O-5030460, Week 33, Row12 + Row18, Laptop 50% → 100%). The fallback story, a Connected Chatter post linked by EXACT OppID, is backlog. Only the Risk Log story is built for v5.
 
 | Step | Node(s) highlighted | Caption (draft) | Inspector shows |
 |---|---|---|---|

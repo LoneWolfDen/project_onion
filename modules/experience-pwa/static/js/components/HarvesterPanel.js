@@ -8,6 +8,7 @@ import { projectIdEquals } from '../core/schema.js';
 import { AiSettings, useAiStatus } from './AiSettings.js';
 import { BackupPanel, downloadBackupNow } from './BackupPanel.js';
 import { DiagnosticsPanel, DisplayPanel } from './DiagnosticsPanel.js';
+import { CapabilityPanel } from './CapabilityPanel.js';
 import { logEvent } from '../core/logger.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { readLocal } from '../core/FailoverDB.js';
@@ -841,6 +842,7 @@ export function HarvesterPanel(props) {
           <${BackupPanel} />
           <${DisplayPanel} />
           <${DiagnosticsPanel} />
+          <${CapabilityPanel} />
           <button type="button" id="clear-all-btn" onClick=${onClearAll} title="Permanently remove all local data (asks you to type a phrase)" style=${{ marginTop: '8px', width: '100%', background: '#fff', border: '1px solid #F5C2D8', color: '#831843', borderRadius: '9999px', padding: '6px 10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>🗑 Clear all data…</button>
           ${confirmDialog}
           <div style=${{ display: 'flex', gap: '6px', marginTop: '8px' }}>

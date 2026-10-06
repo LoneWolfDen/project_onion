@@ -31,19 +31,19 @@ export const RUNTIME_NODES = {
     label: 'Client & Project Anchor', sub: 'Scope · anchor_id', kind: 'anchor', status: 'live',
     children: ['client_master', 'project_card'],
     desc: 'Everything is scoped to one client and one project anchor before anything is collected.',
-    evidence: ['modules/platform-anchor/service.py (:8000)', 'experience-pwa header: client + project'],
+    evidence: ['archive/modules/platform-anchor/service.py (:8000)', 'experience-pwa header: client + project'],
   },
   client_master: {
     label: 'Client Master', sub: 'Account Name · EXACT', kind: 'master', status: 'live', parent: 'anchor',
     desc: 'The client dropdown. Read-only; it filters every project card by Account Name.',
-    evidence: ['modules/platform-anchor/seed_clients.py', 'data/seed/clients.json'],
+    evidence: ['archive/modules/platform-anchor/seed_clients.py', 'data/seed/clients.json'],
     sample: [['Client', 'Acme Corp'], ['Domain', 'acme.com'], ['Projects', 'Apollo-123, Apollo-124, Helios-09']],
     sampleSource: 'data/seed/clients.json',
   },
   project_card: {
     label: 'Project Card / Anchor', sub: 'anchor_id · Opp IDs', kind: 'anchor', status: 'live', parent: 'anchor',
     desc: 'Holds every reference for one project: Opp IDs, GDP ID, SharePoint URLs, Teams channels.',
-    evidence: ['modules/platform-anchor/service.py', 'data/seed/anchors_persist.json'],
+    evidence: ['archive/modules/platform-anchor/service.py', 'data/seed/anchors_persist.json'],
     sample: [['Anchor', 'APOLLO-123'], ['Opportunity', 'OPP-8891'], ['GDP ID', '8399'], ['Project ID', 'PO-12345']],
     sampleSource: 'data/seed/anchors_persist.json',
   },
@@ -78,23 +78,23 @@ export const RUNTIME_NODES = {
     label: 'GDP', sub: 'Dashboard + weekly Excel', kind: 'source-gdp', status: 'partial',
     children: ['gdp_dash', 'gdp_excel'],
     desc: 'Delivery dashboard link and its weekly Excel export, merged into one source.',
-    evidence: ['modules/gdp-adapter/service.py (:8003)', 'modules/integrations-gdp-adapter/parse.js'],
+    evidence: ['archive/modules/gdp-adapter/service.py (:8003)', 'archive/modules/integrations-gdp-adapter/parse.js'],
   },
   gdp_dash: {
     label: 'GDP Dashboard URL', sub: 'GDP ID from URL', kind: 'source-gdp', status: 'partial', parent: 'gdp',
     desc: 'The GDP ID is parsed from /project-details/{id}.',
-    evidence: ['modules/gdp-adapter/service.py'],
+    evidence: ['archive/modules/gdp-adapter/service.py'],
     sample: [['URL', '…/project-details/8399'], ['GDP ID', '8399']], sampleSource: 'data/seed/anchors_persist.json',
   },
   gdp_excel: {
     label: 'GDP Weekly Excel', sub: 'Delta by Status Date', kind: 'source-gdp', status: 'partial', parent: 'gdp',
     desc: 'Weekly delta export. Used for timeline and freshness.',
-    evidence: ['modules/integrations-gdp-adapter/parse.js'],
+    evidence: ['archive/modules/integrations-gdp-adapter/parse.js'],
   },
   connected: {
     label: 'Connected Chatter', sub: 'Opp record · EXACT', kind: 'source-connected', status: 'live',
     desc: 'Posts on the Opportunity record. Every post relates to that Opp ID.',
-    evidence: ['modules/connected-bookmarklet (:8004)', 'modules/integrations-connected-adapter/bookmarklet.js'],
+    evidence: ['archive/modules/connected-bookmarklet (:8004)', 'archive/modules/integrations-connected-adapter/bookmarklet.js'],
     sample: [['Record', '006Uj00000QOBkvIAH']], sampleSource: 'data/seed/anchors_persist.json',
   },
   comms: {
@@ -130,7 +130,7 @@ export const RUNTIME_NODES = {
   typed_linking: {
     label: 'Typed Linking', sub: 'Six operators only', kind: 'service', status: 'partial',
     desc: 'Joins each item to its project with EXACT, CONTAINS, DOMAIN, DATE_RANGE, TOKEN_OVERLAP or URL_CONTAINS. No free text.',
-    evidence: ['modules/domain-fusion-engine/fuse.js', 'experience-pwa core/schema.js (ID matching)'],
+    evidence: ['archive/modules/domain-fusion-engine/fuse.js', 'experience-pwa core/schema.js (ID matching)'],
   },
 
   // ── Gate 2 → Cards → Gate 3 ──────────────────────────────────────────────
@@ -143,7 +143,7 @@ export const RUNTIME_NODES = {
     label: 'Continuum Cards', sub: '4 card types', kind: 'store', status: 'live',
     children: ['key_moments', 'status_cards', 'info_updates', 'your_notes'],
     desc: 'Approved knowledge, stored per project with its source.',
-    evidence: ['modules/domain-cards-store/service.py (:8001)', 'experience-pwa components/TimelineCard.js'],
+    evidence: ['archive/modules/domain-cards-store/service.py (:8001)', 'experience-pwa components/TimelineCard.js'],
   },
   key_moments: {
     label: 'Key Moments', sub: 'Milestones', kind: 'store', status: 'live', parent: 'cards',
@@ -152,7 +152,7 @@ export const RUNTIME_NODES = {
   status_cards: {
     label: 'Status Cards', sub: 'RAW + Provenance + AI', kind: 'store', status: 'live', parent: 'cards',
     desc: 'Every card keeps the RAW source text, its provenance, and the AI summary side by side.',
-    evidence: ['modules/domain-cards-store/service.py', 'experience-pwa components/TimelineCard.js'],
+    evidence: ['archive/modules/domain-cards-store/service.py', 'experience-pwa components/TimelineCard.js'],
     sample: [['Card', 'timeline#Week33'], ['Source rows', 'Row12 + Row18'], ['Anchor', 'APOLLO-123'], ['Freshness', '2 days']],
     sampleSource: 'data/seed/cards.json',
   },

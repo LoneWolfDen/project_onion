@@ -39,8 +39,8 @@ beforeEach(() => {
 });
 
 test('queueing an upsert twice for the same card keeps only the latest', () => {
-  VS.queueVectorOp('upsert', { id: 'c1', title: 'old' });
-  VS.queueVectorOp('upsert', { id: 'c1', title: 'new' });
+  VS.queueVectorOp('upsert', { id: 'c1', project: 'Apollo', title: 'old' });
+  VS.queueVectorOp('upsert', { id: 'c1', project: 'Apollo', title: 'new' });
   assert.equal(queue().length, 1);
   assert.equal(queue()[0].card.title, 'new');
 });
@@ -57,7 +57,7 @@ test('delete is queued by id, from a string or a card', () => {
 });
 
 test('queue changes are announced to the UI with the pending count', () => {
-  VS.queueVectorOp('upsert', { id: 'c1' });
+  VS.queueVectorOp('upsert', { id: 'c1', project: 'Apollo' });
   assert.equal(events.at(-1).type, 'onion:vector-queue');
   assert.equal(events.at(-1).detail.pending, 1);
 });
@@ -68,16 +68,16 @@ test('a corrupt queue in storage reads as empty instead of throwing', () => {
 });
 
 test('fail-closed privacy: a private signal anywhere forces Private', () => {
-  VS.queueVectorOp('upsert', { id: 'p', privacy: 'Team Shared', nodes: [{ text: 'My Notes: secret' }] });
+  VS.queueVectorOp('upsert', { id: 'p', project: 'Apollo', privacy: 'Team Shared', nodes: [{ text: 'My Notes: secret' }] });
   const p = queue()[0].card;
   assert.equal(p.privacy, 'Private');
   assert.equal(p.is_private, true);
-  VS.queueVectorOp('upsert', { id: 'q', privacy: 'Team Shared' });
+  VS.queueVectorOp('upsert', { id: 'q', project: 'Apollo', privacy: 'Team Shared' });
   assert.equal(queue().find((e) => e.id === 'q').card.is_private, false);
 });
 
 test('payload fields are truncated to the service limits', () => {
-  VS.queueVectorOp('upsert', { id: 't', title: 'x'.repeat(900), detail: 'd'.repeat(3000), content: 'c'.repeat(9000) });
+  VS.queueVectorOp('upsert', { id: 't', project: 'Apollo', title: 'x'.repeat(900), detail: 'd'.repeat(3000), content: 'c'.repeat(9000) });
   const c = queue()[0].card;
   assert.equal(c.title.length, 500);
   assert.equal(c.detail.length, 2000);
@@ -86,7 +86,7 @@ test('payload fields are truncated to the service limits', () => {
 
 test('mirrorToVector while offline queues without touching the network', async () => {
   navigator.onLine = false;
-  const r = await VS.mirrorToVector('upsert', { id: 'o1' });
+  const r = await VS.mirrorToVector('upsert', { id: 'o1', project: 'Apollo' });
   assert.deepEqual(r, { queued: true, offline: true });
   assert.equal(calls.length, 0);
   assert.equal(queue().length, 1);
@@ -94,7 +94,7 @@ test('mirrorToVector while offline queues without touching the network', async (
 
 test('mirrorToVector never throws when the service is down; it queues instead', async () => {
   useFetch(async () => { throw new Error('ECONNREFUSED'); });
-  const r = await VS.mirrorToVector('upsert', { id: 'f1' });
+  const r = await VS.mirrorToVector('upsert', { id: 'f1', project: 'Apollo' });
   assert.equal(r.queued, true);
   assert.equal(r.ok, false);
   assert.equal(queue()[0].id, 'f1');
@@ -102,14 +102,14 @@ test('mirrorToVector never throws when the service is down; it queues instead', 
 
 test('mirrorToVector returns immediately even if the service never answers (#18)', async () => {
   useFetch(() => new Promise(() => {}));
-  const p = VS.mirrorToVector('upsert', { id: 'slow' });
+  const p = VS.mirrorToVector('upsert', { id: 'slow', project: 'Apollo' });
   const winner = await Promise.race([p.then(() => 'blocked'), tick().then(() => 'returned')]);
   assert.equal(winner, 'returned');
 });
 
 test('a 500 response counts as failure and queues the card', async () => {
   useFetch(async () => ({ ok: false, status: 500, json: async () => ({}) }));
-  const r = await VS.mirrorToVector('upsert', { id: 'e500' });
+  const r = await VS.mirrorToVector('upsert', { id: 'e500', project: 'Apollo' });
   assert.equal(r.queued, true);
 });
 
@@ -124,7 +124,7 @@ test('delete falls back from DELETE to POST when DELETE is rejected', async () =
 
 test('flush posts queued cards, empties the queue and marks only those ids synced', async () => {
   store.set('onion_db_state', JSON.stringify({ timeline: [{ id: 'a' }, { id: 'b' }], notes: [] }));
-  VS.queueVectorOp('upsert', { id: 'a' });
+  VS.queueVectorOp('upsert', { id: 'a', project: 'Apollo' });
   const r = await VS.flushVectorQueue();
   assert.deepEqual(r, { flushed: 1, pending: 0 });
   assert.equal(queue().length, 0);
@@ -135,7 +135,7 @@ test('flush posts queued cards, empties the queue and marks only those ids synce
 
 test('a failed flush keeps the entry, counts the attempt and does not fake a synced tick', async () => {
   store.set('onion_db_state', JSON.stringify({ timeline: [{ id: 'a' }], notes: [] }));
-  VS.queueVectorOp('upsert', { id: 'a' });
+  VS.queueVectorOp('upsert', { id: 'a', project: 'Apollo' });
   useFetch(async () => { throw new Error('down'); });
   const r = await VS.flushVectorQueue();
   assert.deepEqual(r, { flushed: 0, pending: 1 });
@@ -144,7 +144,7 @@ test('a failed flush keeps the entry, counts the attempt and does not fake a syn
 });
 
 test('flush while offline does nothing and keeps the queue', async () => {
-  VS.queueVectorOp('upsert', { id: 'a' });
+  VS.queueVectorOp('upsert', { id: 'a', project: 'Apollo' });
   navigator.onLine = false;
   const r = await VS.flushVectorQueue();
   assert.equal(r.offline, true);
@@ -153,20 +153,20 @@ test('flush while offline does nothing and keeps the queue', async () => {
 });
 
 test('REGRESSION: a card queued while a flush is in flight is not lost', async () => {
-  VS.queueVectorOp('upsert', { id: 'first' });
+  VS.queueVectorOp('upsert', { id: 'first', project: 'Apollo' });
   let release;
   useFetch(() => new Promise((res) => { release = () => res(okJson); }));
   const flushing = VS.flushVectorQueue();
   await tick();
-  VS.queueVectorOp('upsert', { id: 'during' }); // user saves a card mid-flush
+  VS.queueVectorOp('upsert', { id: 'during', project: 'Apollo' }); // user saves a card mid-flush
   release();
   await flushing;
   assert.deepEqual(queue().map((e) => e.id), ['during']);
 });
 
 test('REGRESSION: overlapping flushes post each card once', async () => {
-  VS.queueVectorOp('upsert', { id: 'a' });
-  VS.queueVectorOp('upsert', { id: 'b' });
+  VS.queueVectorOp('upsert', { id: 'a', project: 'Apollo' });
+  VS.queueVectorOp('upsert', { id: 'b', project: 'Apollo' });
   useFetch(async () => { await tick(); return okJson; });
   await Promise.all([VS.flushVectorQueue(), VS.flushVectorQueue()]);
   assert.equal(calls.filter((c) => c.method === 'POST').length, 2);
@@ -189,4 +189,12 @@ test('querySimilarCards: needs similarity >= 0.85 (distance <= 0.3) and never th
   useFetch(async () => { throw new Error('down'); });
   assert.deepEqual(await VS.querySimilarCards('some text'), { match: null, engine: 'offline' });
   assert.deepEqual(await VS.querySimilarCards('   '), { match: null, engine: 'none' });
+});
+
+test('a card without a project is never queued under a default project', () => {
+  VS.queueVectorOp('upsert', { id: 'np1', title: 'x' });
+  assert.equal(queue().length, 0);
+  VS.queueVectorOp('upsert', { id: 'p1', title: 'x', project: 'Apollo' });
+  assert.equal(queue()[0].card.project, 'Apollo');
+  assert.equal(queue()[0].card.client, '');
 });

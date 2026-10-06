@@ -168,3 +168,19 @@ Run STR-02 with one real project. Collect behavioural measures locally, with no 
 5. **Spike a local model provider (6.5)?** Recommended: yes, time-boxed, decision only.
 6. **Who runs the real-project pilot and the manual checks in W4** (Teams share, second device, Safari)?
 7. **Should HUI-03 hierarchy become the default** after the pilot, and the old layout be removed?
+
+## 10. Progress (6 Oct)
+
+Decisions received 6 Oct: archive unused code and docs (yes, organised, only what describes the latest implementation stays); Chroma files were committed by mistake; `critical-tests` to be required (user action); Q4/Q5 as recommended; manual checks on Teams share, Windows and Safari (user); HUI-03 layout becomes default only if the old layout is unused.
+
+Done in the first Phase 3 pull request (workstreams W1, W2 and part of W4):
+- Offline answers rewritten: they now list matching scoped cards with their own text and citations, or say nothing matched. Canned demo prose removed; test added to the `critical-tests` suite.
+- Vector sync no longer files a project-less card under `Apollo-123` (nothing is queued); client default `Acme Corp` removed; tests added.
+- Dead `API_BASES` fetch path removed from `FailoverDB.js`.
+- FND-01: four tracked `.bak` files removed; `.gitignore` and `check-repo.mjs` now reject backup copies and unexpected module folders; full-history secret scan added to CI (gitleaks, all refs). A manual scan of all 162 commits and gitleaks found no secrets. The old Chroma files in history hold demo and test text only.
+- Archive: 19 retired module folders (services and spec-only), 25 superseded documents and folders and the old root documents moved with `git mv` to `archive/`; live modules are `_shared`, `experience-pwa`, `vector-service`. New `README.md`, `docs/INDEX.md`, `docs/TESTING.md`, `archive/README.md`. In-app pages and design notes updated to point at archive paths.
+- New "What can this app do here?" panel (Harvester drawer): browser checks, a table of what the app can and cannot read (Teams chats and Outlook cannot be read; Copilot, agents, MCP and Graph not built), and self-declared licences that tailor advice. A browser cannot see Microsoft 365 licences, so they are declared, not detected.
+- Smoke run extended (capability panel and guide and map pages); 170/170 checks pass in Chromium, plus 188 unit tests, Python tests and repo checks.
+- `docs/PILOT_CHECKLIST.md` lists the manual checks that need a person.
+
+Still open: W3 (RAID row key on the card, decisions list and export section, radar over staging items, "nothing found" import feedback), WebKit CI job, the pilot run, the copy-out / paste-back workflow and the AI proposal and local-model items (W6). The "World of Continuum" footer still links to two personal Codespaces URLs that cannot be checked from here.

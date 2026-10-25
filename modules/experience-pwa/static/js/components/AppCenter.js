@@ -238,7 +238,7 @@ export function AppCenter(p) {
     })}
     </div>` : null}
   </div>`;
-  }) : [htmlC`<div className="text- italic text-[#64748B]">No routine updates.</div>`];
+  }) : [htmlC`<div className="text-[11px] italic text-[#64748B]">No routine updates.</div>`];
   const keyRows = centerTop5.length ? centerTop5.map((m) => {
     const age = centerAge(m);
     const title = centerTitle(m);

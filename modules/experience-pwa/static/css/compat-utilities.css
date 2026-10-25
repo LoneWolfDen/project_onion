@@ -1,0 +1,83 @@
+/* compat-utilities.css (#19). Tailwind v3 utilities the components already use but the frozen
+   block in styles.css never generated, so until now they silently did nothing: notes and
+   provenance lists did not scroll, the contacts row in Add Project stacked instead of three
+   columns, the card title ran under the corner buttons, the assistant's pastel gradient
+   (#D6F5E8 to #D6E8FF) never showed. Values are Tailwind v3 defaults; the --tw-* variables come
+   from the preflight in styles.css. Loaded after styles.css and before tokens/typography, so
+   the readable-typography floor still wins. Do not edit styles.css for these (HUI-04);
+   scripts/css-usage.mjs --check fails if a component uses a utility no stylesheet defines. */
+
+/* layout */
+.flex-row{flex-direction:row}
+.flex-nowrap{flex-wrap:nowrap}
+.items-stretch{align-items:stretch}
+.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gap-1\.5{gap:.375rem}
+.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}
+.space-y-2\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.625rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.625rem*var(--tw-space-y-reverse))}
+.top-3{top:.75rem}
+.overflow-hidden{overflow:hidden}
+.overflow-x-auto{overflow-x:auto}
+
+/* sizing */
+.h-5{height:1.25rem}
+.w-5{width:1.25rem}
+.h-9{height:2.25rem}
+.w-9{width:2.25rem}
+.w-max{width:max-content}
+.min-w-full{min-width:100%}
+.min-w-\[52px\]{min-width:52px}
+.min-w-\[180px\]{min-width:180px}
+.min-h-0{min-height:0}
+.max-w-full{max-width:100%}
+.max-w-\[100px\]{max-width:100px}
+.max-h-40{max-height:10rem}
+.max-h-\[132px\]{max-height:132px}
+.max-h-\[50vh\]{max-height:50vh}
+
+/* spacing */
+.m-4{margin:1rem}
+.mb-0{margin-bottom:0}
+.mb-6{margin-bottom:1.5rem}
+.mt-auto{margin-top:auto}
+.p-0\.5{padding:.125rem}
+.px-1\.5{padding-left:.375rem;padding-right:.375rem}
+.pb-3{padding-bottom:.75rem}
+.pr-10{padding-right:2.5rem}
+
+/* type */
+.text-\[14px\]{font-size:14px}
+.font-normal{font-weight:400}
+.leading-none{line-height:1}
+.leading-tight{line-height:1.25}
+.leading-normal{line-height:1.5}
+.leading-relaxed{line-height:1.625}
+.whitespace-nowrap{white-space:nowrap}
+.whitespace-pre-wrap{white-space:pre-wrap}
+.break-all{word-break:break-all}
+.underline-offset-2{text-underline-offset:2px}
+
+/* look */
+.rounded-lg{border-radius:.5rem}
+.opacity-70{opacity:.7}
+.cursor-pointer{cursor:pointer}
+.outline-none{outline:2px solid transparent;outline-offset:2px}
+.bg-gradient-to-r{background-image:linear-gradient(to right,var(--tw-gradient-stops))}
+.from-\[\#D6F5E8\]{--tw-gradient-from:#D6F5E8 var(--tw-gradient-from-position);--tw-gradient-to:rgb(214 245 232/0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}
+.to-\[\#D6E8FF\]{--tw-gradient-to:#D6E8FF var(--tw-gradient-to-position)}
+
+/* motion and states */
+.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}
+.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}
+.hover\:scale-105:hover{--tw-scale-x:1.05;--tw-scale-y:1.05;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}
+.hover\:shadow-sm:hover{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}
+.hover\:shadow-md:hover{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}
+.focus\:ring-1:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}
+.focus\:ring-\[\#1F4A7A\]:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(31 74 122/var(--tw-ring-opacity,1))}
+
+/* tailwindcss-animate subset used by the node viewer: "animate-in fade-in slide-in-from-top-1" */
+@keyframes onion-enter{from{opacity:var(--onion-enter-opacity,1);transform:translateY(var(--onion-enter-y,0))}}
+.animate-in{animation:onion-enter .15s ease-out}
+.fade-in{--onion-enter-opacity:0}
+.slide-in-from-top-1{--onion-enter-y:-.25rem}
+@media (prefers-reduced-motion:reduce){.animate-in{animation:none}}

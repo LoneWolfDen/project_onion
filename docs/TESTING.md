@@ -8,7 +8,7 @@
 | `python3 -m unittest discover -s modules/_shared/tests` | Loopback and origin guard (needs `pip install fastapi httpx`) |
 | `python3 -m unittest discover -s modules/vector-service/tests` | Vector scope and privacy (Chroma is stubbed) |
 | `node scripts/check-repo.mjs` | No runtime databases, backup copies, personal paths, key-shaped strings or unexpected module folders |
-| `node scripts/css-usage.mjs --check` | CSS classes still defined |
+| `node scripts/css-usage.mjs --check` | CSS classes still defined, and no utility class used in live code is missing from every stylesheet (such classes silently do nothing; add them to `css/compat-utilities.css`) |
 | `node scripts/gen-sw-precache.mjs --check` | Service worker precache list is current |
 | `node modules/experience-pwa/tests/smoke.mjs` | Browser run in Chromium (Playwright), including the link and guide pages |
 

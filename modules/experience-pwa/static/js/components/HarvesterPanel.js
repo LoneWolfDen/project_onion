@@ -868,14 +868,14 @@ export function HarvesterPanel(props) {
             try {
               const n = stagedCount;
               return html`<div style=${{ display:'flex', gap:'6px', marginTop:'8px', flexWrap:'wrap', alignItems:'center' }}>
-                <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text- font-medium">Stage to Data Park</button>
-                <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text- font-medium">${processing? 'AI engine running...' : 'Run AI Processing Engine'+(n? ' STAGED('+n+')' : '')}</button>
+                <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text-[12px] font-medium">Stage to Data Park</button>
+                <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text-[12px] font-medium">${processing? 'AI engine running...' : 'Run AI Processing Engine'+(n? ' STAGED('+n+')' : '')}</button>
                 ${n? html`<span style=${{ fontSize:'10px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'9999px', padding:'2px 8px', color:'#1e40af' }}>${n} raw fragment(s) awaiting AI</span>` : null}
               </div>`;
             } catch(e){
               return html`<div style=${{ display:'flex', gap:'6px', marginTop:'8px', flexWrap:'wrap' }}>
-                <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text- font-medium">Stage to Data Park</button>
-                <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text- font-medium">${processing? 'AI engine running...' : 'Run AI Processing Engine'}</button>
+                <button type="button" onClick=${onStage} className="px-3 py-1.5 rounded-full bg-white border border-[#bfdbfe] text-[12px] font-medium">Stage to Data Park</button>
+                <button type="button" disabled=${processing} onClick=${onProcess} className="px-3 py-1.5 rounded-full bg-black text-white text-[12px] font-medium">${processing? 'AI engine running...' : 'Run AI Processing Engine'}</button>
               </div>`;
             }
           })()}

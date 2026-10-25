@@ -1,4 +1,4 @@
-// Run: node --test modules/experience-pwa/tests/
+// Run: node --test "modules/experience-pwa/tests/*.test.mjs"
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { confidenceBreakdown, confidenceTier, buildConfidenceText } from '../static/js/core/confidence.js';

@@ -159,6 +159,23 @@ const scenarios = {
     check('no page errors', !errors.length, errors.join(' | '));
   },
 
+  async 'vector search settings (#18)'({ p, errors }) {
+    await p.click('#harvester-open-btn'); await sleep(p, 500);
+    const panel = p.locator('#vector-settings-panel');
+    await panel.scrollIntoViewIfNeeded();
+    check('vector settings show the defaults (1.2s wait, 15s pause)', (await panel.locator('[data-vector-setting="wait"]').inputValue()) === '1.2' && (await panel.locator('[data-vector-setting="pause"]').inputValue()) === '15');
+    await panel.locator('[data-vector-setting="baseUrl"]').fill('ftp://nope'); await p.click('#vector-settings-save');
+    check('a non-http service address is refused', /must start with http/.test(await p.innerText('#vector-settings-msg')));
+    await panel.locator('[data-vector-setting="baseUrl"]').fill('');
+    await panel.locator('[data-vector-setting="wait"]').fill('0.3'); await panel.locator('[data-vector-setting="pause"]').fill('0'); await p.click('#vector-settings-save');
+    const stored = await p.evaluate(() => [localStorage.getItem('VECTOR_ASK_TIMEOUT_MS'), localStorage.getItem('VECTOR_COOLDOWN_MS')]);
+    check('saved wait and pause are stored on this device in ms', stored[0] === '300' && stored[1] === '0', JSON.stringify(stored));
+    await p.click('#vector-settings-test'); await p.waitForFunction(() => !/Testing/.test((document.getElementById('vector-settings-msg') || {}).innerText || ''), null, { timeout: 8000 });
+    check('Test connection reports an unreachable service plainly', /Not reachable|Connected/.test(await p.innerText('#vector-settings-msg')));
+    await closeDrawer(p);
+    check('no page errors', !errors.length, errors.join(' | '));
+  },
+
   async 'multi-source confidence sentence'({ p, errors }) {
     const id = await p.evaluate(async () => {
       const s = JSON.parse(window.__continuumRepo.getRaw());

@@ -273,3 +273,46 @@ test('#18: one bad payload (HTTP 500) does not hold back the rest of the queue',
   assert.deepEqual(r, { flushed: 1, pending: 1 });
   assert.deepEqual(queue().map((e) => e.id), ['bad']);
 });
+
+// ---- #18 settings: wait time and pause are per-device and configurable ---------------------
+test('settings: defaults when nothing is saved (1.2s wait, 15s pause)', () => {
+  assert.deepEqual(VS.loadVectorSettings(globalThis.localStorage), { askTimeoutMs: 1200, cooldownMs: 15000, baseUrl: '' });
+});
+
+test('settings: values are clamped to safe limits, blanks return to the default', () => {
+  let r = VS.saveVectorSettings(globalThis.localStorage, { askTimeoutMs: 50, cooldownMs: 9999999 });
+  assert.equal(r.ok, true);
+  assert.deepEqual([r.settings.askTimeoutMs, r.settings.cooldownMs], [300, 300000]);
+  r = VS.saveVectorSettings(globalThis.localStorage, { askTimeoutMs: '3000', cooldownMs: '0' });
+  assert.deepEqual([r.settings.askTimeoutMs, r.settings.cooldownMs], [3000, 0]);
+  r = VS.saveVectorSettings(globalThis.localStorage, { askTimeoutMs: '', cooldownMs: 'abc' });
+  assert.deepEqual([r.settings.askTimeoutMs, r.settings.cooldownMs], [1200, 15000]);
+});
+
+test('settings: the service address must be http(s); a bad one is refused and nothing changes', () => {
+  assert.equal(VS.saveVectorSettings(globalThis.localStorage, { baseUrl: 'http://127.0.0.1:9006/' }).settings.baseUrl, 'http://127.0.0.1:9006');
+  const bad = VS.saveVectorSettings(globalThis.localStorage, { baseUrl: 'javascript:alert(1)', askTimeoutMs: 5000 });
+  assert.equal(bad.ok, false);
+  assert.equal(VS.loadVectorSettings(globalThis.localStorage).baseUrl, 'http://127.0.0.1:9006');
+  assert.equal(VS.loadVectorSettings(globalThis.localStorage).askTimeoutMs, 1200, 'refused save wrote nothing');
+  VS.saveVectorSettings(globalThis.localStorage, { baseUrl: '' });
+  assert.equal(VS.loadVectorSettings(globalThis.localStorage).baseUrl, '');
+});
+
+test('settings: a shorter wait applies to the next lookup', async () => {
+  VS.saveVectorSettings(globalThis.localStorage, { askTimeoutMs: 300 });
+  useHungFetch();
+  const t0 = Date.now();
+  await VS.querySimilarCards('quick', 'p', 'Walter');
+  const took = Date.now() - t0;
+  assert.ok(took >= 250 && took < 900, `took ${took}ms with a 300ms wait`);
+});
+
+test('settings: a pause of 0 turns the breaker off, so every lookup tries the service', async () => {
+  VS.saveVectorSettings(globalThis.localStorage, { cooldownMs: 0 });
+  useFetch(async () => { throw new Error('ECONNREFUSED'); });
+  await VS.querySimilarCards('a', 'p', 'Walter');
+  assert.equal(VS.vectorBreakerOpen(), false);
+  await VS.querySimilarCards('b', 'p', 'Walter');
+  assert.equal(calls.length, 2);
+});

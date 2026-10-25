@@ -35,3 +35,12 @@ The vector service (`modules/vector-service/main.py`) is normally started with u
 - **Persona.** Set `ONION_PERSONA=<name>` and the server decides who is asking (`persona_source: "server-derived"`); the persona sent by the browser is ignored and ingested cards are authored as that persona. Without it (single-user pilot) the browser's persona is used as a test aid and responses say `"client-supplied"`. The persona drop-down is not a security boundary in the pilot.
 - **Privacy metadata.** Every stored card carries `privacy` (`private` or `shared`), `is_private` and `persona_source`. `/list` hides other people's private cards, as `/ask` already did.
 - Tests: `python -m unittest discover -s modules/vector-service/tests -v` (needs `pip install fastapi httpx`; Chroma is stubbed).
+
+## Vector service: slow or down (#18)
+
+The vector service is only used to suggest "similar card" merges. The PWA never waits on it for long:
+
+- **Wait for a similarity check** (default 1.2 s, 0.3 to 10 s). If no answer arrives in time, that check falls back to exact matching.
+- **Pause after the service fails** (default 15 s, 0 to 300 s, 0 = never pause). After a network failure or timeout, similarity checks return at once, card mirroring goes to the offline queue and the queue drain waits; the queue is retried by the 60 s timer, the `online` event and the service worker. An HTTP error (the service answered) never starts a pause.
+- Set both, and the service address, per device in Harvester → **Vector search (optional)**, which also has **Test connection** and, while paused, **retry now**. They are stored in `localStorage` (`VECTOR_ASK_TIMEOUT_MS`, `VECTOR_COOLDOWN_MS`, `VECTOR_BASE_URL`); they are not secrets.
+- Raise the wait if your service is genuinely slow (a large store or a slow laptop) and you want the semantic suggestions anyway.

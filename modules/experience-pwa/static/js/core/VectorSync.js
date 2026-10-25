@@ -76,16 +76,54 @@ async function fetchTimeout(url, options, ms) {
 // Circuit breaker (#18). A slow or hung vector service must not stall the UI:
 // Run AI awaited the similarity lookup for every staged item (4s timeout each),
 // so 3 items took ~12s against a hung service. Interactive lookups now get a
-// short budget, and one network failure or timeout opens the breaker for
-// COOLDOWN_MS: lookups return "offline" at once, mirror writes go straight to
-// the queue, and the drain is skipped (the 60s timer, 'online' event and SW
-// message retry later). An HTTP error (e.g. a 500 for one payload) means the
-// service is up, so it never opens the breaker.
-const ASK_TIMEOUT_MS = 1200;
-const COOLDOWN_MS = 15000;
+// short budget, and one network failure or timeout opens the breaker for the
+// cooldown: lookups return "offline" at once, mirror writes go straight to the
+// queue, and the drain is skipped (the 60s timer, 'online' event and SW message
+// retry later). An HTTP error (e.g. a 500 for one payload) means the service is
+// up, so it never opens the breaker.
+// Both numbers are per-device settings (Harvester -> Vector search), read on
+// every call so a change applies at once. A cooldown of 0 turns the breaker off.
+const ASK_TIMEOUT_KEY = 'VECTOR_ASK_TIMEOUT_MS';
+const COOLDOWN_KEY = 'VECTOR_COOLDOWN_MS';
+export const VECTOR_DEFAULTS = { askTimeoutMs: 1200, cooldownMs: 15000 };
+export const VECTOR_LIMITS = { askTimeoutMs: [300, 10000], cooldownMs: [0, 300000] };
+const clampSetting = (raw, [lo, hi], dflt) => {
+  if (raw === null || raw === undefined || String(raw).trim() === '') return dflt;
+  const n = Math.round(Number(raw));
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+};
+export function loadVectorSettings(storage) {
+  const st = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+  const get = (k) => { try { return st ? st.getItem(k) : null; } catch (e) { return null; } };
+  return {
+    askTimeoutMs: clampSetting(get(ASK_TIMEOUT_KEY), VECTOR_LIMITS.askTimeoutMs, VECTOR_DEFAULTS.askTimeoutMs),
+    cooldownMs: clampSetting(get(COOLDOWN_KEY), VECTOR_LIMITS.cooldownMs, VECTOR_DEFAULTS.cooldownMs),
+    baseUrl: String(get(BASE_OVERRIDE_KEY) || ''),
+  };
+}
+// Saves clamped values; an empty field returns to the default. The address must be http(s);
+// anything else is refused ({ ok: false, error }) and nothing is written.
+export function saveVectorSettings(storage, input) {
+  const st = storage || localStorage;
+  const i = input || {};
+  const blank = (v) => v === null || v === undefined || String(v).trim() === '';
+  const url = String(i.baseUrl || '').trim().replace(/\/$/, '');
+  if (url) {
+    let parsed = null;
+    try { parsed = new URL(url); } catch (e) { parsed = null; }
+    if (!parsed || !/^https?:$/.test(parsed.protocol)) return { ok: false, error: 'The address must start with http:// or https://' };
+  }
+  const put = (k, v) => { if (blank(v)) st.removeItem(k); else st.setItem(k, String(v)); };
+  try {
+    put(ASK_TIMEOUT_KEY, blank(i.askTimeoutMs) ? '' : clampSetting(i.askTimeoutMs, VECTOR_LIMITS.askTimeoutMs, VECTOR_DEFAULTS.askTimeoutMs));
+    put(COOLDOWN_KEY, blank(i.cooldownMs) ? '' : clampSetting(i.cooldownMs, VECTOR_LIMITS.cooldownMs, VECTOR_DEFAULTS.cooldownMs));
+    put(BASE_OVERRIDE_KEY, url);
+  } catch (e) { return { ok: false, error: 'Could not save on this device' }; }
+  return { ok: true, settings: loadVectorSettings(st) };
+}
 let downUntil = 0;
 const coolingDown = () => Date.now() < downUntil;
-const markDown = () => { downUntil = Date.now() + COOLDOWN_MS; };
+const markDown = () => { downUntil = Date.now() + loadVectorSettings().cooldownMs; };
 const markUp = () => { downUntil = 0; };
 const isHttpError = (e) => /^HTTP \d+/.test(String((e && e.message) || ''));
 export function vectorBreakerOpen() { return coolingDown(); }
@@ -160,7 +198,7 @@ export async function querySimilarCards(text, project, activePersona, topK) {
   let networkFailed = false;
   for (const base of vectorBases()) {
     try {
-      const res = await fetchTimeout(base + '/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, ASK_TIMEOUT_MS);
+      const res = await fetchTimeout(base + '/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, loadVectorSettings().askTimeoutMs);
       markUp();
       if (!res.ok) continue;
       const j = await res.json().catch(() => null);

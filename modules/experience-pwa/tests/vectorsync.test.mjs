@@ -1,4 +1,4 @@
-// Run: node --test modules/experience-pwa/tests/
+// Run: node --test "modules/experience-pwa/tests/*.test.mjs"
 // VectorSync is a browser module; we stub localStorage/window/navigator/fetch
 // before importing it so the queue and mirror logic run under plain Node.
 import test, { beforeEach } from 'node:test';
@@ -35,6 +35,7 @@ beforeEach(() => {
   store.clear();
   events.length = 0;
   navigator.onLine = true;
+  VS.resetVectorBreaker();
   useFetch(async () => okJson);
 });
 
@@ -212,4 +213,63 @@ test('a card without a project is never queued under a default project', () => {
   VS.queueVectorOp('upsert', { id: 'p1', title: 'x', project: 'Apollo' });
   assert.equal(queue()[0].card.project, 'Apollo');
   assert.equal(queue()[0].card.client, '');
+});
+
+// ---- #18 circuit breaker: a slow or hung service must not stall the UI ------------------
+// A fetch that never answers but honours the abort signal, like a hung socket.
+const useHungFetch = () => { calls = []; globalThis.fetch = (url, opts) => { calls.push({ url, method: (opts && opts.method) || 'GET' }); return new Promise((_, reject) => { if (opts && opts.signal) opts.signal.addEventListener('abort', () => reject(new Error('aborted'))); }); }; };
+
+test('#18: a hung service costs one short wait, not 4s per lookup', async () => {
+  useHungFetch();
+  const t0 = Date.now();
+  const r = await VS.querySimilarCards('first lookup', 'p', 'Walter');
+  const first = Date.now() - t0;
+  assert.deepEqual(r, { match: null, engine: 'offline' });
+  assert.ok(first < 2000, `first lookup took ${first}ms, budget is 1200ms`);
+  assert.equal(VS.vectorBreakerOpen(), true);
+  const before = calls.length;
+  const t1 = Date.now();
+  for (let i = 0; i < 3; i++) assert.equal((await VS.querySimilarCards('next ' + i, 'p', 'Walter')).engine, 'offline');
+  assert.ok(Date.now() - t1 < 50, 'later lookups return at once');
+  assert.equal(calls.length, before, 'no request while the breaker is open');
+});
+
+test('#18: while the breaker is open, mirror writes queue and the drain waits', async () => {
+  useFetch(async () => { throw new Error('ECONNREFUSED'); });
+  await VS.querySimilarCards('trip the breaker', 'p', 'Walter');
+  useFetch(async () => okJson);
+  const r = await VS.mirrorToVector('upsert', { id: 'm1', project: 'Apollo' });
+  assert.equal(r.queued, true);
+  assert.equal(calls.length, 0);
+  const f = await VS.flushVectorQueue();
+  assert.equal(f.coolingDown, true);
+  assert.equal(calls.length, 0);
+  assert.deepEqual(queue().map((e) => e.id), ['m1'], 'nothing is lost: the entry waits for the next drain');
+  VS.resetVectorBreaker();
+  assert.deepEqual(await VS.flushVectorQueue(), { flushed: 1, pending: 0 });
+});
+
+test('#18: an HTTP error means the service is up, so the breaker stays closed', async () => {
+  useFetch(async () => ({ ok: false, status: 500, json: async () => ({}) }));
+  await VS.querySimilarCards('a', 'p', 'Walter');
+  assert.equal(VS.vectorBreakerOpen(), false);
+  await VS.mirrorToVector('upsert', { id: 'h1', project: 'Apollo' });
+  assert.equal(VS.vectorBreakerOpen(), false);
+});
+
+test('#18: the drain stops at the first network failure instead of timing out on every entry', async () => {
+  for (const id of ['a', 'b', 'c']) VS.queueVectorOp('upsert', { id, project: 'Apollo' });
+  useFetch(async () => { throw new Error('ECONNREFUSED'); });
+  const r = await VS.flushVectorQueue();
+  assert.equal(calls.length, 1);
+  assert.deepEqual(r, { flushed: 0, pending: 3 });
+  assert.deepEqual(queue().map((e) => [e.id, e.attempts]), [['a', 1], ['b', 0], ['c', 0]]);
+});
+
+test('#18: one bad payload (HTTP 500) does not hold back the rest of the queue', async () => {
+  for (const id of ['bad', 'good']) VS.queueVectorOp('upsert', { id, project: 'Apollo' });
+  useFetch(async (u, o) => (JSON.parse(o.body).id === 'bad' ? { ok: false, status: 500, json: async () => ({}) } : okJson));
+  const r = await VS.flushVectorQueue();
+  assert.deepEqual(r, { flushed: 1, pending: 1 });
+  assert.deepEqual(queue().map((e) => e.id), ['bad']);
 });

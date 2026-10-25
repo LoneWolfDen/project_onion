@@ -73,6 +73,24 @@ async function fetchTimeout(url, options, ms) {
     return res;
   } finally { clearTimeout(t); }
 }
+// Circuit breaker (#18). A slow or hung vector service must not stall the UI:
+// Run AI awaited the similarity lookup for every staged item (4s timeout each),
+// so 3 items took ~12s against a hung service. Interactive lookups now get a
+// short budget, and one network failure or timeout opens the breaker for
+// COOLDOWN_MS: lookups return "offline" at once, mirror writes go straight to
+// the queue, and the drain is skipped (the 60s timer, 'online' event and SW
+// message retry later). An HTTP error (e.g. a 500 for one payload) means the
+// service is up, so it never opens the breaker.
+const ASK_TIMEOUT_MS = 1200;
+const COOLDOWN_MS = 15000;
+let downUntil = 0;
+const coolingDown = () => Date.now() < downUntil;
+const markDown = () => { downUntil = Date.now() + COOLDOWN_MS; };
+const markUp = () => { downUntil = 0; };
+const isHttpError = (e) => /^HTTP \d+/.test(String((e && e.message) || ''));
+export function vectorBreakerOpen() { return coolingDown(); }
+// For tests and for an explicit user retry: close the breaker now.
+export function resetVectorBreaker() { markUp(); }
 export async function vectorHealth() {
   for (const base of vectorBases()) {
     try {
@@ -137,10 +155,13 @@ export async function querySimilarCards(text, project, activePersona, topK) {
   // (smaller = closer) counts as contextual overlap. NEVER throws.
   const q = String(text || '').slice(0, 1000);
   if (!q.trim()) return { match: null, engine: 'none' };
+  if (coolingDown()) return { match: null, engine: 'offline' };
   const body = { query: q, project: String(project || ''), activePersona: String(activePersona || ''), privacyMode: 'Both' };
+  let networkFailed = false;
   for (const base of vectorBases()) {
     try {
-      const res = await fetchTimeout(base + '/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 4000);
+      const res = await fetchTimeout(base + '/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, ASK_TIMEOUT_MS);
+      markUp();
       if (!res.ok) continue;
       const j = await res.json().catch(() => null);
       const retrieved = (j && j.retrieved) || [];
@@ -161,8 +182,9 @@ export async function querySimilarCards(text, project, activePersona, topK) {
         if (m && m[1].trim()) title = m[1].trim().slice(0, 80);
       } catch (e) {}
       return { match: { id: String(top.id || ''), title, distance: dist, space, similarity, reasons: ['vector similarity ' + similarity.toFixed(2) + ' (' + space + ' distance ' + dist.toFixed(2) + ')'] }, engine: 'chromadb' };
-    } catch (e) {}
+    } catch (e) { networkFailed = true; }
   }
+  if (networkFailed) markDown();
   return { match: null, engine: 'offline' };
 }
 // Distance means nothing without the space it was measured in. Under cosine, Chroma's
@@ -197,13 +219,19 @@ async function drainQueue() {
   const q = readQueue();
   if (!q.length) return { flushed: 0, pending: 0 };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return { flushed: 0, pending: q.length, offline: true };
+  if (coolingDown()) return { flushed: 0, pending: q.length, coolingDown: true };
   let flushed = 0;
   const remaining = [];
   const flushedIds = [];
+  let down = false;
   for (const entry of q) {
+    // The service looked down on an earlier entry: keep the rest queued rather
+    // than waiting out a timeout for each one.
+    if (down) { remaining.push(entry); continue; }
     try {
       if (entry.op === 'delete') await postDelete(entry.id);
       else await postIngest(entry.card || toVectorPayload({ id: entry.id }));
+      markUp();
       flushed++;
       // Track the card identity actually posted so markQueueMirrored flips
       // exactly these (never the whole vault).
@@ -212,6 +240,7 @@ async function drainQueue() {
         if (fid) flushedIds.push(fid);
       } catch (e0) {}
     } catch (e) {
+      if (!isHttpError(e)) { down = true; markDown(); }
       remaining.push({ ...entry, attempts: (entry.attempts || 0) + 1, error: String((e && e.message) || e).slice(0, 200) });
     }
   }
@@ -233,6 +262,10 @@ export function mirrorToVector(op, cardOrId) {
       queueVectorOp(op, cardOrId);
       return Promise.resolve({ queued: true, offline: true });
     }
+    if (coolingDown()) {
+      queueVectorOp(op, cardOrId);
+      return Promise.resolve({ queued: true, coolingDown: true });
+    }
     const run = (async () => {
       try {
         if (op === 'delete') await postDelete((cardOrId && cardOrId.id) || cardOrId);
@@ -244,8 +277,10 @@ export function mirrorToVector(op, cardOrId) {
           const did = String((cardOrId && cardOrId.id) || cardOrId || '');
           if (did) markQueueMirrored([did]);
         } catch (e2) {}
+        markUp();
         return { queued: false, ok: true };
       } catch (e) {
+        if (!isHttpError(e)) markDown();
         queueVectorOp(op, cardOrId);
         return { queued: true, ok: false };
       }
@@ -300,5 +335,5 @@ try {
     setTimeout(() => { try { flushVectorQueue(); } catch (e) {} }, 3000);
   }
 } catch (e) {}
-export default { mirrorToVector, queueVectorOp, flushVectorQueue, pendingVectorCount, vectorHealth };
+export default { mirrorToVector, queueVectorOp, flushVectorQueue, pendingVectorCount, vectorHealth, vectorBreakerOpen, resetVectorBreaker };
 
